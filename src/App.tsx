@@ -13,6 +13,7 @@ import Articles from "./pages/Articles";
 import Postpartum from "./pages/Postpartum";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Assistant from "./pages/Assistant";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

@@ -1,6 +1,4 @@
-@import url('@fontsource/dm-sans/400.css');
-@import url('@fontsource/dm-sans/500.css');
-@import url('@fontsource/dm-sans/700.css');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;700&family=Noto+Sans+Tamil:wght@400;500;700&family=Noto+Sans+Telugu:wght@400;500;700&family=Noto+Sans+Kannada:wght@400;500;700&family=Noto+Sans+Bengali:wght@400;500;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -9,22 +7,22 @@
 @layer base {
   :root {
     --background: 30 33% 98%;
-    --foreground: 340 20% 20%;
+    --foreground: 220 25% 14%;
 
     --card: 0 0% 100%;
-    --card-foreground: 340 20% 20%;
+    --card-foreground: 220 25% 14%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 340 20% 20%;
+    --popover-foreground: 220 25% 14%;
 
-    --primary: 340 60% 65%;
+    --primary: 22 90% 52%;
     --primary-foreground: 0 0% 100%;
 
     --secondary: 160 35% 88%;
     --secondary-foreground: 160 30% 25%;
 
-    --muted: 340 20% 94%;
-    --muted-foreground: 340 10% 50%;
+    --muted: 220 15% 94%;
+    --muted-foreground: 220 10% 46%;
 
     --accent: 260 40% 90%;
     --accent-foreground: 260 30% 30%;
@@ -32,11 +30,19 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 340 15% 90%;
-    --input: 340 15% 90%;
-    --ring: 340 60% 65%;
+    --border: 220 15% 90%;
+    --input: 220 15% 90%;
+    --ring: 22 90% 52%;
 
     --radius: 0.75rem;
+
+    /* Indian tricolor + government palette */
+    --saffron: 22 90% 52%;
+    --saffron-foreground: 0 0% 100%;
+    --india-green: 140 60% 35%;
+    --india-green-foreground: 0 0% 100%;
+    --india-navy: 220 60% 30%;
+    --india-navy-foreground: 0 0% 100%;
 
     --mint: 160 40% 85%;
     --mint-foreground: 160 35% 25%;
@@ -49,12 +55,12 @@
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 340 60% 65%;
+    --sidebar-primary: 22 90% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 340 20% 94%;
-    --sidebar-accent-foreground: 340 20% 20%;
-    --sidebar-border: 340 15% 90%;
-    --sidebar-ring: 340 60% 65%;
+    --sidebar-accent: 220 15% 94%;
+    --sidebar-accent-foreground: 220 25% 14%;
+    --sidebar-border: 220 15% 90%;
+    --sidebar-ring: 22 90% 52%;
   }
 }
 
@@ -63,7 +69,8 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Noto Sans', 'Noto Sans Devanagari', 'Noto Sans Tamil', 'Noto Sans Telugu', 'Noto Sans Kannada', 'Noto Sans Bengali', system-ui, sans-serif;
     font-feature-settings: "cv11", "ss01";
   }
   h1, h2, h3, h4 {
@@ -76,24 +83,37 @@
   }
 }
 
+/* Simple mode — larger text and generous spacing */
+.simple-mode {
+  font-size: 1.15rem;
+  line-height: 1.8;
+}
+.simple-mode h1 { font-size: 2.2rem; }
+.simple-mode h2 { font-size: 1.7rem; }
+.simple-mode h3 { font-size: 1.4rem; }
+.simple-mode p, .simple-mode li, .simple-mode span { font-size: 1.15rem; }
+.simple-mode button { font-size: 1.1rem; padding: 0.75rem 1.5rem; }
+
 @layer utilities {
   .text-gradient-bloom {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(135deg, hsl(340 60% 65%), hsl(260 40% 70%));
+    background-image: linear-gradient(135deg, hsl(22 90% 52%), hsl(140 60% 35%));
+  }
+  .text-gradient-saffron {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, hsl(22 90% 52%), hsl(35 95% 55%));
+  }
+  .bg-tricolor-gradient {
+    background: linear-gradient(135deg, hsl(22 90% 52% / 0.08), hsl(0 0% 100% / 0.2), hsl(140 60% 35% / 0.08));
+  }
+  .bg-gov-gradient {
+    background: linear-gradient(135deg, hsl(22 90% 52% / 0.12), hsl(260 40% 90% / 0.3), hsl(140 60% 35% / 0.08));
   }
 }
 
 @keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-    filter: blur(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0px);
-  }
+  from { opacity: 0; transform: translateY(16px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0px); }
 }
 
 @keyframes fade-in {
@@ -105,3 +125,22 @@
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-8px); }
 }
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 hsl(0 72% 51% / 0.4); }
+  50% { box-shadow: 0 0 0 8px hsl(0 72% 51% / 0); }
+}
+
+@keyframes recording-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 0.8; }
+}
+
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+.animate-recording-pulse { animation: recording-pulse 1s ease-in-out infinite; }
+
+/* Scrollbar styling */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsl(220 15% 80%); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(220 15% 65%); }

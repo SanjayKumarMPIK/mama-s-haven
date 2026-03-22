@@ -1,11 +1,17 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Stethoscope, Heart, Dumbbell, Sparkles, AlertTriangle, Bot } from "lucide-react";
+import { Send, Stethoscope, Heart, Dumbbell, Sparkles, AlertTriangle, Bot, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import ScrollReveal from "@/components/ScrollReveal";
 import ReactMarkdown from "react-markdown";
+import { useLanguage } from "@/hooks/useLanguage";
+import { useVoice } from "@/hooks/useVoice";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { checkEmergencyKeywords } from "@/lib/symptoms";
+import VoiceButton from "@/components/VoiceButton";
+import EmergencyCard from "@/components/EmergencyCard";
+import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 
 type Tone = "doctor" | "mom" | "coach";
 type Msg = { role: "user" | "assistant"; content: string };
@@ -18,25 +24,11 @@ const tones: { id: Tone; label: string; icon: React.ReactNode; desc: string }[] 
   { id: "coach", label: "Coach", icon: <Dumbbell className="w-4 h-4" />, desc: "Motivating & action-oriented" },
 ];
 
-const quickPrompts = [
-  "What should I eat this week?",
-  "Is this symptom normal?",
-  "Give me a daily wellness plan",
-  "Tips for better sleep",
-];
-
 async function streamChat({
-  messages,
-  tone,
-  onDelta,
-  onDone,
-  onError,
+  messages, tone, language, weekContext, onDelta, onDone, onError,
 }: {
-  messages: Msg[];
-  tone: Tone;
-  onDelta: (text: string) => void;
-  onDone: () => void;
-  onError: (err: string) => void;
+  messages: Msg[]; tone: Tone; language: string; weekContext: string;
+  onDelta: (text: string) => void; onDone: () => void; onError: (err: string) => void;
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
@@ -44,7 +36,7 @@ async function streamChat({
       "Content-Type": "application/json",
       Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
     },
-    body: JSON.stringify({ messages, tone }),
+    body: JSON.stringify({ messages, tone, language, weekContext }),
   });
 
   if (!resp.ok) {
@@ -84,28 +76,10 @@ async function streamChat({
   onDone();
 }
 
-function AdviceCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="my-3 rounded-xl border border-border bg-card p-4 shadow-sm">
-      <div className="flex items-start gap-2 text-sm">
-        <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-        <div className="prose prose-sm max-w-none text-card-foreground">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function WarningCard({ text }: { text: string }) {
-  return (
-    <Alert className="my-3 border-peach bg-peach/30">
-      <AlertTriangle className="h-4 w-4 text-peach-foreground" />
-      <AlertDescription className="text-peach-foreground text-sm">{text}</AlertDescription>
-    </Alert>
-  );
-}
-
-function MessageBubble({ msg }: { msg: Msg }) {
+function MessageBubble({ msg, onSpeak }: { msg: Msg; onSpeak?: (text: string) => void }) {
   const isUser = msg.role === "user";
+  const hasWarning = /consult (your |a )?doctor|seek (medical |immediate )?help|emergency|call your (healthcare|midwife)/i.test(msg.content);
+  const hasEmergency = checkEmergencyKeywords(msg.content);
 
   if (isUser) {
     return (
@@ -117,8 +91,6 @@ function MessageBubble({ msg }: { msg: Msg }) {
     );
   }
 
-  const hasWarning = /consult (your |a )?doctor|seek (medical |immediate )?help|emergency|call your (healthcare|midwife)/i.test(msg.content);
-
   return (
     <div className="flex justify-start gap-2">
       <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-secondary-foreground">
@@ -128,8 +100,17 @@ function MessageBubble({ msg }: { msg: Msg }) {
         <div className="rounded-2xl rounded-bl-md bg-card border border-border px-4 py-3 text-sm leading-relaxed shadow-sm text-card-foreground prose prose-sm max-w-none [&_h1]:text-base [&_h2]:text-sm [&_h3]:text-sm [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5">
           <ReactMarkdown>{msg.content}</ReactMarkdown>
         </div>
-        {hasWarning && (
-          <WarningCard text="This response mentions symptoms that may need medical attention. Please consult your healthcare provider." />
+        {onSpeak && (
+          <button onClick={() => onSpeak(msg.content)} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors px-1">
+            <Volume2 className="w-3 h-3" /> Listen
+          </button>
+        )}
+        {hasEmergency && <EmergencyCard show={true} />}
+        {hasWarning && !hasEmergency && (
+          <Alert className="my-2 border-amber-300 bg-amber-50">
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+            <AlertDescription className="text-amber-700 text-xs">This response mentions symptoms that may need medical attention. Please consult your healthcare provider.</AlertDescription>
+          </Alert>
         )}
       </div>
     </div>
@@ -137,13 +118,17 @@ function MessageBubble({ msg }: { msg: Msg }) {
 }
 
 export default function Assistant() {
+  const { t, language, simpleMode } = useLanguage();
+  const { currentWeek, trimester, profile } = usePregnancyProfile();
+  const voice = useVoice(language);
+
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [tone, setTone] = useState<Tone>("mom");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEmergencyBanner, setShowEmergencyBanner] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
@@ -151,15 +136,25 @@ export default function Assistant() {
     }
   }, []);
 
+  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+
+  // Handle voice transcript
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, scrollToBottom]);
+    if (voice.transcript && !voice.isListening) {
+      setInput(voice.transcript);
+    }
+  }, [voice.transcript, voice.isListening]);
 
   const send = async (text?: string) => {
     const msg = (text || input).trim();
     if (!msg || isLoading) return;
     setInput("");
     setError(null);
+
+    // Check if user input contains emergency keywords
+    if (checkEmergencyKeywords(msg)) {
+      setShowEmergencyBanner(true);
+    }
 
     const userMsg: Msg = { role: "user", content: msg };
     setMessages((prev) => [...prev, userMsg]);
@@ -177,10 +172,16 @@ export default function Assistant() {
       });
     };
 
+    const weekContext = profile.isSetup
+      ? `User is at week ${currentWeek} (trimester ${trimester}) of pregnancy. Due date: ${profile.dueDate}. Region: ${profile.region}. Please respond in ${language} language.`
+      : `Please respond in ${language} language.`;
+
     try {
       await streamChat({
         messages: [...messages, userMsg],
         tone,
+        language,
+        weekContext,
         onDelta: upsert,
         onDone: () => setIsLoading(false),
         onError: (e) => { setError(e); setIsLoading(false); },
@@ -198,36 +199,40 @@ export default function Assistant() {
     }
   };
 
+  const quickPrompts = [t("quickPromptEat"), t("quickPromptSymptom"), t("quickPromptWellness"), t("quickPromptSleep")];
+
   return (
-    <main className="min-h-screen bg-background">
+    <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
       {/* Header */}
       <ScrollReveal>
         <div className="border-b border-border bg-card/60 backdrop-blur-sm">
-          <div className="container py-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="container py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold text-foreground" style={{ lineHeight: "1.2" }}>
-                  Pregnancy Assistant
+                <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-primary" />
+                  {t("aiAssistant")}
                 </h1>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Your personal AI companion through every week of pregnancy
-                </p>
+                {profile.isSetup && (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {t("yourWeek")} {currentWeek}/40 · {t("trimester")} {trimester} · {profile.name && `👋 ${profile.name}`}
+                  </p>
+                )}
               </div>
-              {/* Tone selector */}
               <div className="flex gap-2">
-                {tones.map((t) => (
+                {tones.map((to) => (
                   <button
-                    key={t.id}
-                    onClick={() => setTone(t.id)}
+                    key={to.id}
+                    onClick={() => setTone(to.id)}
                     className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-all duration-200 active:scale-[0.96] ${
-                      tone === t.id
+                      tone === to.id
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
                     }`}
-                    title={t.desc}
+                    title={to.desc}
                   >
-                    {t.icon}
-                    <span className="hidden sm:inline">{t.label}</span>
+                    {to.icon}
+                    <span className="hidden sm:inline">{to.label}</span>
                   </button>
                 ))}
               </div>
@@ -237,17 +242,15 @@ export default function Assistant() {
       </ScrollReveal>
 
       {/* Chat area */}
-      <div className="container flex flex-col" style={{ height: "calc(100vh - 12rem)" }}>
+      <div className="container flex flex-col" style={{ height: "calc(100vh - 14rem)" }}>
         <div ref={scrollRef} className="flex-1 overflow-y-auto py-6 space-y-4 scroll-smooth">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
-              <div className="w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mb-4">
-                <Bot className="w-8 h-8 text-secondary-foreground" />
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <Bot className="w-8 h-8 text-primary" />
               </div>
-              <h2 className="text-lg font-semibold text-foreground mb-2">Hi there, mama! 👋</h2>
-              <p className="text-sm text-muted-foreground max-w-md mb-6">
-                I'm your pregnancy companion. Ask me anything about nutrition, symptoms, wellness, or what to expect each week.
-              </p>
+              <h2 className="text-lg font-semibold text-foreground mb-2">{t("greeting")}</h2>
+              <p className="text-sm text-muted-foreground max-w-md mb-6">{t("greetingDesc")}</p>
               <div className="flex flex-wrap justify-center gap-2 max-w-lg">
                 {quickPrompts.map((q) => (
                   <button
@@ -262,8 +265,10 @@ export default function Assistant() {
             </div>
           )}
 
+          {showEmergencyBanner && <EmergencyCard show={true} />}
+
           {messages.map((msg, i) => (
-            <MessageBubble key={i} msg={msg} />
+            <MessageBubble key={i} msg={msg} onSpeak={msg.role === "assistant" ? voice.speak : undefined} />
           ))}
 
           {isLoading && messages[messages.length - 1]?.role !== "assistant" && (
@@ -282,7 +287,6 @@ export default function Assistant() {
           )}
         </div>
 
-        {/* Error */}
         {error && (
           <Alert className="mb-2 border-destructive/50 bg-destructive/5">
             <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -290,15 +294,21 @@ export default function Assistant() {
           </Alert>
         )}
 
-        {/* Input */}
-        <div className="border-t border-border bg-background pb-4 pt-3">
+        {/* Input area */}
+        <div className="border-t border-border bg-background pb-3 pt-3">
           <div className="flex gap-2 items-end">
+            {voice.supported && (
+              <VoiceButton
+                type="mic"
+                active={voice.isListening}
+                onClick={voice.isListening ? voice.stopListening : voice.startListening}
+              />
+            )}
             <Textarea
-              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder="Ask about your pregnancy..."
+              placeholder={t("askAnything")}
               className="min-h-[44px] max-h-[120px] resize-none rounded-xl border-border bg-card text-sm"
               rows={1}
             />
@@ -311,11 +321,10 @@ export default function Assistant() {
               <Send className="w-4 h-4" />
             </Button>
           </div>
-          <p className="mt-2 text-center text-[11px] text-muted-foreground">
-            AI responses are for informational purposes only — always consult your healthcare provider.
-          </p>
         </div>
       </div>
+
+      <SafetyDisclaimer />
     </main>
   );
 }

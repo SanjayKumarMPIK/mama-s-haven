@@ -1,41 +1,84 @@
 import { Link } from "react-router-dom";
-import { Heart } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
+import { Phone, ShieldCheck, Heart } from "lucide-react";
 
 export default function Footer() {
+  const { t } = useLanguage();
+
   return (
-    <footer className="border-t border-border/60 bg-muted/30 py-12">
-      <div className="container">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+    <footer className="border-t border-border bg-card">
+      {/* Helpline strip */}
+      <div className="bg-red-50 border-b border-red-100">
+        <div className="container py-3 flex flex-wrap items-center justify-center gap-6 text-sm">
+          <a href="tel:104" className="flex items-center gap-2 font-semibold text-red-700 hover:underline">
+            <Phone className="w-4 h-4" /> {t("helplineMaternal")}
+          </a>
+          <a href="tel:102" className="flex items-center gap-2 font-semibold text-red-700 hover:underline">
+            <Phone className="w-4 h-4" /> {t("helplineAmbulance")}
+          </a>
+        </div>
+      </div>
+
+      <div className="container py-8">
+        <div className="grid gap-8 md:grid-cols-3">
+          {/* Brand */}
           <div>
-            <h3 className="text-lg font-bold text-gradient-bloom mb-3">MomBloom</h3>
-            <p className="text-sm text-muted-foreground max-w-xs">
-              Supporting mothers through every stage of their journey — from pregnancy to parenthood.
-            </p>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-2xl">🤰</span>
+              <span className="text-lg font-bold text-gradient-bloom">{t("appName")}</span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">{t("subtitle")}</p>
           </div>
+
+          {/* Quick links */}
           <div>
-            <h4 className="text-sm font-semibold mb-3">Quick Links</h4>
-            <div className="flex flex-col gap-2">
-              {[["Pregnancy Tools", "/tools"], ["Shopping", "/shopping"], ["Articles", "/articles"], ["Postpartum", "/postpartum"]].map(([label, path]) => (
-                <Link key={path} to={path} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  {label}
+            <h4 className="font-semibold text-sm mb-3">Quick Links</h4>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { label: t("weeklyGuide"), path: "/weekly-guide" },
+                { label: t("nutritionGuide"), path: "/nutrition" },
+                { label: t("symptomChecker"), path: "/symptom-checker" },
+                { label: t("aiAssistant"), path: "/assistant" },
+                { label: t("emergency"), path: "/emergency" },
+                { label: t("about"), path: "/about" },
+              ].map((link) => (
+                <Link key={link.path} to={link.path} className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                  {link.label}
                 </Link>
               ))}
             </div>
           </div>
+
+          {/* Gov info */}
           <div>
-            <h4 className="text-sm font-semibold mb-3">Support</h4>
-            <div className="flex flex-col gap-2">
-              {[["About Us", "/about"], ["Contact", "/contact"], ["Stress Relief", "/stress-relief"]].map(([label, path]) => (
-                <Link key={path} to={path} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  {label}
-                </Link>
-              ))}
+            <h4 className="font-semibold text-sm mb-3">Important</h4>
+            <div className="space-y-2">
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                <span>{t("disclaimerShort")}</span>
+              </div>
+              <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                <Heart className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+                <span>{t("poweredBy")}</span>
+              </div>
             </div>
           </div>
         </div>
-        <div className="mt-10 pt-6 border-t border-border/60 flex items-center justify-center gap-1 text-sm text-muted-foreground">
-          Made with <Heart className="w-4 h-4 text-primary fill-primary" /> by MomBloom &copy; {new Date().getFullYear()}
+      </div>
+
+      {/* Bottom bar */}
+      <div className="border-t border-border">
+        <div className="container py-3 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <p className="text-[10px] text-muted-foreground">{t("govDisclaimer")}</p>
+          <p className="text-[10px] text-muted-foreground">© 2026 {t("appName")}</p>
         </div>
+      </div>
+
+      {/* Tricolor bottom */}
+      <div className="h-1 w-full flex">
+        <div className="flex-1 bg-[hsl(22,90%,52%)]" />
+        <div className="flex-1 bg-white" />
+        <div className="flex-1 bg-[hsl(140,60%,35%)]" />
       </div>
     </footer>
   );

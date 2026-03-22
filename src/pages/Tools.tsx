@@ -1,0 +1,260 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Calculator, Activity, Timer, Heart, ArrowLeft } from "lucide-react";
+import ScrollReveal from "@/components/ScrollReveal";
+
+// Due Date Calculator
+function DueDateCalculator() {
+  const [lmp, setLmp] = useState("");
+  const [dueDate, setDueDate] = useState<string | null>(null);
+
+  const calculate = () => {
+    if (!lmp) return;
+    const date = new Date(lmp);
+    date.setDate(date.getDate() + 280);
+    setDueDate(date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
+  };
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-6 md:p-8">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-peach flex items-center justify-center">
+          <Calculator className="w-5 h-5 text-foreground/70" />
+        </div>
+        <h2 className="text-xl font-bold">Due Date Calculator</h2>
+      </div>
+      <label className="block text-sm font-medium mb-2">First day of your last period</label>
+      <input
+        type="date"
+        value={lmp}
+        onChange={(e) => setLmp(e.target.value)}
+        className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
+      />
+      <button
+        onClick={calculate}
+        className="mt-4 w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
+      >
+        Calculate
+      </button>
+      {dueDate && (
+        <div className="mt-6 p-4 rounded-lg bg-mint/50 text-center">
+          <p className="text-sm text-muted-foreground">Your estimated due date</p>
+          <p className="mt-1 text-lg font-bold">{dueDate}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Kick Counter
+function KickCounter() {
+  const [kicks, setKicks] = useState(0);
+  const [startTime, setStartTime] = useState<Date | null>(null);
+
+  const handleKick = () => {
+    if (!startTime) setStartTime(new Date());
+    setKicks((k) => k + 1);
+  };
+
+  const reset = () => {
+    setKicks(0);
+    setStartTime(null);
+  };
+
+  const elapsed = startTime
+    ? Math.floor((Date.now() - startTime.getTime()) / 60000)
+    : 0;
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-6 md:p-8">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-mint flex items-center justify-center">
+          <Activity className="w-5 h-5 text-foreground/70" />
+        </div>
+        <h2 className="text-xl font-bold">Kick Counter</h2>
+      </div>
+      <div className="text-center">
+        <div className="text-6xl font-bold text-primary">{kicks}</div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {startTime ? `${elapsed} min elapsed` : "Tap to start counting"}
+        </p>
+        <button
+          onClick={handleKick}
+          className="mt-6 w-32 h-32 rounded-full bg-mint hover:bg-mint/80 shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95 flex items-center justify-center mx-auto"
+        >
+          <span className="text-lg font-semibold text-mint-foreground">Tap!</span>
+        </button>
+        {kicks > 0 && (
+          <button onClick={reset} className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            Reset counter
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Contraction Timer
+function ContractionTimer() {
+  const [contractions, setContractions] = useState<{ start: number; end?: number }[]>([]);
+  const [active, setActive] = useState(false);
+
+  const toggle = () => {
+    if (active) {
+      setContractions((prev) => {
+        const updated = [...prev];
+        updated[updated.length - 1].end = Date.now();
+        return updated;
+      });
+      setActive(false);
+    } else {
+      setContractions((prev) => [...prev, { start: Date.now() }]);
+      setActive(true);
+    }
+  };
+
+  const reset = () => {
+    setContractions([]);
+    setActive(false);
+  };
+
+  const formatDuration = (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    return m > 0 ? `${m}m ${s % 60}s` : `${s}s`;
+  };
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-6 md:p-8">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-baby-blue flex items-center justify-center">
+          <Timer className="w-5 h-5 text-foreground/70" />
+        </div>
+        <h2 className="text-xl font-bold">Contraction Timer</h2>
+      </div>
+      <div className="text-center">
+        <button
+          onClick={toggle}
+          className={`w-36 h-36 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95 flex items-center justify-center mx-auto ${
+            active ? "bg-primary text-primary-foreground" : "bg-baby-blue text-baby-blue-foreground"
+          }`}
+        >
+          <span className="text-lg font-semibold">{active ? "Stop" : "Start"}</span>
+        </button>
+        {contractions.length > 0 && (
+          <>
+            <div className="mt-8 text-left">
+              <h3 className="text-sm font-semibold mb-3">History</h3>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {contractions.map((c, i) => (
+                  <div key={i} className="flex justify-between items-center text-sm p-3 rounded-lg bg-muted/50">
+                    <span>#{i + 1}</span>
+                    <span>{c.end ? formatDuration(c.end - c.start) : "In progress..."}</span>
+                    <span className="text-muted-foreground">
+                      {new Date(c.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <button onClick={reset} className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Clear history
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Mood Log
+function MoodLog() {
+  const moods = [
+    { emoji: "😊", label: "Happy" },
+    { emoji: "😌", label: "Calm" },
+    { emoji: "😴", label: "Tired" },
+    { emoji: "🤢", label: "Nauseous" },
+    { emoji: "😟", label: "Anxious" },
+    { emoji: "😢", label: "Emotional" },
+  ];
+  const [selected, setSelected] = useState<string | null>(null);
+  const [logged, setLogged] = useState(false);
+
+  const handleLog = () => {
+    if (selected) setLogged(true);
+  };
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card p-6 md:p-8">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-lg bg-lavender flex items-center justify-center">
+          <Heart className="w-5 h-5 text-foreground/70" />
+        </div>
+        <h2 className="text-xl font-bold">Mood Check-in</h2>
+      </div>
+      {logged ? (
+        <div className="text-center py-8">
+          <p className="text-4xl mb-3">{moods.find((m) => m.label === selected)?.emoji}</p>
+          <p className="font-semibold">Logged: {selected}</p>
+          <p className="text-sm text-muted-foreground mt-1">Take care of yourself today 💕</p>
+          <button onClick={() => { setLogged(false); setSelected(null); }} className="mt-4 text-sm text-primary hover:underline">
+            Log another
+          </button>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm text-muted-foreground mb-4">How are you feeling today?</p>
+          <div className="grid grid-cols-3 gap-3">
+            {moods.map((m) => (
+              <button
+                key={m.label}
+                onClick={() => setSelected(m.label)}
+                className={`p-4 rounded-lg text-center transition-all duration-200 active:scale-95 ${
+                  selected === m.label
+                    ? "bg-primary/10 border-2 border-primary shadow-sm"
+                    : "bg-muted/50 border-2 border-transparent hover:bg-muted"
+                }`}
+              >
+                <span className="text-2xl block">{m.emoji}</span>
+                <span className="text-xs mt-1 block">{m.label}</span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleLog}
+            disabled={!selected}
+            className="mt-6 w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.97]"
+          >
+            Log Mood
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function Tools() {
+  return (
+    <div className="min-h-screen py-12">
+      <div className="container">
+        <ScrollReveal>
+          <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
+            <ArrowLeft className="w-4 h-4" /> Back to Home
+          </Link>
+          <h1 className="text-3xl md:text-4xl font-bold">
+            Pregnancy <span className="text-gradient-bloom">Tools</span>
+          </h1>
+          <p className="mt-3 text-muted-foreground max-w-lg">
+            Track your pregnancy journey with these helpful tools — all private and stored on your device.
+          </p>
+        </ScrollReveal>
+        <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
+          <ScrollReveal><DueDateCalculator /></ScrollReveal>
+          <ScrollReveal delay={80}><KickCounter /></ScrollReveal>
+          <ScrollReveal delay={160}><ContractionTimer /></ScrollReveal>
+          <ScrollReveal delay={240}><MoodLog /></ScrollReveal>
+        </div>
+      </div>
+    </div>
+  );
+}

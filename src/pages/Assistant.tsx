@@ -97,9 +97,9 @@ function AdviceCard({ children }: { children: React.ReactNode }) {
 
 function WarningCard({ text }: { text: string }) {
   return (
-    <Alert className="my-3 border-amber-300 bg-amber-50">
-      <AlertTriangle className="h-4 w-4 text-amber-600" />
-      <AlertDescription className="text-amber-800 text-sm">{text}</AlertDescription>
+    <Alert className="my-3 border-peach bg-peach/30">
+      <AlertTriangle className="h-4 w-4 text-peach-foreground" />
+      <AlertDescription className="text-peach-foreground text-sm">{text}</AlertDescription>
     </Alert>
   );
 }

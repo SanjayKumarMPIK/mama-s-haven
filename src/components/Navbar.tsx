@@ -6,6 +6,7 @@ import logo from "@/assets/logo.png";
 const navLinks = [
   { label: "Home", path: "/" },
   { label: "Pregnancy Tools", path: "/tools" },
+  { label: "AI Assistant", path: "/assistant" },
   { label: "Shopping", path: "/shopping" },
   { label: "Stress Relief", path: "/stress-relief" },
   { label: "Articles", path: "/articles" },

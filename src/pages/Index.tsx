@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePhase, type Phase } from "@/hooks/usePhase";
 import ScrollReveal from "@/components/ScrollReveal";
-import { Bot, Calendar, Apple, Search, ShieldAlert, BookOpen, Baby, Sparkles, Phone, Eye, Trophy } from "lucide-react";
+import { Bot, Calendar, Apple, Search, ShieldAlert, BookOpen, Baby, Sparkles, Phone, Eye, Trophy, Flower2, HeartPulse, Users } from "lucide-react";
 
 const features = [
   { icon: Bot, titleKey: "aiAssistant" as const, desc: "AI-powered pregnancy guidance in your language with voice support", color: "bg-primary/10 text-primary", link: "/assistant" },
@@ -13,10 +14,31 @@ const features = [
   { icon: Baby, titleKey: "postpartum" as const, desc: "Recovery tips and newborn care milestones", color: "bg-peach text-peach-foreground", link: "/postpartum" },
   { icon: BookOpen, titleKey: "articles" as const, desc: "Expert articles on maternal and child health", color: "bg-baby-blue text-baby-blue-foreground", link: "/articles" },
   { icon: Eye, titleKey: "stressRelief" as const, desc: "Breathing exercises, meditations, and relaxation", color: "bg-lavender text-lavender-foreground", link: "/stress-relief" },
+  { icon: Flower2, titleKey: "aiAssistant" as const, desc: "Cycle tracker, hemoglobin guidance & personalized puberty health tips", color: "bg-pink-100 text-pink-600", link: "/puberty", customTitle: "Puberty Module" },
+  { icon: HeartPulse, titleKey: "aiAssistant" as const, desc: "Trimester guidance, warning signs & daily care for pregnant mothers", color: "bg-purple-100 text-purple-600", link: "/maternity", customTitle: "Maternity Module" },
+  { icon: Users, titleKey: "aiAssistant" as const, desc: "Fertility awareness, readiness check & lifestyle support for family planning", color: "bg-teal-100 text-teal-600", link: "/family-planning", customTitle: "Family Planning" },
+];
+
+const majorPhases: { phase: Phase; title: string; desc: string; to: string; color: string }[] = [
+  { phase: "puberty", title: "Puberty Phase", desc: "Cycle tracking, iron awareness, mood support", to: "/puberty", color: "border-pink-200 bg-pink-50/80" },
+  { phase: "maternity", title: "Maternity Phase", desc: "Trimester care, symptoms, daily guidance", to: "/maternity", color: "border-purple-200 bg-purple-50/80" },
+  { phase: "family-planning", title: "Family Planning", desc: "Fertile window, readiness, lifestyle", to: "/family-planning", color: "border-teal-200 bg-teal-50/80" },
+];
+
+const supportModules: { emoji: string; title: string; desc: string; to: string }[] = [
+  { emoji: "🧰", title: "Tools", desc: "Cycle, fertility, or pregnancy tools by phase", to: "/tools" },
+  { emoji: "🌿", title: "Wellness", desc: "Habits, mood, and stress care", to: "/wellness" },
+  { emoji: "🍎", title: "Nutrition Guide", desc: "Phase-aware food guidance", to: "/nutrition" },
+  { emoji: "🏥", title: "PHC Nearby", desc: "Prototype facility list & map links", to: "/phc-nearby" },
+  { emoji: "🛍️", title: "Care Essentials", desc: "₹ planning lists by life stage", to: "/shopping" },
+  { emoji: "📚", title: "Articles", desc: "Short reads matched to your phase", to: "/articles" },
+  { emoji: "🤖", title: "AI Guide", desc: "Ask questions with phase-aware context", to: "/assistant" },
+  { emoji: "💉", title: "Vaccine Tracker", desc: "Simple schedule checklist", to: "/vaccine-tracker" },
 ];
 
 export default function Index() {
   const { t, simpleMode, setSimpleMode } = useLanguage();
+  const { phase, setPhase, phaseName, phaseEmoji } = usePhase();
 
   return (
     <div className={`min-h-screen ${simpleMode ? "simple-mode" : ""}`}>
@@ -94,6 +116,64 @@ export default function Index() {
         </div>
       </div>
 
+      {/* Life stages + support modules (context layer) */}
+      <section id="support-modules" className="py-14 bg-muted/20 border-b border-border/60">
+        <div className="container max-w-4xl mx-auto">
+          <ScrollReveal>
+            <p className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Personalised journey</p>
+            <h2 className="mt-2 text-2xl md:text-3xl font-bold text-center">
+              Current phase:{" "}
+              <span className="text-gradient-bloom">
+                {phaseEmoji} {phaseName}
+              </span>
+            </h2>
+            <p className="mt-2 text-center text-sm text-muted-foreground max-w-xl mx-auto">
+              Pick one life stage — the rest of the app uses it for tools, nutrition, articles, and AI guidance.
+            </p>
+          </ScrollReveal>
+
+          <div className="mt-8 grid md:grid-cols-3 gap-4">
+            {majorPhases.map((m, i) => (
+              <ScrollReveal key={m.phase} delay={i * 70}>
+                <Link
+                  to={m.to}
+                  onClick={() => setPhase(m.phase)}
+                  className={`block rounded-2xl border-2 p-5 h-full transition-all hover:shadow-md hover:border-primary/30 ${m.color}`}
+                >
+                  <p className="text-xs font-semibold text-muted-foreground">Major module {i + 1}</p>
+                  <h3 className="mt-1 text-lg font-bold">{m.title}</h3>
+                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{m.desc}</p>
+                  <span className="mt-4 inline-block text-xs font-semibold text-primary">Open module →</span>
+                </Link>
+              </ScrollReveal>
+            ))}
+          </div>
+
+          <ScrollReveal delay={120}>
+            <h3 className="mt-12 text-lg font-bold text-center">Support modules</h3>
+            <p className="text-center text-xs text-muted-foreground">Fixed order — each adapts to your selected phase</p>
+          </ScrollReveal>
+          <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {supportModules.map((mod, i) => (
+              <ScrollReveal key={mod.to} delay={i * 40}>
+                <Link
+                  to={mod.to}
+                  className="flex gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md hover:border-primary/20 transition-all h-full"
+                >
+                  <span className="text-2xl shrink-0">{mod.emoji}</span>
+                  <div>
+                    <p className="text-sm font-semibold leading-tight">
+                      {i + 1}. {mod.title}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground leading-snug">{mod.desc}</p>
+                  </div>
+                </Link>
+              </ScrollReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features Grid */}
       <section className="py-16">
         <div className="container">
@@ -107,7 +187,7 @@ export default function Index() {
           </ScrollReveal>
           <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((f, i) => (
-              <ScrollReveal key={f.titleKey} delay={i * 70}>
+              <ScrollReveal key={f.link} delay={i * 70}>
                 <Link
                   to={f.link}
                   className="group block rounded-xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-lg hover:border-primary/20 transition-all duration-300 h-full"
@@ -115,7 +195,7 @@ export default function Index() {
                   <div className={`w-11 h-11 rounded-xl ${f.color} flex items-center justify-center mb-4`}>
                     <f.icon className="w-5 h-5" />
                   </div>
-                  <h3 className="font-semibold text-sm">{t(f.titleKey)}</h3>
+                  <h3 className="font-semibold text-sm">{"customTitle" in f ? f.customTitle : t(f.titleKey)}</h3>
                   <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
                 </Link>
               </ScrollReveal>

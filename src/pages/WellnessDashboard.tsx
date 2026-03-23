@@ -1,4 +1,5 @@
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePhase } from "@/hooks/usePhase";
 import { useGamification } from "@/hooks/useGamification";
 import { DAILY_HABITS } from "@/lib/gamificationData";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -8,11 +9,28 @@ import StreakBadge from "@/components/gamification/StreakBadge";
 import BadgeGrid from "@/components/gamification/BadgeGrid";
 import LevelProgress from "@/components/gamification/LevelProgress";
 import MotivationalNudge from "@/components/gamification/MotivationalNudge";
-import { Trophy, TrendingUp, Calendar, Target } from "lucide-react";
+import { Trophy, TrendingUp, Calendar, Target, Wind } from "lucide-react";
+
+const STRESS_BY_PHASE: Record<string, { title: string; tips: string[] }> = {
+  puberty: {
+    title: "Stress care for school & hormones",
+    tips: ["Try a 5‑minute walk after class before homework.", "Name one trusted person you can text on a hard day.", "Keep a regular sleep window — screens off 45 minutes before bed."],
+  },
+  maternity: {
+    title: "Stress care during pregnancy",
+    tips: ["Box breathing: 4 in, hold 4, out 6 for two minutes.", "Share one worry with your partner or ANC nurse — don’t carry it alone.", "Limit doom‑scrolling; set a daily news timer."],
+  },
+  "family-planning": {
+    title: "Stress care while planning ahead",
+    tips: ["Plan one small joyful ritual weekly (not only “tasks”).", "Split big decisions into weekly micro‑steps.", "If trying feels heavy, pause and hydrate — reset the nervous system."],
+  },
+};
 
 export default function WellnessDashboard() {
   const { language, simpleMode } = useLanguage();
+  const { phase, phaseName, phaseEmoji } = usePhase();
   const g = useGamification(language);
+  const stress = STRESS_BY_PHASE[phase];
 
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -30,6 +48,12 @@ export default function WellnessDashboard() {
                 <div>
                   <h1 className="text-xl font-bold">Wellness Tracker</h1>
                   <p className="text-xs text-muted-foreground">Track daily habits · Earn rewards · Stay healthy</p>
+                  <p className="mt-1 text-[10px] inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2 py-0.5">
+                    <span>{phaseEmoji}</span>
+                    <span>
+                      Context: <strong>{phaseName}</strong>
+                    </span>
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -58,6 +82,23 @@ export default function WellnessDashboard() {
         {/* Motivational Nudge */}
         <ScrollReveal delay={80}>
           <MotivationalNudge message={g.nudge} />
+        </ScrollReveal>
+
+        <ScrollReveal delay={90}>
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Wind className="w-4 h-4 text-primary" />
+              <h2 className="font-bold text-sm">{stress.title}</h2>
+            </div>
+            <ul className="space-y-2">
+              {stress.tips.map((tip, i) => (
+                <li key={i} className="text-xs text-muted-foreground flex gap-2">
+                  <span className="text-primary shrink-0">•</span>
+                  <span>{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </ScrollReveal>
 
         {/* Today's completion ring + stats row */}

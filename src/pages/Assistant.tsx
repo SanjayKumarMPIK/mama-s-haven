@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import ScrollReveal from "@/components/ScrollReveal";
 import ReactMarkdown from "react-markdown";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePhase, type Phase } from "@/hooks/usePhase";
 import { useVoice } from "@/hooks/useVoice";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { checkEmergencyKeywords } from "@/lib/symptoms";
@@ -117,8 +118,15 @@ function MessageBubble({ msg, onSpeak }: { msg: Msg; onSpeak?: (text: string) =>
   );
 }
 
+const QUICK_BY_PHASE: Record<Phase, string[]> = {
+  puberty: ["What’s a normal cycle length?", "How can I ease period pain at school?", "Iron foods that are easy to pack?"],
+  maternity: [],
+  "family-planning": ["How do I track fertile days simply?", "When should we see a doctor before conceiving?", "Stress making planning hard — ideas?"],
+};
+
 export default function Assistant() {
   const { t, language, simpleMode } = useLanguage();
+  const { phase, phaseName } = usePhase();
   const { currentWeek, trimester, profile } = usePregnancyProfile();
   const voice = useVoice(language);
 
@@ -172,9 +180,16 @@ export default function Assistant() {
       });
     };
 
-    const weekContext = profile.isSetup
-      ? `User is at week ${currentWeek} (trimester ${trimester}) of pregnancy. Due date: ${profile.dueDate}. Region: ${profile.region}. Please respond in ${language} language.`
-      : `Please respond in ${language} language.`;
+    const weekContext = [
+      `Life stage: ${phaseName}.`,
+      profile.isSetup
+        ? `Pregnancy: week ${currentWeek}, trimester ${trimester}, due date ${profile.dueDate}, region ${profile.region}.`
+        : null,
+      `Respond in ${language}.`,
+      "Stay within general wellness education; encourage professional care for symptoms or decisions.",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     try {
       await streamChat({
@@ -199,7 +214,11 @@ export default function Assistant() {
     }
   };
 
-  const quickPrompts = [t("quickPromptEat"), t("quickPromptSymptom"), t("quickPromptWellness"), t("quickPromptSleep")];
+  const defaultMaternityPrompts = [t("quickPromptEat"), t("quickPromptSymptom"), t("quickPromptWellness"), t("quickPromptSleep")];
+  const quickPrompts =
+    phase === "maternity"
+      ? defaultMaternityPrompts
+      : [...QUICK_BY_PHASE[phase], ...defaultMaternityPrompts].slice(0, 4);
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
@@ -213,11 +232,16 @@ export default function Assistant() {
                   <Bot className="w-5 h-5 text-primary" />
                   {t("aiAssistant")}
                 </h1>
-                {profile.isSetup && (
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {t("yourWeek")} {currentWeek}/40 · {t("trimester")} {trimester} · {profile.name && `👋 ${profile.name}`}
-                  </p>
-                )}
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Phase: <strong>{phaseName}</strong>
+                  {profile.isSetup && (
+                    <>
+                      {" "}
+                      · {t("yourWeek")} {currentWeek}/40 · {t("trimester")} {trimester}
+                      {profile.name && ` · 👋 ${profile.name}`}
+                    </>
+                  )}
+                </p>
               </div>
               <div className="flex gap-2">
                 {tones.map((to) => (
@@ -246,6 +270,11 @@ export default function Assistant() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto py-6 space-y-4 scroll-smooth">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              <div className="w-full max-w-md mb-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-left">
+                <p className="text-xs text-blue-900 leading-relaxed">
+                  <strong>Safety note:</strong> This is general guidance. Consult a healthcare professional if needed.
+                </p>
+              </div>
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
                 <Bot className="w-8 h-8 text-primary" />
               </div>

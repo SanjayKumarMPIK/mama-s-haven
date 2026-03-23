@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Calculator, Activity, Timer, Heart, ArrowLeft } from "lucide-react";
+import { Calculator, Activity, Timer, Heart, ArrowLeft, Wrench } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
+import { usePhase } from "@/hooks/usePhase";
+import { CycleTracker } from "@/pages/Puberty";
+import { FertilityWindowSection } from "@/pages/FamilyPlanning";
+import { TrimesterSelector, type Trimester } from "@/pages/Maternity";
 
 // Due Date Calculator
 function DueDateCalculator() {
@@ -12,7 +16,7 @@ function DueDateCalculator() {
     if (!lmp) return;
     const date = new Date(lmp);
     date.setDate(date.getDate() + 280);
-    setDueDate(date.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
+    setDueDate(date.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
   };
 
   return (
@@ -46,7 +50,6 @@ function DueDateCalculator() {
   );
 }
 
-// Kick Counter
 function KickCounter() {
   const [kicks, setKicks] = useState(0);
   const [startTime, setStartTime] = useState<Date | null>(null);
@@ -61,9 +64,7 @@ function KickCounter() {
     setStartTime(null);
   };
 
-  const elapsed = startTime
-    ? Math.floor((Date.now() - startTime.getTime()) / 60000)
-    : 0;
+  const elapsed = startTime ? Math.floor((Date.now() - startTime.getTime()) / 60000) : 0;
 
   return (
     <div className="rounded-xl border border-border/60 bg-card p-6 md:p-8">
@@ -75,9 +76,7 @@ function KickCounter() {
       </div>
       <div className="text-center">
         <div className="text-6xl font-bold text-primary">{kicks}</div>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {startTime ? `${elapsed} min elapsed` : "Tap to start counting"}
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">{startTime ? `${elapsed} min elapsed` : "Tap to start counting"}</p>
         <button
           onClick={handleKick}
           className="mt-6 w-32 h-32 rounded-full bg-mint hover:bg-mint/80 shadow-lg hover:shadow-xl transition-all duration-300 active:scale-95 flex items-center justify-center mx-auto"
@@ -94,7 +93,6 @@ function KickCounter() {
   );
 }
 
-// Contraction Timer
 function ContractionTimer() {
   const [contractions, setContractions] = useState<{ start: number; end?: number }[]>([]);
   const [active, setActive] = useState(false);
@@ -150,9 +148,7 @@ function ContractionTimer() {
                   <div key={i} className="flex justify-between items-center text-sm p-3 rounded-lg bg-muted/50">
                     <span>#{i + 1}</span>
                     <span>{c.end ? formatDuration(c.end - c.start) : "In progress..."}</span>
-                    <span className="text-muted-foreground">
-                      {new Date(c.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                    </span>
+                    <span className="text-muted-foreground">{new Date(c.start).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                   </div>
                 ))}
               </div>
@@ -167,7 +163,6 @@ function ContractionTimer() {
   );
 }
 
-// Mood Log
 function MoodLog() {
   const moods = [
     { emoji: "😊", label: "Happy" },
@@ -210,9 +205,7 @@ function MoodLog() {
                 key={m.label}
                 onClick={() => setSelected(m.label)}
                 className={`p-4 rounded-lg text-center transition-all duration-200 active:scale-95 ${
-                  selected === m.label
-                    ? "bg-primary/10 border-2 border-primary shadow-sm"
-                    : "bg-muted/50 border-2 border-transparent hover:bg-muted"
+                  selected === m.label ? "bg-primary/10 border-2 border-primary shadow-sm" : "bg-muted/50 border-2 border-transparent hover:bg-muted"
                 }`}
               >
                 <span className="text-2xl block">{m.emoji}</span>
@@ -234,6 +227,9 @@ function MoodLog() {
 }
 
 export default function Tools() {
+  const { phase, phaseName, phaseEmoji, phaseColor } = usePhase();
+  const [trimester, setTrimester] = useState<Trimester>("first");
+
   return (
     <div className="min-h-screen py-12">
       <div className="container">
@@ -241,19 +237,66 @@ export default function Tools() {
           <Link to="/" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
             <ArrowLeft className="w-4 h-4" /> Back to Home
           </Link>
-          <h1 className="text-3xl md:text-4xl font-bold">
-            Pregnancy <span className="text-gradient-bloom">Tools</span>
-          </h1>
-          <p className="mt-3 text-muted-foreground max-w-lg">
-            Track your pregnancy journey with these helpful tools — all private and stored on your device.
+          <div className="flex flex-wrap items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Wrench className="w-5 h-5 text-primary" />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold">
+              Health <span className="text-gradient-bloom">Tools</span>
+            </h1>
+          </div>
+          <p className="mt-1 text-lg font-medium border rounded-full px-3 py-1 inline-flex items-center gap-2 bg-card border-border/60">
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${phaseColor}`}>
+              {phaseEmoji} Current phase: {phaseName}
+            </span>
+          </p>
+          <p className="mt-3 text-muted-foreground max-w-lg text-sm">
+            Tools shown below match your selected life stage. Everything stays on your device unless you use AI chat.
           </p>
         </ScrollReveal>
+
         <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-          <ScrollReveal><DueDateCalculator /></ScrollReveal>
-          <ScrollReveal delay={80}><KickCounter /></ScrollReveal>
-          <ScrollReveal delay={160}><ContractionTimer /></ScrollReveal>
-          <ScrollReveal delay={240}><MoodLog /></ScrollReveal>
+          {(phase === "puberty" || phase === "family-planning") && (
+            <ScrollReveal>
+              <CycleTracker onResultChange={() => {}} />
+            </ScrollReveal>
+          )}
+
+          {phase === "family-planning" && (
+            <ScrollReveal delay={80}>
+              <FertilityWindowSection onResult={() => {}} />
+            </ScrollReveal>
+          )}
+
+          {phase === "maternity" && (
+            <>
+              <ScrollReveal>
+                <TrimesterSelector value={trimester} onChange={setTrimester} />
+              </ScrollReveal>
+              <ScrollReveal delay={80}>
+                <DueDateCalculator />
+              </ScrollReveal>
+              <ScrollReveal delay={120}>
+                <KickCounter />
+              </ScrollReveal>
+              <ScrollReveal delay={160}>
+                <ContractionTimer />
+              </ScrollReveal>
+              <ScrollReveal delay={200}>
+                <MoodLog />
+              </ScrollReveal>
+            </>
+          )}
         </div>
+
+        {phase === "puberty" && (
+          <p className="mt-8 text-xs text-muted-foreground text-center">
+            <Link to="/puberty" className="text-primary font-medium hover:underline">
+              Open full Puberty module
+            </Link>{" "}
+            for hemoglobin, mood, and personalised suggestions.
+          </p>
+        )}
       </div>
     </div>
   );

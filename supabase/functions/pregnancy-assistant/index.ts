@@ -40,12 +40,18 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, tone = "mom", dueDate, trimester, profile } = await req.json();
+    const { messages, tone = "mom", dueDate, trimester, profile, weekContext, language } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = buildSystemPrompt(tone, dueDate, trimester, profile);
+    let systemPrompt = buildSystemPrompt(tone, dueDate, trimester, profile);
+    if (typeof weekContext === "string" && weekContext.trim()) {
+      systemPrompt += `\n\nUser context from SwasthyaSakhi app:\n${weekContext.trim()}`;
+    }
+    if (typeof language === "string" && language.trim()) {
+      systemPrompt += `\n\nPreferred response language: ${language}.`;
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

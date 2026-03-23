@@ -1,27 +1,33 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Phone } from "lucide-react";
+import { Building2, Menu, Siren, ShieldCheck, Phone } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePhase } from "@/hooks/usePhase";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import HamburgerMenu from "@/components/navigation/HamburgerMenu";
+import NavItem from "@/components/navigation/NavItem";
+import PhaseSelector from "@/components/navigation/PhaseSelector";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
-  const [open, setOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
-  const { t } = useLanguage();
+  const { t, setLanguage, language } = useLanguage();
+  const { phase, setPhase } = usePhase();
+  const { clearProfile } = usePregnancyProfile();
 
-  const navLinks = [
-    { label: t("home"), path: "/" },
-    { label: t("aiAssistant"), path: "/assistant" },
-    { label: t("weeklyGuide"), path: "/weekly-guide" },
-    { label: t("nutritionGuide"), path: "/nutrition" },
-    { label: t("symptomChecker"), path: "/symptom-checker" },
-    { label: "Wellness", path: "/wellness" },
-    { label: t("tools"), path: "/tools" },
-    { label: t("articles"), path: "/articles" },
-  ];
+  const handlePhaseChange = (newPhase: typeof phase) => {
+    if (newPhase === phase) return;
+    const confirmChange = window.confirm(
+      "Changing phase will reset your current data. Do you want to continue?",
+    );
+    if (!confirmChange) return;
+    clearProfile();
+    setPhase(newPhase);
+  };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-lg">
+    <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 backdrop-blur">
       {/* Slim gov branding bar */}
       <div className="bg-[hsl(220,60%,30%)] text-white">
         <div className="container flex items-center justify-between py-1 text-[10px]">
@@ -33,82 +39,73 @@ export default function Navbar() {
         </div>
       </div>
 
-      <div className="container flex h-14 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <span className="text-lg">🤰</span>
+      <div className="container flex h-16 items-center gap-2">
+        <Link to="/" className="inline-flex items-center gap-2 shrink-0">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+            <ShieldCheck className="h-4 w-4 text-primary" />
           </div>
-          <span className="text-lg font-bold text-gradient-bloom">{t("appName")}</span>
+          <span className="text-sm font-bold text-gradient-bloom sm:text-base">{t("appName")}</span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden lg:flex items-center gap-0.5">
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors duration-200 ${
-                location.pathname === link.path
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+        {/* Desktop mandatory items */}
+        <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
+          <NavItem to="/phc-nearby" label="PHC Nearby" icon={Building2} active={location.pathname === "/phc-nearby"} compact />
+          <NavItem to="/vaccine-tracker" label="Vaccine Tracker" icon={Siren} active={location.pathname === "/vaccine-tracker"} compact />
         </nav>
 
-        <div className="hidden lg:flex items-center gap-2">
+        <div className="ml-auto hidden items-center gap-2 lg:flex">
+          <PhaseSelector
+            value={phase}
+            onChange={handlePhaseChange}
+            className="rounded-md border border-border bg-card px-2 py-1"
+            labelClassName="text-[11px]"
+            selectClassName="min-w-[150px]"
+          />
           <LanguageSwitcher />
           <Link
             to="/emergency"
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-600 text-white shadow-sm hover:bg-red-700 transition-all active:scale-95"
+            className="inline-flex h-9 items-center rounded-md bg-red-600 px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+            aria-label="Open emergency guidance"
           >
-            🚨 {t("emergency")}
+            {t("emergency")}
           </Link>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Open menu"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
         </div>
 
-        {/* Mobile toggle */}
-        <div className="flex items-center gap-2 lg:hidden">
-          <LanguageSwitcher />
-          <button
-            onClick={() => setOpen(!open)}
-            className="p-2 rounded-lg hover:bg-muted active:scale-95 transition-all"
-            aria-label="Toggle menu"
+        {/* Mobile: logo + emergency + hamburger only */}
+        <div className="ml-auto flex items-center gap-2 lg:hidden">
+          <Link
+            to="/emergency"
+            className="inline-flex h-9 items-center rounded-md bg-red-600 px-3 text-xs font-semibold text-white shadow-sm"
+            aria-label="Open emergency guidance"
           >
-            {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {t("emergency")}
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMenuOpen(true)}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Open menu"
+          >
+            <Menu className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      {/* Mobile nav */}
-      {open && (
-        <nav className="lg:hidden border-t border-border/60 bg-background animate-fade-in">
-          <div className="container py-3 flex flex-col gap-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                onClick={() => setOpen(false)}
-                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                  location.pathname === link.path
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <Link
-              to="/emergency"
-              onClick={() => setOpen(false)}
-              className="mt-2 px-4 py-2.5 text-sm font-semibold rounded-lg bg-red-600 text-white text-center active:scale-[0.97] transition-all"
-            >
-              🚨 {t("emergency")}
-            </Link>
-          </div>
-        </nav>
-      )}
+      <HamburgerMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        language={language}
+        onLanguageChange={setLanguage}
+        t={t}
+      />
     </header>
   );
 }

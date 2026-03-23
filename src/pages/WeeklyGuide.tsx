@@ -4,7 +4,7 @@ import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { WEEK_DATA } from "@/lib/pregnancyData";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
-import { ChevronLeft, ChevronRight, Baby, Heart, Apple, Droplets, Activity, AlertTriangle, Calendar, Target } from "lucide-react";
+import { ChevronLeft, ChevronRight, Scale, Ruler, Heart, Apple, Droplets, Activity, AlertTriangle, Calendar } from "lucide-react";
 
 export default function WeeklyGuide() {
   const { t, simpleMode } = useLanguage();
@@ -82,7 +82,19 @@ export default function WeeklyGuide() {
   }
 
   const trimesterLabel = trimester === 1 ? t("firstTrimester") : trimester === 2 ? t("secondTrimester") : t("thirdTrimester");
-  const trimesterColor = trimester === 1 ? "text-orange-600 bg-orange-50" : trimester === 2 ? "text-green-600 bg-green-50" : "text-purple-600 bg-purple-50";
+  const getFetalMetrics = (week: number) => {
+    if (week >= 37) {
+      return { weight: "3.2 - 3.6 kg", length: "48 - 52 cm", summary: "Fully developed and ready for delivery." };
+    }
+    if (week >= 28) {
+      return { weight: "1.0 - 2.9 kg", length: "35 - 47 cm", summary: "Rapid growth with maturity of lungs and brain." };
+    }
+    if (week >= 13) {
+      return { weight: "0.02 - 0.9 kg", length: "9 - 34 cm", summary: "Steady structural growth and organ development." };
+    }
+    return { weight: "< 0.02 kg", length: "< 9 cm", summary: "Early organ formation and foundational development." };
+  };
+  const fetal = getFetalMetrics(selectedWeek);
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
@@ -96,7 +108,7 @@ export default function WeeklyGuide() {
                 <h1 className="text-2xl font-bold mt-1">
                   {t("yourWeek")} {selectedWeek} <span className="text-muted-foreground font-normal text-lg">/ 40</span>
                 </h1>
-                {profile.name && <p className="text-sm text-muted-foreground mt-0.5">👋 {profile.name}</p>}
+                {profile.name && <p className="text-sm text-muted-foreground mt-0.5">{profile.name}</p>}
               </div>
               <div className="flex items-center gap-4">
                 <div className="text-right">
@@ -130,12 +142,9 @@ export default function WeeklyGuide() {
           >
             <ChevronLeft className="w-4 h-4" /> Prev
           </button>
-          <div className="flex items-center gap-1">
-            <span className="text-4xl">{weekData?.babySizeEmoji}</span>
-            <div className="text-center">
-              <p className="text-xs text-muted-foreground">{t("babySize")}</p>
-              <p className="text-sm font-semibold">{weekData?.babySize}</p>
-            </div>
+          <div className="text-center">
+            <p className="text-xs text-muted-foreground">Fetal Development Overview</p>
+            <p className="text-sm font-semibold">Week {selectedWeek} status</p>
           </div>
           <button
             onClick={() => setSelectedWeek(Math.min(40, selectedWeek + 1))}
@@ -174,12 +183,29 @@ export default function WeeklyGuide() {
             <ScrollReveal>
               <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-lavender flex items-center justify-center">
-                    <Baby className="w-4 h-4 text-lavender-foreground" />
+                  <div className="w-8 h-8 rounded-lg bg-lavender/70 flex items-center justify-center">
+                    <Scale className="w-4 h-4 text-foreground/80" />
                   </div>
-                  <h3 className="font-semibold text-sm">{t("babySize")} — {weekData.babySize} {weekData.babySizeEmoji}</h3>
+                  <h3 className="font-semibold text-sm">Fetal Development Overview</h3>
                 </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{weekData.development}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <p className="text-[11px] text-muted-foreground">Average Weight</p>
+                    <p className="mt-1 text-sm font-semibold inline-flex items-center gap-1.5">
+                      <Scale className="w-3.5 h-3.5 text-primary" />
+                      {fetal.weight}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-background p-3">
+                    <p className="text-[11px] text-muted-foreground">Average Length</p>
+                    <p className="mt-1 text-sm font-semibold inline-flex items-center gap-1.5">
+                      <Ruler className="w-3.5 h-3.5 text-primary" />
+                      {fetal.length}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{fetal.summary}</p>
+                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{weekData.development}</p>
               </div>
             </ScrollReveal>
 
@@ -265,7 +291,8 @@ export default function WeeklyGuide() {
                 <ul className="space-y-1.5">
                   {weekData.warningSigns.map((sign, i) => (
                     <li key={i} className="text-sm text-red-700 flex items-start gap-2">
-                      <span className="text-red-500 mt-0.5">⚠</span> {sign}
+                      <AlertTriangle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
+                      {sign}
                     </li>
                   ))}
                 </ul>

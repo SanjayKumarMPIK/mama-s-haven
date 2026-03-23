@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { getCurrentWeek, getDaysRemaining, getTrimester, getProgressPercentage } from "@/lib/pregnancyData";
 import type { Region } from "@/lib/nutritionData";
 
@@ -21,7 +21,27 @@ function loadProfile(): PregnancyProfile {
   return { name: "", dueDate: "", region: "north", isSetup: false };
 }
 
-export function usePregnancyProfile() {
+interface PregnancyProfileContextType {
+  profile: PregnancyProfile;
+  saveProfile: (data: Omit<PregnancyProfile, "isSetup">) => void;
+  clearProfile: () => void;
+  currentWeek: number;
+  daysLeft: number;
+  trimester: number;
+  progress: number;
+}
+
+const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
+  profile: { name: "", dueDate: "", region: "north", isSetup: false },
+  saveProfile: () => {},
+  clearProfile: () => {},
+  currentWeek: 1,
+  daysLeft: 280,
+  trimester: 1,
+  progress: 0,
+});
+
+export function PregnancyProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<PregnancyProfile>(loadProfile);
 
   useEffect(() => {
@@ -46,7 +66,7 @@ export function usePregnancyProfile() {
   const trimester = getTrimester(currentWeek);
   const progress = getProgressPercentage(currentWeek);
 
-  return {
+  const value: PregnancyProfileContextType = {
     profile,
     saveProfile,
     clearProfile,
@@ -55,4 +75,10 @@ export function usePregnancyProfile() {
     trimester,
     progress,
   };
+
+  return createElement(PregnancyProfileContext.Provider, { value }, children);
+}
+
+export function usePregnancyProfile() {
+  return useContext(PregnancyProfileContext);
 }

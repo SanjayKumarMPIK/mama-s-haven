@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { NUTRITION_DATA, type Region } from "@/lib/nutritionData";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
@@ -10,12 +11,27 @@ const mealIcons = { breakfast: Sun, lunch: Coffee, dinner: Moon, snacks: Cookie 
 
 export default function NutritionGuide() {
   const { t, simpleMode } = useLanguage();
+  const { phase, phaseName, phaseEmoji } = usePhase();
   const { profile, trimester } = usePregnancyProfile();
   const [region, setRegion] = useState<Region>(profile.region || "south");
   const [selTrimester, setSelTrimester] = useState<1 | 2 | 3>(trimester);
 
   const data = NUTRITION_DATA[region];
   const meals = selTrimester === 1 ? data.trimester1 : selTrimester === 2 ? data.trimester2 : data.trimester3;
+
+  const pubertyTips = [
+    "Iron + vitamin C: lemon with dal, amla with meals.",
+    "Cooked greens (spinach, methi) most days; limit tea with meals (reduces iron uptake).",
+    "Protein: eggs, chana, milk — supports growth and energy.",
+    "Hydration: plain water + buttermilk; reduce sugary drinks.",
+  ];
+
+  const planningTips = [
+    "Folate-first: leafy greens, citrus, fortified grains (as advised).",
+    "Zinc & healthy fats: nuts, seeds, fish (if you eat non-veg).",
+    "Cut back ultra-processed snacks; keep blood sugar steadier.",
+    "Partners: shared meals make new habits easier before pregnancy.",
+  ];
 
   const regions: { val: Region; label: string; emoji: string }[] = [
     { val: "north", label: t("northIndia"), emoji: "🏔️" },
@@ -36,10 +52,48 @@ export default function NutritionGuide() {
               <div>
                 <h1 className="text-2xl font-bold">{t("nutritionGuide")}</h1>
                 <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+                <p className="mt-2 text-xs inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1">
+                  <span>{phaseEmoji}</span>
+                  <span>
+                    Personalised for: <strong>{phaseName}</strong>
+                  </span>
+                </p>
               </div>
             </div>
 
+            {phase !== "maternity" && (
+              <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 p-4 text-sm">
+                {phase === "puberty" && (
+                  <>
+                    <p className="font-semibold text-foreground">Iron-rich focus</p>
+                    <ul className="mt-2 space-y-1.5 text-muted-foreground">
+                      {pubertyTips.map((line, i) => (
+                        <li key={i} className="flex gap-2">
+                          <span className="text-primary">✦</span>
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {phase === "family-planning" && (
+                  <>
+                    <p className="font-semibold text-foreground">Fertility-support nutrition</p>
+                    <ul className="mt-2 space-y-1.5 text-muted-foreground">
+                      {planningTips.map((line, i) => (
+                        <li key={i} className="flex gap-2">
+                          <span className="text-primary">✦</span>
+                          {line}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+              </div>
+            )}
+
             {/* Region selector */}
+            {phase === "maternity" && (
             <div className="flex flex-wrap gap-2 mb-4">
               {regions.map((r) => (
                 <button
@@ -55,8 +109,10 @@ export default function NutritionGuide() {
                 </button>
               ))}
             </div>
+            )}
 
             {/* Trimester selector */}
+            {phase === "maternity" && (
             <div className="flex gap-2">
               {([1, 2, 3] as const).map((tr) => (
                 <button
@@ -72,11 +128,20 @@ export default function NutritionGuide() {
                 </button>
               ))}
             </div>
+            )}
           </ScrollReveal>
         </div>
       </div>
 
       <div className="container py-8">
+        {phase !== "maternity" ? (
+          <ScrollReveal>
+            <p className="text-sm text-muted-foreground max-w-xl">
+              Switch to <strong>Maternity</strong> in your life-stage settings for trimester meal plans and region-specific pregnancy foods.
+            </p>
+          </ScrollReveal>
+        ) : (
+        <>
         {/* Meal cards */}
         <div className="grid gap-4 md:grid-cols-2">
           {(["breakfast", "lunch", "dinner", "snacks"] as const).map((meal, idx) => {
@@ -142,6 +207,8 @@ export default function NutritionGuide() {
             </ul>
           </div>
         </ScrollReveal>
+        </>
+        )}
       </div>
 
       <SafetyDisclaimer />

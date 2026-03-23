@@ -4,6 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LanguageProvider } from "@/hooks/useLanguage";
+import { PhaseProvider } from "@/hooks/usePhase";
+import { PregnancyProfileProvider } from "@/hooks/usePregnancyProfile";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Index from "./pages/Index";
@@ -20,6 +22,11 @@ import NutritionGuide from "./pages/NutritionGuide";
 import SymptomChecker from "./pages/SymptomChecker";
 import EmergencyGuidance from "./pages/EmergencyGuidance";
 import WellnessDashboard from "./pages/WellnessDashboard";
+import Puberty from "./pages/Puberty";
+import Maternity from "./pages/Maternity";
+import FamilyPlanning from "./pages/FamilyPlanning";
+import PhcNearby from "./pages/PhcNearby";
+import VaccineTracker from "./pages/VaccineTracker";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -27,31 +34,40 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Navbar />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/tools" element={<Tools />} />
-            <Route path="/shopping" element={<Shopping />} />
-            <Route path="/stress-relief" element={<StressRelief />} />
-            <Route path="/articles" element={<Articles />} />
-            <Route path="/postpartum" element={<Postpartum />} />
-            <Route path="/assistant" element={<Assistant />} />
-            <Route path="/weekly-guide" element={<WeeklyGuide />} />
-            <Route path="/nutrition" element={<NutritionGuide />} />
-            <Route path="/symptom-checker" element={<SymptomChecker />} />
-            <Route path="/emergency" element={<EmergencyGuidance />} />
-            <Route path="/wellness" element={<WellnessDashboard />} />
-            <Route path="/about" element={<About />} />
-            <Route path="/contact" element={<Contact />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Footer />
-        </BrowserRouter>
-      </TooltipProvider>
+      <PhaseProvider>
+        <PregnancyProfileProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Navbar />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/tools" element={<Tools />} />
+                <Route path="/shopping" element={<Shopping />} />
+                <Route path="/stress-relief" element={<StressRelief />} />
+                <Route path="/articles" element={<Articles />} />
+                <Route path="/postpartum" element={<Postpartum />} />
+                <Route path="/assistant" element={<Assistant />} />
+                <Route path="/weekly-guide" element={<WeeklyGuide />} />
+                <Route path="/nutrition" element={<NutritionGuide />} />
+                <Route path="/symptom-checker" element={<SymptomChecker />} />
+                <Route path="/emergency" element={<EmergencyGuidance />} />
+                <Route path="/wellness" element={<WellnessDashboard />} />
+                <Route path="/puberty" element={<Puberty />} />
+                <Route path="/maternity" element={<Maternity />} />
+                <Route path="/family-planning" element={<FamilyPlanning />} />
+                <Route path="/phc-nearby" element={<PhcNearby />} />
+                <Route path="/vaccine-tracker" element={<VaccineTracker />} />
+                <Route path="/about" element={<About />} />
+                <Route path="/contact" element={<Contact />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <Footer />
+            </BrowserRouter>
+          </TooltipProvider>
+        </PregnancyProfileProvider>
+      </PhaseProvider>
     </LanguageProvider>
   </QueryClientProvider>
 );

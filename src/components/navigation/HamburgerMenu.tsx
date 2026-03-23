@@ -25,7 +25,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/symptom-checker", labelKey: "symptomChecker" as const, icon: Search },
   { to: "/wellness", labelKey: "wellness" as const, icon: Trophy },
   { to: "/tools", labelKey: "tools" as const, icon: Wrench },
-  { to: "/phc-nearby", label: "PHC Nearby", icon: Building2 },
+  { to: "/phc-nearby", label: "PHC", icon: Building2 },
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
   { to: "/vaccine-tracker", label: "Vaccine Tracker", icon: Siren },
@@ -43,10 +43,9 @@ export default function HamburgerMenu({
   const firstFocusRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    document.body.style.overflow = open ? "hidden" : "auto";
     if (!open) return;
 
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     firstFocusRef.current?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
@@ -75,27 +74,28 @@ export default function HamburgerMenu({
 
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = originalOverflow;
+      document.body.style.overflow = "auto";
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open, onClose]);
 
   return (
     <>
-      {open && (
-        <div
-          role="presentation"
-          aria-hidden
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
-          onClick={onClose}
-        />
-      )}
+      <div
+        role="presentation"
+        aria-hidden
+        className={cn(
+          "fixed inset-0 z-40 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out",
+          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
+        )}
+        onClick={onClose}
+      />
       <aside
         ref={panelRef}
         aria-label="Navigation menu"
         className={cn(
-          "fixed right-0 top-0 z-50 h-full w-80 max-w-[85vw] border-l border-border bg-white shadow-xl",
-          "transform transition-transform duration-300 ease-in-out",
+          "fixed top-0 right-0 z-50 h-full w-80 max-w-[85vw] bg-white border-l border-border",
+          "shadow-2xl transform transition-transform duration-300 ease-in-out",
           open ? "translate-x-0" : "translate-x-full pointer-events-none",
         )}
       >

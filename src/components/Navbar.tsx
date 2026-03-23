@@ -49,7 +49,7 @@ export default function Navbar() {
 
         {/* Desktop mandatory items */}
         <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
-          <NavItem to="/phc-nearby" label="PHC Nearby" icon={Building2} active={location.pathname === "/phc-nearby"} compact />
+          <NavItem to="/phc-nearby" label="PHC" icon={Building2} active={location.pathname === "/phc-nearby"} compact />
           <NavItem to="/vaccine-tracker" label="Vaccine Tracker" icon={Siren} active={location.pathname === "/vaccine-tracker"} compact />
         </nav>
 

@@ -140,7 +140,7 @@ export default function PhcNearby() {
               <Building2 className="h-5 w-5 text-foreground/80" />
             </div>
             <h1 className="text-3xl font-bold md:text-4xl">
-              PHC <span className="text-gradient-bloom">Nearby</span>
+              PHC
             </h1>
           </div>
           <p className="text-sm text-muted-foreground">

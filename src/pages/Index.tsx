@@ -29,7 +29,7 @@ const supportModules: { emoji: string; title: string; desc: string; to: string }
   { emoji: "🧰", title: "Tools", desc: "Cycle, fertility, or pregnancy tools by phase", to: "/tools" },
   { emoji: "🌿", title: "Wellness", desc: "Habits, mood, and stress care", to: "/wellness" },
   { emoji: "🍎", title: "Nutrition Guide", desc: "Phase-aware food guidance", to: "/nutrition" },
-  { emoji: "🏥", title: "PHC Nearby", desc: "Prototype facility list & map links", to: "/phc-nearby" },
+  { emoji: "🏥", title: "PHC", desc: "Prototype facility list & map links", to: "/phc-nearby" },
   { emoji: "🛍️", title: "Care Essentials", desc: "₹ planning lists by life stage", to: "/shopping" },
   { emoji: "📚", title: "Articles", desc: "Short reads matched to your phase", to: "/articles" },
   { emoji: "🤖", title: "AI Guide", desc: "Ask questions with phase-aware context", to: "/assistant" },

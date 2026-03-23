@@ -97,7 +97,7 @@ type TranslationKeys =
 
 const translations: Record<Language, Record<TranslationKeys, string>> = {
   en: {
-    appName: "Mama's Haven",
+    appName: "SwasthyaSakhi",
     tagline: "Your trusted maternal health companion",
     subtitle: "Safe, accessible, multilingual pregnancy guidance for every mother across India",
     disclaimer: "⚕️ This information is for awareness only — not a medical diagnosis. Always consult a certified healthcare worker.",
@@ -174,7 +174,7 @@ const translations: Record<Language, Record<TranslationKeys, string>> = {
     wellness: "Wellness Tracker",
   },
   hi: {
-    appName: "मामाज़ हेवन",
+    appName: "स्वास्थ्यसखी",
     tagline: "आपकी विश्वसनीय मातृत्व स्वास्थ्य सहयोगी",
     subtitle: "भारत भर में हर माँ के लिए सुरक्षित, सुलभ, बहुभाषी गर्भावस्था मार्गदर्शन",
     disclaimer: "⚕️ यह जानकारी केवल जागरूकता के लिए है — यह चिकित्सा निदान नहीं है। हमेशा प्रमाणित स्वास्थ्य कर्मचारी से परामर्श करें।",
@@ -251,7 +251,7 @@ const translations: Record<Language, Record<TranslationKeys, string>> = {
     wellness: "वेलनेस ट्रैकर",
   },
   ta: {
-    appName: "மாமாஸ் ஹேவன்",
+    appName: "ஸ்வாஸ்த்யசகி",
     tagline: "உங்கள் நம்பகமான தாய் சுகாதாரத் தோழி",
     subtitle: "இந்தியா முழுவதிலும் ஒவ்வொரு தாய்க்கும் பாதுகாப்பான, அணுகக்கூடிய, பலமொழி கர்ப்ப வழிகாட்டுதல்",
     disclaimer: "⚕️ இந்தத் தகவல் விழிப்புணர்வுக்காக மட்டுமே — மருத்துவ ஆலோசனை அல்ல. எப்போதும் சான்றளிக்கப்பட்ட சுகாதார ஊழியரை அணுகவும்.",
@@ -328,7 +328,7 @@ const translations: Record<Language, Record<TranslationKeys, string>> = {
     wellness: "ஆரோக்கிய கண்காணிப்பு",
   },
   te: {
-    appName: "మమాస్ హేవన్",
+    appName: "స్వాస్థ్యసఖి",
     tagline: "మీ నమ్మకమైన మాతృ ఆరోగ్య సహచరి",
     subtitle: "భారతదేశం అంతటా ప్రతి తల్లికి సురక్షితమైన, అందుబాటులోని, బహుభాషా గర్భధారణ మార్గదర్శకత్వం",
     disclaimer: "⚕️ ఈ సమాచారం అవగాహన కోసం మాత్రమే — వైద్య నిర్ధారణ కాదు. ఎల్లప్పుడూ ప్రమాణీకృత ఆరోగ్య కార్యకర్తను సంప్రదించండి.",
@@ -405,7 +405,7 @@ const translations: Record<Language, Record<TranslationKeys, string>> = {
     wellness: "ఆరోగ్య ట్రాకర్",
   },
   kn: {
-    appName: "ಮಾಮಾಸ್ ಹೇವನ್",
+    appName: "ಸ್ವಾಸ್ಥ್ಯಸಖಿ",
     tagline: "ನಿಮ್ಮ ನಂಬಿಕೆಯ ಮಾತೃ ಆರೋಗ್ಯ ಸಂಗಾತಿ",
     subtitle: "ಭಾರತದಾದ್ಯಂತ ಪ್ರತಿ ತಾಯಿಗೆ ಸುರಕ್ಷಿತ, ಲಭ್ಯ, ಬಹುಭಾಷಾ ಗರ್ಭಧಾರಣೆ ಮಾರ್ಗದರ್ಶನ",
     disclaimer: "⚕️ ಈ ಮಾಹಿತಿ ಜಾಗೃತಿಗಾಗಿ ಮಾತ್ರ — ವೈದ್ಯಕೀಯ ರೋಗನಿರ್ಣಯ ಅಲ್ಲ. ಯಾವಾಗಲೂ ಪ್ರಮಾಣೀಕೃತ ಆರೋಗ್ಯ ಕಾರ್ಯಕರ್ತರನ್ನು ಸಂಪರ್ಕಿಸಿ.",
@@ -482,7 +482,7 @@ const translations: Record<Language, Record<TranslationKeys, string>> = {
     wellness: "ಆರೋಗ್ಯ ಟ್ರ್ಯಾಕರ್",
   },
   bn: {
-    appName: "মামাস হেভেন",
+    appName: "স্বাস্থ্যসখী",
     tagline: "আপনার বিশ্বস্ত মাতৃ স্বাস্থ্য সঙ্গী",
     subtitle: "ভারত জুড়ে প্রতিটি মায়ের জন্য নিরাপদ, সুলভ, বহুভাষী গর্ভাবস্থা নির্দেশনা",
     disclaimer: "⚕️ এই তথ্য শুধুমাত্র সচেতনতার জন্য — চিকিৎসা রোগ নির্ণয় নয়। সর্বদা প্রত্যয়িত স্বাস্থ্যকর্মীর সাথে পরামর্শ করুন।",

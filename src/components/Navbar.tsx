@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Building2, Menu, Siren, ShieldCheck, Phone } from "lucide-react";
+import { Building2, Menu, Siren, ShieldCheck, Phone, LogIn, UserPlus, LogOut } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useAuth } from "@/hooks/useAuth";
 import HamburgerMenu from "@/components/navigation/HamburgerMenu";
 import NavItem from "@/components/navigation/NavItem";
 import PhaseSelector from "@/components/navigation/PhaseSelector";
@@ -15,6 +16,7 @@ export default function Navbar() {
   const { t, setLanguage, language } = useLanguage();
   const { phase, setPhase, phaseName } = usePhase();
   const { clearProfile } = usePregnancyProfile();
+  const { user, logout } = useAuth();
 
   const handlePhaseChange = (newPhase: typeof phase) => {
     if (newPhase === phase) return;
@@ -65,6 +67,41 @@ export default function Navbar() {
             selectClassName="min-w-[150px]"
           />
           <LanguageSwitcher />
+
+          {/* Auth buttons */}
+          {user ? (
+            <div className="flex items-center gap-2 border-l pl-2 border-border/50">
+              <span className="text-xs font-medium text-slate-700 max-w-[100px] truncate">
+                {user.name}
+              </span>
+              <button
+                onClick={logout}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold shadow-sm transition-colors hover:bg-slate-50 text-slate-600"
+                aria-label="Logout"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 border-l pl-2 border-border/50">
+              <Link
+                to="/login"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold shadow-sm transition-colors hover:bg-slate-50"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Log in
+              </Link>
+              <Link
+                to="/register"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Sign up
+              </Link>
+            </div>
+          )}
+
           <Link
             to="/emergency"
             className="inline-flex h-9 items-center rounded-md bg-red-600 px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
@@ -82,7 +119,7 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile: logo + emergency + hamburger only */}
+        {/* Mobile: emergency + hamburger */}
         <div className="ml-auto flex items-center gap-2 lg:hidden">
           <Link
             to="/emergency"

@@ -110,7 +110,7 @@ export default function Index() {
           <a href="tel:104" className="flex items-center gap-2 font-semibold hover:underline">
             <Phone className="w-4 h-4" /> {t("helplineMaternal")}
           </a>
-          <a href="tel:102" className="flex items-center gap-2 font-semibold hover:underline">
+          <a href="tel:108" className="flex items-center gap-2 font-semibold hover:underline">
             <Phone className="w-4 h-4" /> {t("helplineAmbulance")}
           </a>
         </div>

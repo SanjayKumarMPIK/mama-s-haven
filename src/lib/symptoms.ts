@@ -111,8 +111,8 @@ export const SYMPTOMS: Symptom[] = [
     category: "Emergency",
     severity: "emergency",
     description: "Heavy vaginal bleeding during pregnancy requires immediate medical attention.",
-    advice: "Do NOT wait. Go to the nearest hospital or PHC immediately. Call 102 for ambulance.",
-    escalation: "THIS IS AN EMERGENCY. Call 102 ambulance or go to hospital NOW. Heavy bleeding can indicate placenta previa, placental abruption, or miscarriage.",
+    advice: "Do NOT wait. Go to the nearest hospital or PHC immediately. Call 108 for ambulance.",
+    escalation: "THIS IS AN EMERGENCY. Call 108 ambulance or go to hospital NOW. Heavy bleeding can indicate placenta previa, placental abruption, or miscarriage.",
   },
   {
     id: "reduced-fetal-movement",
@@ -134,7 +134,7 @@ export const SYMPTOMS: Symptom[] = [
     severity: "emergency",
     description: "Severe headache combined with blurred vision, seeing spots, or light sensitivity.",
     advice: "This could be a sign of preeclampsia or eclampsia, which are serious pregnancy complications.",
-    escalation: "GO TO HOSPITAL IMMEDIATELY. Call 102. Preeclampsia can be life-threatening for mother and baby if untreated.",
+    escalation: "GO TO HOSPITAL IMMEDIATELY. Call 108. Preeclampsia can be life-threatening for mother and baby if untreated.",
   },
   {
     id: "water-breaking",
@@ -156,7 +156,7 @@ export const SYMPTOMS: Symptom[] = [
     severity: "emergency",
     description: "Seizures during pregnancy can indicate eclampsia, a life-threatening emergency.",
     advice: "If someone near you has a seizure: Keep them safe from injury. Do not put anything in their mouth. Turn them on their side.",
-    escalation: "CALL 102 AMBULANCE IMMEDIATELY. Eclampsia is a medical emergency. Get to the nearest hospital.",
+    escalation: "CALL 108 AMBULANCE IMMEDIATELY. Eclampsia is a medical emergency. Get to the nearest hospital.",
   },
   {
     id: "heartburn",

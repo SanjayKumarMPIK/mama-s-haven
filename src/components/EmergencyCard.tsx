@@ -28,7 +28,7 @@ export default function EmergencyCard({ show }: EmergencyCardProps) {
               {t("helplineMaternal")}
             </a>
             <a
-              href="tel:102"
+              href="tel:108"
               className="flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-red-700 transition-colors active:scale-95"
             >
               <Phone className="w-4 h-4" />

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -14,7 +15,9 @@ interface HamburgerMenuProps {
   t: (key: "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools" | "articles") => string;
 }
 
-const SECONDARY_ITEMS = [
+type SecondaryKey = "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools" | "articles";
+
+const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; icon: LucideIcon }[] = [
   { to: "/", labelKey: "home" as const, icon: Home },
   { to: "/assistant", labelKey: "aiAssistant" as const, icon: Bot },
   { to: "/weekly-guide", labelKey: "weeklyGuide" as const, icon: Calendar },
@@ -22,8 +25,10 @@ const SECONDARY_ITEMS = [
   { to: "/symptom-checker", labelKey: "symptomChecker" as const, icon: Search },
   { to: "/wellness", labelKey: "wellness" as const, icon: Trophy },
   { to: "/tools", labelKey: "tools" as const, icon: Wrench },
+  { to: "/phc-nearby", label: "PHC Nearby", icon: Building2 },
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
+  { to: "/vaccine-tracker", label: "Vaccine Tracker", icon: Siren },
 ];
 
 export default function HamburgerMenu({
@@ -77,19 +82,19 @@ export default function HamburgerMenu({
 
   return (
     <>
-      <div
-        aria-hidden={!open}
-        onClick={onClose}
-        className={cn(
-          "fixed inset-0 z-50 bg-black/40 backdrop-blur-sm transition-opacity duration-300 ease-in-out",
-          open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
-        )}
-      />
+      {open && (
+        <div
+          role="presentation"
+          aria-hidden
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+          onClick={onClose}
+        />
+      )}
       <aside
         ref={panelRef}
         aria-label="Navigation menu"
         className={cn(
-          "fixed right-0 top-0 z-[60] h-full w-[85%] sm:w-[320px] border-l border-border bg-white shadow-2xl",
+          "fixed right-0 top-0 z-50 h-full w-80 max-w-[85vw] border-l border-border bg-white shadow-xl",
           "transform transition-transform duration-300 ease-in-out",
           open ? "translate-x-0" : "translate-x-full pointer-events-none",
         )}
@@ -134,7 +139,7 @@ export default function HamburgerMenu({
               <NavItem
                 key={item.to}
                 to={item.to}
-                label={item.label ?? t(item.labelKey)}
+                label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
                 icon={item.icon}
                 active={location.pathname === item.to}
                 onClick={onClose}

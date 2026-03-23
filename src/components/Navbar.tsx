@@ -13,7 +13,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { t, setLanguage, language } = useLanguage();
-  const { phase, setPhase } = usePhase();
+  const { phase, setPhase, phaseName } = usePhase();
   const { clearProfile } = usePregnancyProfile();
 
   const handlePhaseChange = (newPhase: typeof phase) => {
@@ -34,7 +34,7 @@ export default function Navbar() {
           <span className="font-medium tracking-wide">{t("appName")} — {t("poweredBy")}</span>
           <div className="hidden sm:flex items-center gap-3">
             <a href="tel:104" className="flex items-center gap-1 hover:underline"><Phone className="w-2.5 h-2.5" /> 104</a>
-            <a href="tel:102" className="flex items-center gap-1 hover:underline"><Phone className="w-2.5 h-2.5" /> 102</a>
+            <a href="tel:108" className="flex items-center gap-1 hover:underline"><Phone className="w-2.5 h-2.5" /> 108</a>
           </div>
         </div>
       </div>
@@ -54,11 +54,14 @@ export default function Navbar() {
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 lg:flex">
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+            Phase: <span className="font-semibold text-foreground">{phaseName}</span>
+          </span>
           <PhaseSelector
             value={phase}
             onChange={handlePhaseChange}
             className="rounded-md border border-border bg-card px-2 py-1"
-            labelClassName="text-[11px]"
+            labelClassName="sr-only"
             selectClassName="min-w-[150px]"
           />
           <LanguageSwitcher />
@@ -96,6 +99,21 @@ export default function Navbar() {
           >
             <Menu className="h-4 w-4" />
           </button>
+        </div>
+      </div>
+
+      <div className="border-t border-border/60 bg-background lg:hidden">
+        <div className="container flex flex-wrap items-center justify-between gap-2 py-2">
+          <span className="text-xs font-medium text-muted-foreground">
+            Phase: <span className="font-semibold text-foreground">{phaseName}</span>
+          </span>
+          <PhaseSelector
+            value={phase}
+            onChange={handlePhaseChange}
+            className="items-center gap-2"
+            labelClassName="sr-only"
+            selectClassName="min-w-[140px]"
+          />
         </div>
       </div>
 

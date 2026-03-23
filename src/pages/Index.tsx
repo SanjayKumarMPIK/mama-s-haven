@@ -88,18 +88,6 @@ export default function Index() {
                 </Link>
               </div>
             </ScrollReveal>
-            {/* Simple mode toggle */}
-            <ScrollReveal>
-              <button
-                onClick={() => setSimpleMode(!simpleMode)}
-                className={`mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all ${
-                  simpleMode ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }`}
-              >
-                <Eye className="w-3.5 h-3.5" />
-                {t("simpleMode")} {simpleMode ? "ON" : "OFF"}
-              </button>
-            </ScrollReveal>
           </div>
         </div>
       </section>
@@ -171,81 +159,6 @@ export default function Index() {
               </ScrollReveal>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Features Grid */}
-      <section className="py-16">
-        <div className="container">
-          <ScrollReveal>
-            <h2 className="text-2xl md:text-3xl font-bold text-center">
-              Everything You Need, <span className="text-gradient-saffron">One Platform</span>
-            </h2>
-            <p className="mt-2 text-center text-muted-foreground text-sm max-w-md mx-auto">
-              Safe, accessible tools and guidance for every stage of your pregnancy journey
-            </p>
-          </ScrollReveal>
-          <div className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {features.map((f, i) => (
-              <ScrollReveal key={f.link} delay={i * 70}>
-                <Link
-                  to={f.link}
-                  className="group block rounded-xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-lg hover:border-primary/20 transition-all duration-300 h-full"
-                >
-                  <div className={`w-11 h-11 rounded-xl ${f.color} flex items-center justify-center mb-4`}>
-                    <f.icon className="w-5 h-5" />
-                  </div>
-                  <h3 className="font-semibold text-sm">{"customTitle" in f ? f.customTitle : t(f.titleKey)}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
-                </Link>
-              </ScrollReveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Trimester overview */}
-      <section className="py-16 bg-muted/30">
-        <div className="container">
-          <ScrollReveal>
-            <h2 className="text-2xl md:text-3xl font-bold text-center">
-              Your Pregnancy, <span className="text-gradient-bloom">Week by Week</span>
-            </h2>
-          </ScrollReveal>
-          <div className="mt-10 grid md:grid-cols-3 gap-6">
-            {[
-              { label: t("firstTrimester"), weeks: "1–12", tip: "Focus on folic acid, manage morning sickness. Baby's vital organs are forming.", color: "bg-orange-50 border-orange-100", icon: "🌱" },
-              { label: t("secondTrimester"), weeks: "13–26", tip: "Energy returns! First kicks felt. Important anatomy scan. Eat well and stay active.", color: "bg-green-50 border-green-100", icon: "🌿" },
-              { label: t("thirdTrimester"), weeks: "27–40", tip: "Prepare your hospital bag. Practice breathing. Monitor baby movements daily.", color: "bg-purple-50 border-purple-100", icon: "🌸" },
-            ].map((tri, i) => (
-              <ScrollReveal key={i} delay={i * 100}>
-                <div className={`rounded-xl border ${tri.color} p-6`}>
-                  <span className="text-3xl">{tri.icon}</span>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mt-2">Weeks {tri.weeks}</p>
-                  <h3 className="mt-1 text-lg font-bold">{tri.label}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{tri.tip}</p>
-                </div>
-              </ScrollReveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA */}
-      <section className="py-16">
-        <div className="container">
-          <ScrollReveal>
-            <div className="rounded-2xl bg-gov-gradient p-10 md:p-16 text-center">
-              <h2 className="text-2xl md:text-3xl font-bold">{t("tagline")}</h2>
-              <p className="mt-3 text-muted-foreground text-sm max-w-md mx-auto">{t("govDisclaimer")}</p>
-              <Link
-                to="/weekly-guide"
-                className="mt-8 inline-block px-8 py-3.5 rounded-xl bg-primary text-primary-foreground font-semibold shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.97]"
-              >
-                {t("getStarted")} →
-              </Link>
-            </div>
-          </ScrollReveal>
         </div>
       </section>
     </div>

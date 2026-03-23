@@ -262,7 +262,7 @@ export default function Tools() {
             </ScrollReveal>
           )}
 
-          {phase === "family-planning" && (
+          {phase === "maternity" && (
             <ScrollReveal delay={80}>
               <FertilityWindowSection onResult={() => {}} />
             </ScrollReveal>

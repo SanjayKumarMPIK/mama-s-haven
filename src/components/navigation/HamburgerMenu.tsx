@@ -26,7 +26,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/nutrition", labelKey: "nutritionGuide" as const, icon: Apple },
   { to: "/symptom-checker", labelKey: "symptomChecker" as const, icon: Search },
   { to: "/wellness", labelKey: "wellness" as const, icon: Trophy },
-  { to: "/tools", labelKey: "tools" as const, icon: Wrench },
+  { to: "/tools", label: "Tools", icon: Wrench },
   { to: "/phc-nearby", label: "PHC", icon: Building2 },
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },

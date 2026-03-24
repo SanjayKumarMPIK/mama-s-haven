@@ -18,8 +18,9 @@ function useEffectiveLifeStage() {
   const { user } = useAuth();
   const { phase } = usePhase();
 
-  // Prefer the registered life-stage from auth, fall back to the phase selector
-  const lifeStage = user?.lifeStage || phase;
+  // Prefer the phase selector (dropdown) so the user can switch guides dynamically;
+  // fall back to the registered life-stage from auth if there's no phase selected.
+  const lifeStage = phase || user?.lifeStage;
 
   // Map registration lifeStage values AND phase values to our guide modes
   const isPregnant = lifeStage === "pregnant" || lifeStage === "maternity";

@@ -142,16 +142,24 @@ export default function Index() {
             <p className="text-center text-xs text-muted-foreground">Fixed order — each adapts to your selected phase</p>
           </ScrollReveal>
           <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {supportModules.map((mod, i) => (
+            {(phase === "maternity" 
+              ? [{ emoji: "🤰", title: "Pregnancy Dashboard", desc: "Track weeks, ANC & daily health", to: "/pregnancy-dashboard" }, ...supportModules]
+              : supportModules
+            ).map((mod, i) => (
               <ScrollReveal key={mod.to} delay={i * 40}>
                 <Link
                   to={mod.to}
-                  className="flex gap-3 rounded-xl border border-border/60 bg-card p-4 shadow-sm hover:shadow-md hover:border-primary/20 transition-all h-full"
+                  className={`flex gap-3 rounded-xl border p-4 shadow-sm hover:shadow-md transition-all h-full ${
+                    mod.to === "/pregnancy-dashboard"
+                      ? "border-primary/30 bg-primary/5 hover:border-primary/50"
+                      : "border-border/60 bg-card hover:border-primary/20"
+                  }`}
                 >
                   <span className="text-2xl shrink-0">{mod.emoji}</span>
                   <div>
-                    <p className="text-sm font-semibold leading-tight">
+                    <p className="text-sm font-semibold leading-tight flex items-center gap-1.5">
                       {i + 1}. {mod.title}
+                      {mod.to === "/pregnancy-dashboard" && <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />}
                     </p>
                     <p className="mt-1 text-[11px] text-muted-foreground leading-snug">{mod.desc}</p>
                   </div>

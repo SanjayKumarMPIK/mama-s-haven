@@ -1,0 +1,563 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useLanguage } from "@/hooks/useLanguage";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { usePregnancyDashboard } from "@/hooks/usePregnancyDashboard";
+import { WEEK_DATA } from "@/lib/pregnancyData";
+import { DAILY_CHECKLIST } from "@/lib/pregnancyDashboardData";
+import ScrollReveal from "@/components/ScrollReveal";
+import SafetyDisclaimer from "@/components/SafetyDisclaimer";
+import {
+  Calendar, ChevronRight, CheckCircle2, Circle, Clock,
+  Baby, Heart, Apple, Droplets, Activity, AlertTriangle,
+  Syringe, ClipboardList, Milestone as MilestoneIcon, Shield,
+  Flame, ArrowLeft, Sparkles, Phone, FileText
+} from "lucide-react";
+
+// ─── Baby size visuals per trimester range ───────────────────────────────────
+function getBabyVisual(week: number) {
+  if (week <= 4)  return { emoji: "🌱", size: "Poppy seed",         compare: "size of a poppy seed" };
+  if (week <= 6)  return { emoji: "🫘", size: "Sweet pea",          compare: "size of a sweet pea" };
+  if (week <= 8)  return { emoji: "🫐", size: "Raspberry",          compare: "size of a raspberry" };
+  if (week <= 10) return { emoji: "🍒", size: "Cherry",             compare: "size of a cherry" };
+  if (week <= 12) return { emoji: "🍋", size: "Lime",               compare: "size of a lime" };
+  if (week <= 14) return { emoji: "🍑", size: "Peach",              compare: "size of a peach" };
+  if (week <= 16) return { emoji: "🥑", size: "Avocado",            compare: "size of an avocado" };
+  if (week <= 18) return { emoji: "🫑", size: "Bell pepper",        compare: "size of a bell pepper" };
+  if (week <= 20) return { emoji: "🍌", size: "Banana",             compare: "length of a banana" };
+  if (week <= 22) return { emoji: "🥕", size: "Carrot",             compare: "length of a carrot" };
+  if (week <= 24) return { emoji: "🌽", size: "Corn cob",           compare: "size of a corn cob" };
+  if (week <= 26) return { emoji: "🥬", size: "Lettuce head",       compare: "size of a lettuce head" };
+  if (week <= 28) return { emoji: "🥥", size: "Coconut",            compare: "size of a coconut" };
+  if (week <= 30) return { emoji: "🥬", size: "Cabbage",            compare: "size of a cabbage" };
+  if (week <= 32) return { emoji: "🍍", size: "Pineapple",          compare: "size of a pineapple" };
+  if (week <= 34) return { emoji: "🍈", size: "Cantaloupe",         compare: "size of a cantaloupe" };
+  if (week <= 36) return { emoji: "🥬", size: "Romaine lettuce",    compare: "length of romaine lettuce" };
+  return              { emoji: "🍉", size: "Watermelon",         compare: "size of a watermelon" };
+}
+
+// ─── Category icons for checklist ────────────────────────────────────────────
+function getCategoryIcon(cat: string) {
+  switch (cat) {
+    case "supplement": return <Shield className="w-3.5 h-3.5" />;
+    case "nutrition":  return <Apple className="w-3.5 h-3.5" />;
+    case "hydration":  return <Droplets className="w-3.5 h-3.5" />;
+    case "activity":   return <Activity className="w-3.5 h-3.5" />;
+    case "rest":       return <Clock className="w-3.5 h-3.5" />;
+    default:           return <Circle className="w-3.5 h-3.5" />;
+  }
+}
+
+function getCategoryColor(cat: string) {
+  switch (cat) {
+    case "supplement": return "bg-purple-100 text-purple-700 border-purple-200";
+    case "nutrition":  return "bg-green-100 text-green-700 border-green-200";
+    case "hydration":  return "bg-blue-100 text-blue-700 border-blue-200";
+    case "activity":   return "bg-amber-100 text-amber-700 border-amber-200";
+    case "rest":       return "bg-indigo-100 text-indigo-700 border-indigo-200";
+    default:           return "bg-gray-100 text-gray-700 border-gray-200";
+  }
+}
+
+function getMilestoneTypeColor(type: string) {
+  switch (type) {
+    case "vaccination":  return "bg-purple-100 text-purple-700 border-purple-200";
+    case "checkup":      return "bg-blue-100 text-blue-700 border-blue-200";
+    case "preparation":  return "bg-amber-100 text-amber-700 border-amber-200";
+    case "government":   return "bg-teal-100 text-teal-700 border-teal-200";
+    default:             return "bg-gray-100 text-gray-700 border-gray-200";
+  }
+}
+
+// ─── Setup Screen ────────────────────────────────────────────────────────────
+function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
+  const { saveProfile, profile } = usePregnancyProfile();
+  const [name, setName] = useState(profile.name);
+  const [dueDate, setDueDate] = useState(profile.dueDate);
+  const [region, setRegion] = useState(profile.region);
+
+  return (
+    <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
+      <div className="container py-16 max-w-lg">
+        <ScrollReveal>
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <Baby className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold">Set Up Your Dashboard</h1>
+            <p className="mt-2 text-muted-foreground text-sm">Enter your expected due date to personalize your pregnancy tracker.</p>
+          </div>
+        </ScrollReveal>
+        <div className="space-y-4 bg-card rounded-2xl border border-border p-6 shadow-sm">
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Your Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="Your name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Expected Due Date</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Region</label>
+            <select
+              value={region}
+              onChange={(e) => setRegion(e.target.value as any)}
+              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="north">North India</option>
+              <option value="south">South India</option>
+              <option value="east">East India</option>
+              <option value="west">West India</option>
+            </select>
+          </div>
+          <button
+            onClick={() => { if (dueDate) saveProfile({ name, dueDate, region }); }}
+            disabled={!dueDate}
+            className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-40"
+          >
+            Start Tracking →
+          </button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Main Dashboard
+// ═════════════════════════════════════════════════════════════════════════════
+export default function PregnancyDashboard() {
+  const { simpleMode } = useLanguage();
+  const { profile, currentWeek, daysLeft, trimester, progress } = usePregnancyProfile();
+
+  if (!profile.isSetup) {
+    return <SetupScreen simpleMode={simpleMode} />;
+  }
+
+  return <DashboardView
+    currentWeek={currentWeek}
+    daysLeft={daysLeft}
+    trimester={trimester}
+    progress={progress}
+    profileName={profile.name}
+    simpleMode={simpleMode}
+  />;
+}
+
+function DashboardView({
+  currentWeek, daysLeft, trimester, progress, profileName, simpleMode
+}: {
+  currentWeek: number; daysLeft: number; trimester: number; progress: number;
+  profileName: string; simpleMode: boolean;
+}) {
+  const dash = usePregnancyDashboard(currentWeek);
+  const weekData = WEEK_DATA[Math.min(currentWeek, 40) - 1];
+  const babyVisual = getBabyVisual(currentWeek);
+  const trimesterLabel = trimester === 1 ? "1st Trimester" : trimester === 2 ? "2nd Trimester" : "3rd Trimester";
+  const trimesterColor = trimester === 1 ? "text-teal-600" : trimester === 2 ? "text-amber-600" : "text-primary";
+
+  return (
+    <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
+      {/* ─── Hero Header ──────────────────────────────────────────────── */}
+      <div className="bg-tricolor-gradient border-b border-border">
+        <div className="container py-6">
+          <ScrollReveal>
+            <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4">
+              <ArrowLeft className="w-3.5 h-3.5" /> Home
+            </Link>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-xs font-semibold uppercase tracking-wider ${trimesterColor}`}>{trimesterLabel}</span>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <span className="text-xs text-muted-foreground">Week {currentWeek} of 40</span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-bold">
+                  Pregnancy Dashboard
+                </h1>
+                {profileName && <p className="text-sm text-muted-foreground mt-0.5">Welcome, {profileName} 🤰</p>}
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">{daysLeft}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium">days left</p>
+                </div>
+                {/* Progress ring */}
+                <div className="relative w-16 h-16 shrink-0">
+                  <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--primary))" strokeWidth="3" strokeDasharray={`${progress}, 100`} strokeLinecap="round" />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">{progress}%</div>
+                </div>
+              </div>
+            </div>
+            {/* Progress bar */}
+            <div className="mt-4 w-full bg-muted rounded-full h-2">
+              <div className="bg-primary h-2 rounded-full transition-all duration-700" style={{ width: `${progress}%` }} />
+            </div>
+          </ScrollReveal>
+        </div>
+      </div>
+
+      {/* ─── Helpline strip ───────────────────────────────────────────── */}
+      <div className="bg-red-600 text-white">
+        <div className="container py-2 flex items-center justify-center gap-6 text-xs">
+          <a href="tel:104" className="flex items-center gap-1.5 font-semibold hover:underline">
+            <Phone className="w-3.5 h-3.5" /> 104 — Health Helpline
+          </a>
+          <a href="tel:108" className="flex items-center gap-1.5 font-semibold hover:underline">
+            <Phone className="w-3.5 h-3.5" /> 108 — Ambulance
+          </a>
+        </div>
+      </div>
+
+      <div className="container py-6 space-y-6">
+        {/* ─── Section 1: Baby Development ──────────────────────────── */}
+        <ScrollReveal>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-peach flex items-center justify-center">
+                <Baby className="w-4 h-4 text-peach-foreground" />
+              </div>
+              <h2 className="font-bold text-sm">Baby Development — Week {currentWeek}</h2>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Baby size visual */}
+              <div className="flex items-center sm:flex-col gap-3 sm:gap-1 sm:w-32 shrink-0">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-peach to-lavender flex items-center justify-center text-4xl animate-float">
+                  {babyVisual.emoji}
+                </div>
+                <div className="sm:text-center">
+                  <p className="text-sm font-semibold">{babyVisual.size}</p>
+                  <p className="text-[10px] text-muted-foreground">{babyVisual.compare}</p>
+                </div>
+              </div>
+              {/* Development details */}
+              <div className="flex-1 space-y-3">
+                {weekData && (
+                  <>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground mb-1">Development</p>
+                      <p className="text-sm text-foreground/90 leading-relaxed">{weekData.development}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
+                        <Heart className="w-3 h-3 text-pink-500" /> How Mom Feels
+                      </p>
+                      <p className="text-sm text-foreground/90 leading-relaxed">{weekData.momFeels}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ─── Section 2: Daily Health Checklist ────────────────────── */}
+        <ScrollReveal delay={60}>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-mint flex items-center justify-center">
+                  <ClipboardList className="w-4 h-4 text-mint-foreground" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-sm">Today's Health Checklist</h2>
+                  <p className="text-[10px] text-muted-foreground">{dash.checklistCompleted}/{dash.checklistTotal} completed</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                {dash.checklistStreak > 0 && (
+                  <div className="flex items-center gap-1 text-xs font-semibold text-amber-600">
+                    <Flame className="w-3.5 h-3.5" /> {dash.checklistStreak}d
+                  </div>
+                )}
+                {/* Mini completion ring */}
+                <div className="relative w-10 h-10">
+                  <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--muted))" strokeWidth="4" />
+                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
+                      stroke={dash.checklistPct === 100 ? "hsl(140,60%,40%)" : "hsl(var(--primary))"}
+                      strokeWidth="4" strokeDasharray={`${dash.checklistPct}, 100`} strokeLinecap="round" />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-[9px] font-bold">
+                    {dash.checklistPct}%
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {dash.checklistPct === 100 && (
+              <div className="mb-3 rounded-lg bg-green-50 border border-green-200 p-2.5 text-center">
+                <p className="text-xs font-semibold text-green-700 flex items-center justify-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> All done for today! Great job! 🎉
+                </p>
+              </div>
+            )}
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              {DAILY_CHECKLIST.map((item) => {
+                const done = !!dash.todayItems[item.id];
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => dash.toggleChecklistItem(item.id)}
+                    className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 active:scale-[0.98] ${
+                      done
+                        ? "bg-green-50/80 border-green-200 shadow-sm"
+                        : "bg-background border-border/60 hover:border-primary/20 hover:shadow-sm"
+                    }`}
+                  >
+                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                      done ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
+                    }`}>
+                      {done ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-medium leading-tight ${done ? "line-through text-muted-foreground" : ""}`}>
+                        {item.emoji} {item.label}
+                      </p>
+                    </div>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium shrink-0 ${getCategoryColor(item.category)}`}>
+                      {getCategoryIcon(item.category)}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ─── Section 3: ANC Appointment Timeline ─────────────────── */}
+        <ScrollReveal delay={120}>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-lavender flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-lavender-foreground" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-sm">Antenatal Care Visits</h2>
+                  <p className="text-[10px] text-muted-foreground">{dash.ancCompletedCount}/8 visits completed • NHM Guidelines</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Next visit highlight */}
+            {dash.nextANC && !dash.nextANC.completed && (
+              <div className="mb-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                  <p className="text-xs font-semibold text-primary">Next Visit — Week {dash.nextANC.week}</p>
+                </div>
+                <p className="text-sm font-semibold">{dash.nextANC.title}</p>
+                <p className="text-xs text-muted-foreground mt-1">{dash.nextANC.description}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {dash.nextANC.tests.slice(0, 4).map((t, i) => (
+                    <span key={i} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{t}</span>
+                  ))}
+                  {dash.nextANC.tests.length > 4 && (
+                    <span className="text-[10px] text-muted-foreground">+{dash.nextANC.tests.length - 4} more</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Timeline */}
+            <div className="space-y-0">
+              {dash.ancWithStatus.map((visit, i) => (
+                <div key={visit.id} className="flex gap-3">
+                  {/* Timeline line */}
+                  <div className="flex flex-col items-center">
+                    <button
+                      onClick={() => dash.toggleANC(visit.id)}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${
+                        visit.completed
+                          ? "bg-green-500 border-green-500 text-white"
+                          : visit.isCurrent
+                          ? "bg-primary/10 border-primary text-primary animate-pulse-glow"
+                          : "bg-muted border-border text-muted-foreground"
+                      }`}
+                      title={visit.completed ? "Mark incomplete" : "Mark complete"}
+                    >
+                      {visit.completed ? (
+                        <CheckCircle2 className="w-4 h-4" />
+                      ) : (
+                        <span className="text-[10px] font-bold">{i + 1}</span>
+                      )}
+                    </button>
+                    {i < dash.ancWithStatus.length - 1 && (
+                      <div className={`w-0.5 flex-1 min-h-[2rem] ${visit.completed ? "bg-green-300" : "bg-border"}`} />
+                    )}
+                  </div>
+                  {/* Visit card */}
+                  <div className={`flex-1 pb-4 ${i === dash.ancWithStatus.length - 1 ? "" : ""}`}>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-xs font-semibold ${visit.completed ? "text-green-600" : visit.isCurrent ? "text-primary" : "text-foreground"}`}>
+                        {visit.title}
+                      </p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                        visit.completed ? "bg-green-100 text-green-700" : visit.isCurrent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                      }`}>
+                        Wk {visit.week}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{visit.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ─── Section 4: Milestones & Alerts ──────────────────────── */}
+        <ScrollReveal delay={180}>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-baby-blue flex items-center justify-center">
+                <AlertTriangle className="w-4 h-4 text-baby-blue-foreground" />
+              </div>
+              <div>
+                <h2 className="font-bold text-sm">Milestones & Alerts</h2>
+                <p className="text-[10px] text-muted-foreground">Vaccinations, screenings, and preparation steps</p>
+              </div>
+            </div>
+
+            {/* Active milestones — attention-grabbing */}
+            {dash.activeMilestones.length > 0 && (
+              <div className="space-y-2 mb-4">
+                <p className="text-xs font-semibold text-primary flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" /> Action Required Now
+                </p>
+                {dash.activeMilestones.map((ms) => (
+                  <button
+                    key={ms.id}
+                    onClick={() => dash.toggleMilestone(ms.id)}
+                    className="w-full flex items-center gap-3 rounded-xl border-2 border-primary/30 bg-primary/5 p-3 text-left transition-all hover:shadow-md active:scale-[0.98]"
+                  >
+                    <span className="text-2xl shrink-0">{ms.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold">{ms.title}</p>
+                      <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">{ms.description}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${getMilestoneTypeColor(ms.type)}`}>
+                        {ms.type}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">Wk {ms.week}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Upcoming milestones */}
+            {dash.upcomingMilestones.length > 0 && (
+              <div className="space-y-2 mb-4">
+                <p className="text-xs font-semibold text-muted-foreground">Upcoming</p>
+                {dash.upcomingMilestones.slice(0, 4).map((ms) => (
+                  <div key={ms.id} className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-3">
+                    <span className="text-lg shrink-0">{ms.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium">{ms.title}</p>
+                      <p className="text-[10px] text-muted-foreground">{ms.description}</p>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0">Wk {ms.week}</span>
+                  </div>
+                ))}
+                {dash.upcomingMilestones.length > 4 && (
+                  <p className="text-[10px] text-muted-foreground text-center">+{dash.upcomingMilestones.length - 4} more milestones ahead</p>
+                )}
+              </div>
+            )}
+
+            {/* Completed milestones */}
+            {dash.completedMilestones.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-green-600 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" /> Completed ({dash.completedMilestones.length})
+                </p>
+                {dash.completedMilestones.map((ms) => (
+                  <button
+                    key={ms.id}
+                    onClick={() => dash.toggleMilestone(ms.id)}
+                    className="w-full flex items-center gap-2 rounded-lg bg-green-50/50 p-2 text-left opacity-70 hover:opacity-100 transition-opacity active:scale-[0.98]"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                    <p className="text-xs text-muted-foreground line-through flex-1">{ms.title}</p>
+                    <span className="text-[10px] text-muted-foreground">Wk {ms.week}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </ScrollReveal>
+
+        {/* ─── Section 5: Government Schemes Quick Access ──────────── */}
+        <ScrollReveal delay={240}>
+          <div className="rounded-2xl border-2 border-teal-200 bg-teal-50/50 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
+                <FileText className="w-4 h-4 text-teal-700" />
+              </div>
+              <h2 className="font-bold text-sm text-teal-800">Government Schemes & Support</h2>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {[
+                { title: "Janani Suraksha Yojana (JSY)", desc: "Cash benefit for institutional delivery", emoji: "🏛️" },
+                { title: "PMMVY (₹5,000)", desc: "Matru Vandana for first pregnancy", emoji: "💰" },
+                { title: "ASHA Worker Support", desc: "Free home visits and health monitoring", emoji: "👩‍⚕️" },
+                { title: "Free Institutional Delivery", desc: "Government hospitals — no charges", emoji: "🏥" },
+              ].map((scheme) => (
+                <div key={scheme.title} className="flex items-start gap-2 rounded-lg border border-teal-200 bg-white/80 p-3">
+                  <span className="text-lg shrink-0">{scheme.emoji}</span>
+                  <div>
+                    <p className="text-xs font-semibold text-teal-800">{scheme.title}</p>
+                    <p className="text-[10px] text-teal-600/80">{scheme.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-[10px] text-teal-600 text-center">Contact your nearest PHC or ASHA worker to avail these benefits</p>
+          </div>
+        </ScrollReveal>
+
+        {/* ─── Quick navigation ────────────────────────────────────── */}
+        <ScrollReveal delay={300}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {[
+              { to: "/weekly-guide", label: "Weekly Guide", emoji: "📅" },
+              { to: "/nutrition", label: "Nutrition", emoji: "🍎" },
+              { to: "/vaccine-tracker", label: "Vaccines", emoji: "💉" },
+              { to: "/symptom-checker", label: "Symptoms", emoji: "🔍" },
+            ].map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/20 transition-all"
+              >
+                <span className="text-lg">{link.emoji}</span>
+                <span className="text-xs font-semibold">{link.label}</span>
+                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground ml-auto" />
+              </Link>
+            ))}
+          </div>
+        </ScrollReveal>
+      </div>
+
+      <SafetyDisclaimer />
+    </main>
+  );
+}

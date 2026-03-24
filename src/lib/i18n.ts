@@ -98,7 +98,7 @@ type TranslationKeys =
 const translations: Record<Language, Record<TranslationKeys, string>> = {
   en: {
     appName: "SwasthyaSakhi",
-    tagline: "Your trusted maternal health companion",
+    tagline: "Your trusted health companion",
     subtitle: "Safe, accessible, multilingual pregnancy guidance for every mother across India",
     disclaimer: "⚕️ This information is for awareness only — not a medical diagnosis. Always consult a certified healthcare worker.",
     disclaimerShort: "For information only — consult your doctor",

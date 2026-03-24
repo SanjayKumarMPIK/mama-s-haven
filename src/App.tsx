@@ -29,6 +29,7 @@ import FamilyPlanning from "./pages/FamilyPlanning";
 import PhcNearby from "./pages/PhcNearby";
 import VaccineTracker from "./pages/VaccineTracker";
 import NotFound from "./pages/NotFound";
+import PregnancyDashboard from "./pages/PregnancyDashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 
@@ -65,6 +66,7 @@ const App = () => (
                   <Route path="/family-planning" element={<FamilyPlanning />} />
                   <Route path="/phc-nearby" element={<PhcNearby />} />
                   <Route path="/vaccine-tracker" element={<VaccineTracker />} />
+                  <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
                   <Route path="/about" element={<About />} />
                   <Route path="/contact" element={<Contact />} />
                   <Route path="*" element={<NotFound />} />

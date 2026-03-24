@@ -31,6 +31,7 @@ export default function PhaseSelector({
         <option value="puberty">Puberty</option>
         <option value="maternity">Maternity</option>
         <option value="family-planning">Family Planning</option>
+        <option value="menopause">Menopause</option>
       </select>
     </label>
   );

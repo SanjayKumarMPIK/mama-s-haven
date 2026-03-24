@@ -2,11 +2,12 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { usePhase } from "@/hooks/usePhase";
 import NavItem from "@/components/navigation/NavItem";
 
 interface HamburgerMenuProps {
@@ -31,6 +32,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
   { to: "/vaccine-tracker", label: "Vaccine Tracker", icon: Siren },
+  { to: "/pregnancy-dashboard", label: "Pregnancy Dashboard", icon: Baby },
 ];
 
 export default function HamburgerMenu({
@@ -42,6 +44,7 @@ export default function HamburgerMenu({
 }: HamburgerMenuProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { phase } = usePhase();
   const panelRef = useRef<HTMLDivElement>(null);
   const firstFocusRef = useRef<HTMLButtonElement>(null);
 
@@ -144,7 +147,7 @@ export default function HamburgerMenu({
 
             {/* Navigation items */}
             <nav className="space-y-2" aria-label="Secondary navigation">
-              {SECONDARY_ITEMS.map((item) => (
+              {SECONDARY_ITEMS.filter(item => phase === "maternity" || item.to !== "/pregnancy-dashboard").map((item) => (
                 <NavItem
                   key={item.to}
                   to={item.to}

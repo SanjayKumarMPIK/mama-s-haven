@@ -8,7 +8,7 @@ const features = [
   { icon: Bot, titleKey: "aiAssistant" as const, desc: "AI-powered pregnancy guidance in your language with voice support", color: "bg-primary/10 text-primary", link: "/assistant" },
   { icon: Calendar, titleKey: "weeklyGuide" as const, desc: "Personalized week-by-week pregnancy tracking and guidance", color: "bg-lavender text-lavender-foreground", link: "/weekly-guide" },
   { icon: Apple, titleKey: "nutritionGuide" as const, desc: "Region-specific diet plans for every trimester", color: "bg-mint text-mint-foreground", link: "/nutrition" },
-  { icon: Search, titleKey: "symptomChecker" as const, desc: "Safe symptom awareness with escalation guidance", color: "bg-amber-100 text-amber-700", link: "/symptom-checker" },
+  { icon: Search, titleKey: "symptomChecker" as const, desc: "Safe symptom support with guidance on when to seek help", color: "bg-amber-100 text-amber-700", link: "/symptom-checker" },
   { icon: ShieldAlert, titleKey: "emergency" as const, desc: "Emergency helplines and high-risk warning signs", color: "bg-red-100 text-red-600", link: "/emergency" },
   { icon: Trophy, titleKey: "wellness" as const, desc: "Daily habit tracking, rewards, badges, and streaks", color: "bg-amber-100 text-amber-700", link: "/wellness" },
   { icon: Baby, titleKey: "postpartum" as const, desc: "Recovery tips and newborn care milestones", color: "bg-peach text-peach-foreground", link: "/postpartum" },
@@ -34,6 +34,7 @@ const supportModules: { emoji: string; title: string; desc: string; to: string }
   { emoji: "📚", title: "Articles", desc: "Short reads matched to your phase", to: "/articles" },
   { emoji: "🤖", title: "AI Guide", desc: "Ask questions with phase-aware context", to: "/assistant" },
   { emoji: "💉", title: "Vaccine Tracker", desc: "Simple schedule checklist", to: "/vaccine-tracker" },
+  { emoji: "📅", title: "Health Log", desc: "Daily phase-aware health diary", to: "/health-log" },
 ];
 
 export default function Index() {

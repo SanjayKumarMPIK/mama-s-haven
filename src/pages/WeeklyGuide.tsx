@@ -7,6 +7,7 @@ import { WEEK_DATA } from "@/lib/pregnancyData";
 import { PUBERTY_GUIDE, FAMILY_PLANNING_GUIDE, MENOPAUSE_GUIDE, type PhaseGuideWeek } from "@/lib/phaseGuideData";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
+import SymptomQuickLogger from "@/components/SymptomQuickLogger";
 import {
   ChevronLeft, ChevronRight, Scale, Ruler, Heart, Apple,
   Droplets, Activity, AlertTriangle, Calendar, Flower2,
@@ -167,6 +168,11 @@ function PhaseGuideView({ mode }: { mode: "puberty" | "family-planning" | "menop
 
       {/* Content */}
       <div className="container pb-12">
+        <ScrollReveal>
+          <div className="mb-4">
+            <SymptomQuickLogger />
+          </div>
+        </ScrollReveal>
         {/* Description */}
         <ScrollReveal>
           <div className={`rounded-xl border p-5 shadow-sm mb-4 ${meta.bgLight} border-current/10`}>

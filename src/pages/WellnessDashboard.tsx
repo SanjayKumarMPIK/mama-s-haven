@@ -10,6 +10,7 @@ import BadgeGrid from "@/components/gamification/BadgeGrid";
 import LevelProgress from "@/components/gamification/LevelProgress";
 import MotivationalNudge from "@/components/gamification/MotivationalNudge";
 import SymptomQuickLogger from "@/components/SymptomQuickLogger";
+import WeeklyGuidance from "@/components/guidance/WeeklyGuidance";
 import { Trophy, TrendingUp, Calendar, Target, Wind } from "lucide-react";
 
 const STRESS_BY_PHASE: Record<string, { title: string; tips: string[] }> = {
@@ -72,6 +73,9 @@ export default function WellnessDashboard() {
       <div className="container py-6 space-y-6">
         <ScrollReveal>
           <SymptomQuickLogger />
+        </ScrollReveal>
+        <ScrollReveal>
+          <WeeklyGuidance />
         </ScrollReveal>
         {/* Level + XP */}
         <ScrollReveal>

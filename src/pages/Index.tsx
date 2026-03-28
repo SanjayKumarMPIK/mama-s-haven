@@ -34,7 +34,7 @@ const supportModules: { emoji: string; title: string; desc: string; to: string }
   { emoji: "📚", title: "Articles", desc: "Short reads matched to your phase", to: "/articles" },
   { emoji: "🤖", title: "AI Guide", desc: "Ask questions with phase-aware context", to: "/assistant" },
   { emoji: "💉", title: "Vaccine Tracker", desc: "Simple schedule checklist", to: "/vaccine-tracker" },
-  { emoji: "📅", title: "Health Log", desc: "Daily phase-aware health diary", to: "/health-log" },
+  { emoji: "📅", title: "Calendar", desc: "Log symptoms by date and power analytics", to: "/calendar" },
 ];
 
 export default function Index() {

@@ -24,6 +24,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/", labelKey: "home" as const, icon: Home },
   { to: "/assistant", labelKey: "aiAssistant" as const, icon: Bot },
   { to: "/weekly-guide", labelKey: "weeklyGuide" as const, icon: Calendar },
+  { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/nutrition", labelKey: "nutritionGuide" as const, icon: Apple },
   { to: "/symptom-checker", labelKey: "symptomChecker" as const, icon: Search },
   { to: "/wellness", labelKey: "wellness" as const, icon: Trophy },

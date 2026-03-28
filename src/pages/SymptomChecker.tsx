@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
-import { useHealthLog } from "@/hooks/useHealthLog";
 import { SYMPTOMS, SEVERITY_COLORS, type SymptomSeverity } from "@/lib/symptoms";
 import EmergencyCard from "@/components/EmergencyCard";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
@@ -9,7 +9,9 @@ import ScrollReveal from "@/components/ScrollReveal";
 import { Search, Shield, AlertTriangle, Eye, Activity } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
-import { analyzePhaseSymptom, KEY_SYMPTOMS_BY_PHASE, type KeySymptomId, type SymptomAnalysisResult, type ViewMode } from "@/lib/symptomAnalysis";
+import { KEY_SYMPTOMS_BY_PHASE, type KeySymptomId } from "@/lib/symptomAnalysis";
+import { getSymptomAnalytics, getSymptomLogsByDate, postSymptomLogsForDate, type CalendarSymptomLogResponse, type SymptomAnalyticsResponse } from "@/api/symptomsApi";
+import { useAuth } from "@/hooks/useAuth";
 
 const severityIcons: Record<SymptomSeverity, typeof Shield> = {
   normal: Shield,
@@ -21,11 +23,12 @@ const severityIcons: Record<SymptomSeverity, typeof Shield> = {
 export default function SymptomChecker() {
   const { t, language, simpleMode } = useLanguage();
   const { phase } = usePhase();
-  const { logs, logKeySymptom } = useHealthLog();
+  const { user } = useAuth();
+  const userKey = user?.id;
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedKeySymptomId, setSelectedKeySymptomId] = useState<KeySymptomId | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("weekly");
 
   const filtered = SYMPTOMS.filter((s) => {
     const q = search.toLowerCase();
@@ -35,10 +38,13 @@ export default function SymptomChecker() {
   const selected = SYMPTOMS.find((s) => s.id === selectedId);
   const showEmergency = selected?.severity === "emergency";
 
-  const phaseAnalysis: SymptomAnalysisResult | null = useMemo(() => {
-    if (!selectedKeySymptomId) return null;
-    return analyzePhaseSymptom({ phase, logs, symptomId: selectedKeySymptomId, viewMode });
-  }, [phase, logs, selectedKeySymptomId, viewMode]);
+  const analyticsQuery = useQuery<SymptomAnalyticsResponse>({
+    queryKey: ["symptomAnalytics", selectedKeySymptomId, userKey ?? "default"],
+    enabled: !!selectedKeySymptomId,
+    queryFn: () => getSymptomAnalytics(selectedKeySymptomId as string, userKey),
+    staleTime: 10 * 60 * 1000,
+  });
+  const phaseAnalysis = analyticsQuery.data ?? null;
 
   const keySymptoms = KEY_SYMPTOMS_BY_PHASE[phase];
 
@@ -110,7 +116,73 @@ export default function SymptomChecker() {
               {selectedKeySymptomId && (
                 <button
                   type="button"
-                  onClick={() => logKeySymptom(new Date().toISOString().slice(0, 10), phase, selectedKeySymptomId)}
+                  onClick={async () => {
+                    if (!selectedKeySymptomId) return;
+                    const dateISO = new Date().toISOString().slice(0, 10);
+                    const existing = await getSymptomLogsByDate(dateISO, userKey);
+                    const current = existing.symptoms ?? [];
+
+                    const idx = current.findIndex((x) => x.name === selectedKeySymptomId);
+                    const nextItem = {
+                      name: selectedKeySymptomId,
+                      severity: 3,
+                      time: "evening" as const,
+                      notes: "",
+                    };
+
+                    if (idx >= 0) current[idx] = nextItem;
+                    else current.push(nextItem);
+
+                    await postSymptomLogsForDate(dateISO, current, userKey, { menstrualPhase: "period" });
+                    queryClient.invalidateQueries({ queryKey: ["symptomAnalytics", selectedKeySymptomId, userKey ?? "default"] });
+
+                    // Instant calendar sync: update any cached range that includes `dateISO`.
+                    const dateYear = dateISO.slice(0, 4);
+                    const dateMonth0 = Number(dateISO.slice(5, 7)) - 1;
+                    const targetDate = dateISO;
+
+                    const cachedRanges = queryClient.getQueriesData<CalendarSymptomLogResponse[]>({ queryKey: ["symptomLogsRange"] });
+                    for (const [qKey] of cachedRanges) {
+                      const rangeKey = qKey?.[1] as string | undefined;
+                      const cacheUser = (qKey?.[2] as string | undefined) ?? "default";
+                      if (cacheUser !== (userKey ?? "default")) continue;
+                      if (!rangeKey) continue;
+
+                      const inRange =
+                        rangeKey.startsWith("year-")
+                          ? rangeKey === `year-${dateYear}`
+                          : rangeKey.startsWith("month-")
+                            ? (() => {
+                                const parts = rangeKey.split("-");
+                                // month-YYYY-month0
+                                const y = parts[1];
+                                const m0 = Number(parts[2]);
+                                return y === dateYear && m0 === dateMonth0;
+                              })()
+                            : false;
+
+                      if (!inRange) continue;
+
+                      queryClient.setQueryData(qKey, (old?: CalendarSymptomLogResponse[]) => {
+                        const prev = old ?? [];
+                        const prevIdx = prev.findIndex((x) => x.date === targetDate);
+                        const entry: CalendarSymptomLogResponse = { date: targetDate, symptoms: current };
+                        if (current.length === 0) {
+                          if (prevIdx >= 0) return [...prev.slice(0, prevIdx), ...prev.slice(prevIdx + 1)];
+                          return prev;
+                        }
+                        if (prevIdx >= 0) {
+                          const next = [...prev];
+                          next[prevIdx] = entry;
+                          return next;
+                        }
+                        return [...prev, entry];
+                      });
+                    }
+
+                    queryClient.invalidateQueries({ queryKey: ["symptomLogsRange"] });
+                    queryClient.invalidateQueries({ queryKey: ["weeklyGuidance"] });
+                  }}
                   className="mt-3 w-full rounded-xl border border-border bg-background py-2.5 text-sm font-medium hover:bg-muted/50 transition-colors"
                 >
                   Log selected symptom for today
@@ -157,7 +229,12 @@ export default function SymptomChecker() {
 
           {/* Detail pane */}
           <div>
-            {phaseAnalysis && selectedKeySymptomId ? (
+            {selectedKeySymptomId ? (
+              analyticsQuery.isLoading ? (
+                <div className="sticky top-20 space-y-4">
+                  <p className="text-sm text-muted-foreground">Loading analytics…</p>
+                </div>
+              ) : phaseAnalysis ? (
               <ScrollReveal>
                 <div className="sticky top-20 space-y-4">
                   <EmergencyCard show={false} />
@@ -174,25 +251,7 @@ export default function SymptomChecker() {
                   </div>
 
                   <div className={`rounded-xl border p-4 ${accent.border}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <h2 className="text-sm font-bold mb-1">Trend</h2>
-                      <div className="inline-flex rounded-lg border border-border/70 overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setViewMode("weekly")}
-                          className={`px-2.5 py-1 text-[11px] font-medium ${viewMode === "weekly" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}
-                        >
-                          Weekly
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setViewMode("monthly")}
-                          className={`px-2.5 py-1 text-[11px] font-medium ${viewMode === "monthly" ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}
-                        >
-                          Monthly
-                        </button>
-                      </div>
-                    </div>
+                    <h2 className="text-sm font-bold mb-1">Trend</h2>
                     <p className="text-sm font-semibold">{phaseAnalysis.trendDirection}</p>
                     <p className="text-[11px] text-muted-foreground mt-1">Timing Pattern: {phaseAnalysis.timingPattern}</p>
                   </div>
@@ -256,6 +315,11 @@ export default function SymptomChecker() {
                   )}
                 </div>
               </ScrollReveal>
+              ) : (
+                <div className="sticky top-20 space-y-4">
+                  <p className="text-sm text-muted-foreground">No analytics available yet.</p>
+                </div>
+              )
             ) : selected ? (
               <ScrollReveal>
                 <div className="sticky top-20 space-y-4">

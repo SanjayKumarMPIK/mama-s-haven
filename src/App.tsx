@@ -34,6 +34,7 @@ import PregnancyDashboard from "./pages/PregnancyDashboard";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import HealthLog from "./pages/HealthLog";
+import Calendar from "./pages/Calendar";
 
 const queryClient = new QueryClient();
 
@@ -71,6 +72,7 @@ const App = () => (
                     <Route path="/vaccine-tracker" element={<VaccineTracker />} />
                     <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
                     <Route path="/health-log" element={<HealthLog />} />
+                    <Route path="/calendar" element={<Calendar />} />
                     <Route path="/about" element={<About />} />
                     <Route path="/contact" element={<Contact />} />
                     <Route path="*" element={<NotFound />} />

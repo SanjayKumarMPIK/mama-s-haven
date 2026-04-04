@@ -2,12 +2,13 @@ import { useMemo, useState, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
 
-import { useHealthLog, type HealthLogEntry, type HealthLogs } from "@/hooks/useHealthLog";
+import { useHealthLog, type HealthLogEntry, type HealthLogs, type PubertyEntry } from "@/hooks/useHealthLog";
 import { usePhase, type Phase } from "@/hooks/usePhase";
+import { useProfile } from "@/hooks/useProfile";
 import {
   KEY_SYMPTOMS_BY_PHASE,
   analyzePhaseSymptom,
@@ -60,6 +61,14 @@ function formatDisplayDate(iso: string): string {
   return d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
+/** Check if a date is a period day (puberty phase with periodStarted) */
+function isPeriodDay(entry: HealthLogEntry | undefined): boolean {
+  if (!entry) return false;
+  if (entry.phase !== "puberty") return false;
+  const e = entry as PubertyEntry;
+  return e.periodStarted || !!(e as any)._periodAutoMarked;
+}
+
 /** Check if a date has any logged data at all (symptoms OR mood OR notes) */
 function hasAnyLogData(entry: HealthLogEntry | undefined): boolean {
   if (!entry) return false;
@@ -67,6 +76,7 @@ function hasAnyLogData(entry: HealthLogEntry | undefined): boolean {
   if (sympCount > 0) return true;
   if ((entry as any).mood) return true;
   if ((entry as any).notes) return true;
+  if (isPeriodDay(entry)) return true;
   return false;
 }
 
@@ -126,8 +136,9 @@ function buildTooltipForEntry(entry: HealthLogEntry | undefined): string | undef
 // ─── Calendar Page Component ──────────────────────────────────────────────────
 
 export default function CalendarPage() {
-  const { logs, saveLog, getLog } = useHealthLog();
+  const { logs, saveLog, saveBulkLogs, getLog } = useHealthLog();
   const { phase } = usePhase();
+  const { profile } = useProfile();
 
   const now = new Date();
   const [mode, setMode] = useState<CalendarMode>("year");
@@ -187,6 +198,7 @@ export default function CalendarPage() {
             const isSelected = iso === selectedDateISO;
             const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(entry);
             const dotColor = entry ? (PHASE_DOT[entry.phase] ?? "bg-primary") : null;
+            const isPeriod = isPeriodDay(entry);
 
             return (
               <button
@@ -201,13 +213,18 @@ export default function CalendarPage() {
                     ? "text-muted-foreground/30 cursor-not-allowed"
                     : isSelected
                     ? "bg-primary/15 ring-2 ring-primary/40 border-primary/40"
+                    : isPeriod
+                    ? "bg-pink-100 hover:bg-pink-200"
                     : "hover:bg-muted/50",
                   isToday ? "font-extrabold text-primary" : isFuture ? "" : "text-foreground"
                 )}
-                aria-label={`${iso}${hasData ? " (logged)" : ""}${isFuture ? " (future)" : ""}`}
+                aria-label={`${iso}${hasData ? " (logged)" : ""}${isPeriod ? " (period)" : ""}${isFuture ? " (future)" : ""}`}
               >
                 <span className="text-[11px] leading-none">{day}</span>
-                {hasData && (
+                {isPeriod && (
+                  <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-pink-500" />
+                )}
+                {hasData && !isPeriod && (
                   <span
                     className={cn(
                       "absolute bottom-0.5 w-1.5 h-1.5 rounded-full",
@@ -241,6 +258,7 @@ export default function CalendarPage() {
     const isSelected = dateISO === selectedDateISO;
     const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(entry);
     const dotColor = entry ? (PHASE_DOT[entry.phase] ?? "bg-primary") : null;
+    const isPeriod = isPeriodDay(entry);
 
     return (
       <button
@@ -252,6 +270,8 @@ export default function CalendarPage() {
           "relative h-14 sm:h-16 w-full border-b border-r border-border/20 flex flex-col items-center justify-center transition-all text-sm font-medium",
           isFuture
             ? "text-muted-foreground/30 cursor-not-allowed bg-muted/10"
+            : isPeriod
+            ? "bg-pink-50 hover:bg-pink-100 cursor-pointer"
             : "hover:bg-muted/55 cursor-pointer",
           isSelected ? "bg-primary/10 ring-2 ring-inset ring-primary/50" : "",
           isToday ? "font-extrabold text-primary" : ""
@@ -269,7 +289,10 @@ export default function CalendarPage() {
         ) : (
           <span className={isSelected ? "text-primary font-bold" : ""}>{Number(dateISO.slice(-2))}</span>
         )}
-        {hasData && (
+        {isPeriod && (
+          <span className="absolute bottom-1.5 w-2 h-2 rounded-full bg-pink-500" />
+        )}
+        {hasData && !isPeriod && (
           <span
             className={cn(
               "absolute bottom-1.5 w-2 h-2 rounded-full",
@@ -371,6 +394,12 @@ export default function CalendarPage() {
 
           {/* Legend */}
           <div className="px-6 py-3 border-t border-border/40 flex items-center gap-4 flex-wrap">
+            {phase === "puberty" && (
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="w-2 h-2 rounded-full bg-pink-500" />
+                Period day
+              </span>
+            )}
             <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
               <span className={`w-2 h-2 rounded-full ${PHASE_DOT[phase] ?? "bg-primary"}`} />
               Symptom logged
@@ -506,7 +535,10 @@ export default function CalendarPage() {
             loggingDuringPeriod={loggingDuringPeriod}
             onClose={() => setModalOpen(false)}
             onSave={saveLog}
+            onSaveBulk={saveBulkLogs}
             getLog={getLog}
+            periodDuration={profile.periodDuration}
+            cycleLength={profile.cycleLength ?? 28}
           />
         )}
       </div>
@@ -524,7 +556,10 @@ interface SymptomLogPanelProps {
   loggingDuringPeriod: boolean;
   onClose: () => void;
   onSave: (dateISO: string, entry: HealthLogEntry) => void;
+  onSaveBulk: (entries: Record<string, HealthLogEntry>) => void;
   getLog: (dateISO: string) => HealthLogEntry | undefined;
+  periodDuration: number;
+  cycleLength: number;
 }
 
 const SYMPTOM_TIME_OPTIONS: { value: SymptomTime; label: string }[] = [
@@ -543,7 +578,10 @@ function SymptomLogPanel({
   loggingDuringPeriod,
   onClose,
   onSave,
+  onSaveBulk,
   getLog,
+  periodDuration,
+  cycleLength,
 }: SymptomLogPanelProps) {
   const existingEntry = getLog(dateISO);
 
@@ -565,6 +603,12 @@ function SymptomLogPanel({
   });
   const [selectedAnalyticsId, setSelectedAnalyticsId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [periodStarted, setPeriodStarted] = useState<boolean>(() => {
+    if (existingEntry?.phase === "puberty") {
+      return (existingEntry as PubertyEntry).periodStarted || !!(existingEntry as any)._periodAutoMarked;
+    }
+    return false;
+  });
 
   const activeSymptomIds = useMemo(
     () => Object.entries(selectedSymptoms).filter(([, v]) => v).map(([k]) => k),
@@ -597,7 +641,8 @@ function SymptomLogPanel({
     const hasSymptoms = Object.values(selectedSymptoms).some(Boolean);
     const hasMood = mood !== "";
     const hasNotes = notes.trim().length > 0;
-    if (!hasSymptoms && !hasMood && !hasNotes) {
+    const hasPeriod = phase === "puberty" && periodStarted;
+    if (!hasSymptoms && !hasMood && !hasNotes && !hasPeriod) {
       toast.error("Please select at least one symptom, mood, or add a note before saving.");
       return;
     }
@@ -611,7 +656,7 @@ function SymptomLogPanel({
     if (phase === "puberty") {
       entry = {
         phase: "puberty",
-        periodStarted: loggingDuringPeriod && !!selectedSymptoms.cramps,
+        periodStarted: periodStarted,
         periodEnded: false,
         flowIntensity: null,
         symptoms: {
@@ -678,12 +723,72 @@ function SymptomLogPanel({
     }
 
     onSave(dateISO, entry);
+
+    // Auto-mark ALL future period windows for 12 months using cycle length
+    if (phase === "puberty" && periodStarted) {
+      const bulkEntries: Record<string, HealthLogEntry> = {};
+      const startDate = new Date(dateISO + "T12:00:00");
+      const endDate = new Date(startDate);
+      endDate.setFullYear(endDate.getFullYear() + 1); // Project 12 months ahead
+
+      let cycleStart = new Date(startDate);
+      let totalCyclesMarked = 0;
+
+      while (cycleStart < endDate) {
+        // For each cycle, mark the period duration days
+        for (let dayOffset = 0; dayOffset < periodDuration; dayOffset++) {
+          const periodDay = new Date(cycleStart);
+          periodDay.setDate(periodDay.getDate() + dayOffset);
+          const periodISO = periodDay.toISOString().slice(0, 10);
+
+          // Skip the original start date (already saved above)
+          if (periodISO === dateISO) continue;
+
+          // Don't overwrite existing manually-set period starts
+          const existing = logs[periodISO];
+          if (existing && existing.phase === "puberty" && (existing as PubertyEntry).periodStarted && !(existing as any)._periodAutoMarked) {
+            continue;
+          }
+
+          // Merge with existing entry data or create new
+          const base: any = existing?.phase === "puberty" ? { ...existing } : {
+            phase: "puberty",
+            periodStarted: false,
+            periodEnded: false,
+            flowIntensity: null,
+            symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
+            mood: null,
+          };
+          base._periodAutoMarked = true;
+          // First day of each cycle is the predicted start, rest are continuation
+          base.periodStarted = dayOffset === 0;
+          bulkEntries[periodISO] = base as HealthLogEntry;
+        }
+
+        totalCyclesMarked++;
+
+        // Move to next cycle start
+        cycleStart = new Date(cycleStart);
+        cycleStart.setDate(cycleStart.getDate() + cycleLength);
+      }
+
+      if (Object.keys(bulkEntries).length > 0) {
+        onSaveBulk(bulkEntries);
+      }
+
+      const totalDaysMarked = Object.keys(bulkEntries).length + 1; // +1 for the original date
+      toast.success(`Period projected for ${totalCyclesMarked} cycles over the next 12 months`, {
+        description: `${totalDaysMarked} day(s) marked based on ${cycleLength}-day cycle. You can edit any day to adjust for irregularity or pregnancy.`,
+      });
+    } else {
+      toast.success(`Symptoms logged for ${formatDisplayDate(dateISO)}`, {
+        description: hasSymptoms
+          ? `${Object.values(selectedSymptoms).filter(Boolean).length} symptom(s)${hasMood ? " + mood" : ""} saved`
+          : hasMood ? "Mood logged successfully" : "Note saved",
+      });
+    }
+
     setSaving(false);
-    toast.success(`Symptoms logged for ${formatDisplayDate(dateISO)}`, {
-      description: hasSymptoms
-        ? `${Object.values(selectedSymptoms).filter(Boolean).length} symptom(s)${hasMood ? " + mood" : ""} saved`
-        : hasMood ? "Mood logged successfully" : "Note saved",
-    });
     onClose();
   }
 
@@ -717,6 +822,32 @@ function SymptomLogPanel({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+          {/* Period Start Toggle (Puberty only) */}
+          {phase === "puberty" && (
+            <section className="rounded-xl border-2 border-pink-200 bg-gradient-to-r from-pink-50 to-rose-50 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
+                    <Droplets className="w-5 h-5 text-pink-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-pink-900">Period Started</p>
+                    <p className="text-[11px] text-pink-600">
+                      {periodStarted
+                        ? `Will auto-mark ${periodDuration}-day periods every ${cycleLength} days for 12 months`
+                        : "Toggle if your period started on this day"}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={periodStarted}
+                  onCheckedChange={setPeriodStarted}
+                  className="data-[state=checked]:bg-pink-500"
+                />
+              </div>
+            </section>
+          )}
+
           {/* Symptom Toggle Grid */}
           <section className="space-y-3">
             <h3 className="text-sm font-semibold flex items-center gap-2">

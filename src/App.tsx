@@ -38,6 +38,8 @@ import Register from "./pages/Register";
 import HealthLog from "./pages/HealthLog";
 import Calendar from "./pages/Calendar";
 import WeeklyBodyReport from "./pages/WeeklyBodyReport";
+import Profile from "./pages/Profile";
+import MissedLogReminder from "@/components/MissedLogReminder";
 
 const queryClient = new QueryClient();
 
@@ -79,10 +81,12 @@ const App = () => (
                         <Route path="/health-log" element={<HealthLog />} />
                         <Route path="/calendar" element={<Calendar />} />
                         <Route path="/weekly-report" element={<WeeklyBodyReport />} />
+                        <Route path="/profile" element={<Profile />} />
                         <Route path="/about" element={<About />} />
                         <Route path="/contact" element={<Contact />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
+                      <MissedLogReminder />
                       <Footer />
                     </AuthGate>
                   </BrowserRouter>

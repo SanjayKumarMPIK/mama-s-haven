@@ -52,9 +52,12 @@ export default function Navbar() {
           {/* Auth buttons */}
           {user ? (
             <div className="flex items-center gap-2 border-l pl-2 border-border/50">
-              <span className="text-xs font-medium text-slate-700 max-w-[100px] truncate">
+              <Link
+                to="/profile"
+                className="text-xs font-medium text-slate-700 max-w-[100px] truncate hover:text-primary transition-colors"
+              >
                 {user.name}
-              </span>
+              </Link>
               <button
                 onClick={logout}
                 className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold shadow-sm transition-colors hover:bg-slate-50 text-slate-600"

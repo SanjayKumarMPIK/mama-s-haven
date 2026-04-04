@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ type SecondaryKey = "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | 
 
 const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; icon: LucideIcon }[] = [
   { to: "/", labelKey: "home" as const, icon: Home },
+  { to: "/profile", label: "My Profile", icon: User },
   { to: "/assistant", labelKey: "aiAssistant" as const, icon: Bot },
   { to: "/weekly-guide", labelKey: "weeklyGuide" as const, icon: Calendar },
   { to: "/calendar", label: "Calendar", icon: Calendar },

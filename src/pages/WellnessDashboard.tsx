@@ -12,7 +12,11 @@ import StreakBadge from "@/components/gamification/StreakBadge";
 import BadgeGrid from "@/components/gamification/BadgeGrid";
 import LevelProgress from "@/components/gamification/LevelProgress";
 import MotivationalNudge from "@/components/gamification/MotivationalNudge";
-import { Trophy, TrendingUp, Calendar, Target, Wind, ArrowRight, CalendarCheck } from "lucide-react";
+
+import SymptomQuickLogger from "@/components/SymptomQuickLogger";
+import WeeklyGuidance from "@/components/guidance/WeeklyGuidance";
+import { Trophy, TrendingUp, Calendar, Target, Wind } from "lucide-react";
+
 
 const STRESS_BY_PHASE: Record<string, { title: string; tips: string[] }> = {
   puberty: {
@@ -103,6 +107,9 @@ export default function WellnessDashboard() {
               <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
             </div>
           </Link>
+        </ScrollReveal>
+        <ScrollReveal>
+          <WeeklyGuidance />
         </ScrollReveal>
         {/* Level + XP */}
         <ScrollReveal>

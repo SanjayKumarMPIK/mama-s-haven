@@ -3,30 +3,17 @@ import { Link, useLocation } from "react-router-dom";
 import { Building2, Menu, Siren, ShieldCheck, Phone, LogIn, UserPlus, LogOut } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useAuth } from "@/hooks/useAuth";
 import HamburgerMenu from "@/components/navigation/HamburgerMenu";
 import NavItem from "@/components/navigation/NavItem";
-import PhaseSelector from "@/components/navigation/PhaseSelector";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { t, setLanguage, language } = useLanguage();
-  const { phase, setPhase, phaseName } = usePhase();
-  const { clearProfile } = usePregnancyProfile();
+  const { phaseName } = usePhase();
   const { user, logout } = useAuth();
-
-  const handlePhaseChange = (newPhase: typeof phase) => {
-    if (newPhase === phase) return;
-    const confirmChange = window.confirm(
-      "Changing phase will reset your current data. Do you want to continue?",
-    );
-    if (!confirmChange) return;
-    clearProfile();
-    setPhase(newPhase);
-  };
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 backdrop-blur">
@@ -56,16 +43,10 @@ export default function Navbar() {
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 lg:flex">
-          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+          {/* Phase badge (read-only — change via Settings) */}
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap px-2 py-1 rounded-full bg-muted/50 border border-border/60">
             Phase: <span className="font-semibold text-foreground">{phaseName}</span>
           </span>
-          <PhaseSelector
-            value={phase}
-            onChange={handlePhaseChange}
-            className="rounded-md border border-border bg-card px-2 py-1"
-            labelClassName="sr-only"
-            selectClassName="min-w-[150px]"
-          />
           <LanguageSwitcher />
 
           {/* Auth buttons */}
@@ -139,18 +120,12 @@ export default function Navbar() {
         </div>
       </div>
 
+      {/* Mobile phase badge (read-only) */}
       <div className="border-t border-border/60 bg-background lg:hidden">
-        <div className="container flex flex-wrap items-center justify-between gap-2 py-2">
+        <div className="container flex items-center justify-center py-1.5">
           <span className="text-xs font-medium text-muted-foreground">
             Phase: <span className="font-semibold text-foreground">{phaseName}</span>
           </span>
-          <PhaseSelector
-            value={phase}
-            onChange={handlePhaseChange}
-            className="items-center gap-2"
-            labelClassName="sr-only"
-            selectClassName="min-w-[140px]"
-          />
         </div>
       </div>
 

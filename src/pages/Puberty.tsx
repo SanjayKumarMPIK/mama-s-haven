@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { usePhase } from "@/hooks/usePhase";
+import { useOnboarding, type PubertyGoal } from "@/hooks/useOnboarding";
 import { ArrowLeft, CalendarDays, AlertTriangle, Droplets, Sparkles, CheckCircle2, Info } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
+import EducationCards from "@/components/puberty/EducationCards";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -566,9 +568,20 @@ function MoodSupport({
 
 export default function Puberty() {
   const { setPhase } = usePhase();
+  const { config } = useOnboarding();
   useEffect(() => {
     setPhase("puberty");
   }, [setPhase]);
+
+  // Determine which goals are active (default: show everything)
+  const goals = config.onboardingCompleted && config.phase === "puberty" && config.goals.length > 0
+    ? (config.goals as PubertyGoal[])
+    : (["track_periods", "understand_body", "manage_symptoms", "learn_patterns", "just_exploring"] as PubertyGoal[]);
+
+  const showCalendar = goals.includes("track_periods") || goals.includes("just_exploring");
+  const showEducation = goals.includes("understand_body") || goals.includes("just_exploring");
+  const showSymptoms = goals.includes("manage_symptoms") || goals.includes("just_exploring");
+  const showPatterns = goals.includes("learn_patterns") || goals.includes("just_exploring");
 
   const [cycleState, setCycleState] = useState<{ cycleLength: number | null; isIrregular: boolean }>({
     cycleLength: null,
@@ -631,27 +644,43 @@ export default function Puberty() {
 
         <div className="space-y-6">
           {/* Cycle tracker + irregular detection (Features 1 & 2) */}
-          <ScrollReveal>
-            <CycleTracker
-              onResultChange={(args) => setCycleState(args)}
-            />
-          </ScrollReveal>
+          {showCalendar && (
+            <ScrollReveal>
+              <CycleTracker
+                onResultChange={(args) => setCycleState(args)}
+              />
+            </ScrollReveal>
+          )}
 
-          {/* Hemoglobin panel (Feature 3) */}
-          <ScrollReveal delay={80}>
-            <HemoglobinPanel
-              onHbChange={(args) => setHbState(args)}
-            />
-          </ScrollReveal>
+          {/* Education Cards — "Understand my body changes" */}
+          {showEducation && (
+            <ScrollReveal delay={60}>
+              <EducationCards />
+            </ScrollReveal>
+          )}
 
-          <ScrollReveal delay={120}>
-            <MoodSupport onSymptomsChange={onSymptomsChange} />
-          </ScrollReveal>
+          {/* Hemoglobin panel (Feature 3) — "Learn patterns" */}
+          {showPatterns && (
+            <ScrollReveal delay={80}>
+              <HemoglobinPanel
+                onHbChange={(args) => setHbState(args)}
+              />
+            </ScrollReveal>
+          )}
 
-          {/* Personalized suggestions (Feature 4) */}
-          <ScrollReveal delay={160}>
-            <SuggestionPanel suggestions={suggestions} />
-          </ScrollReveal>
+          {/* Mood & Symptom support — "Manage symptoms" */}
+          {showSymptoms && (
+            <ScrollReveal delay={120}>
+              <MoodSupport onSymptomsChange={onSymptomsChange} />
+            </ScrollReveal>
+          )}
+
+          {/* Personalized suggestions (Feature 4) — always if patterns or symptoms */}
+          {(showPatterns || showSymptoms) && (
+            <ScrollReveal delay={160}>
+              <SuggestionPanel suggestions={suggestions} />
+            </ScrollReveal>
+          )}
         </div>
       </div>
     </div>

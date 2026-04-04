@@ -8,6 +8,8 @@ import { PhaseProvider } from "@/hooks/usePhase";
 import { PregnancyProfileProvider } from "@/hooks/usePregnancyProfile";
 import { AuthProvider } from "@/hooks/useAuth";
 import { HealthLogProvider } from "@/hooks/useHealthLog";
+import { OnboardingProvider } from "@/hooks/useOnboarding";
+import AuthGate from "@/components/AuthGate";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Index from "./pages/Index";
@@ -35,6 +37,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import HealthLog from "./pages/HealthLog";
 import Calendar from "./pages/Calendar";
+import WeeklyBodyReport from "./pages/WeeklyBodyReport";
 
 const queryClient = new QueryClient();
 
@@ -45,41 +48,46 @@ const App = () => (
         <PregnancyProfileProvider>
           <AuthProvider>
             <HealthLogProvider>
-              <TooltipProvider>
-                <Toaster />
-                <Sonner />
-                <BrowserRouter>
-                  <Navbar />
-                  <Routes>
-                    <Route path="/" element={<Index />} />
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/tools" element={<Tools />} />
-                    <Route path="/shopping" element={<Shopping />} />
-                    <Route path="/stress-relief" element={<StressRelief />} />
-                    <Route path="/articles" element={<Articles />} />
-                    <Route path="/postpartum" element={<Postpartum />} />
-                    <Route path="/assistant" element={<Assistant />} />
-                    <Route path="/weekly-guide" element={<WeeklyGuide />} />
-                    <Route path="/nutrition" element={<NutritionGuide />} />
-                    <Route path="/symptom-checker" element={<SymptomChecker />} />
-                    <Route path="/emergency" element={<EmergencyGuidance />} />
-                    <Route path="/wellness" element={<WellnessDashboard />} />
-                    <Route path="/puberty" element={<Puberty />} />
-                    <Route path="/maternity" element={<Maternity />} />
-                    <Route path="/family-planning" element={<FamilyPlanning />} />
-                    <Route path="/phc-nearby" element={<PhcNearby />} />
-                    <Route path="/vaccine-tracker" element={<VaccineTracker />} />
-                    <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
-                    <Route path="/health-log" element={<HealthLog />} />
-                    <Route path="/calendar" element={<Calendar />} />
-                    <Route path="/about" element={<About />} />
-                    <Route path="/contact" element={<Contact />} />
-                    <Route path="*" element={<NotFound />} />
-                  </Routes>
-                  <Footer />
-                </BrowserRouter>
-              </TooltipProvider>
+              <OnboardingProvider>
+                <TooltipProvider>
+                  <Toaster />
+                  <Sonner />
+                  <BrowserRouter>
+                    <AuthGate>
+                      <Navbar />
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/tools" element={<Tools />} />
+                        <Route path="/shopping" element={<Shopping />} />
+                        <Route path="/stress-relief" element={<StressRelief />} />
+                        <Route path="/articles" element={<Articles />} />
+                        <Route path="/postpartum" element={<Postpartum />} />
+                        <Route path="/assistant" element={<Assistant />} />
+                        <Route path="/weekly-guide" element={<WeeklyGuide />} />
+                        <Route path="/nutrition" element={<NutritionGuide />} />
+                        <Route path="/symptom-checker" element={<SymptomChecker />} />
+                        <Route path="/emergency" element={<EmergencyGuidance />} />
+                        <Route path="/wellness" element={<WellnessDashboard />} />
+                        <Route path="/puberty" element={<Puberty />} />
+                        <Route path="/maternity" element={<Maternity />} />
+                        <Route path="/family-planning" element={<FamilyPlanning />} />
+                        <Route path="/phc-nearby" element={<PhcNearby />} />
+                        <Route path="/vaccine-tracker" element={<VaccineTracker />} />
+                        <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
+                        <Route path="/health-log" element={<HealthLog />} />
+                        <Route path="/calendar" element={<Calendar />} />
+                        <Route path="/weekly-report" element={<WeeklyBodyReport />} />
+                        <Route path="/about" element={<About />} />
+                        <Route path="/contact" element={<Contact />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                      <Footer />
+                    </AuthGate>
+                  </BrowserRouter>
+                </TooltipProvider>
+              </OnboardingProvider>
             </HealthLogProvider>
           </AuthProvider>
         </PregnancyProfileProvider>

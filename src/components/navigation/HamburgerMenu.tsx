@@ -2,12 +2,13 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePhase } from "@/hooks/usePhase";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import NavItem from "@/components/navigation/NavItem";
 
 interface HamburgerMenuProps {
@@ -29,10 +30,8 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/symptom-checker", labelKey: "symptomChecker" as const, icon: Search },
   { to: "/wellness", labelKey: "wellness" as const, icon: Trophy },
   { to: "/tools", label: "Tools", icon: Wrench },
-  { to: "/phc-nearby", label: "PHC", icon: Building2 },
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
-  { to: "/vaccine-tracker", label: "Vaccine Tracker", icon: Siren },
   { to: "/pregnancy-dashboard", label: "Pregnancy Dashboard", icon: Baby },
 ];
 
@@ -46,6 +45,7 @@ export default function HamburgerMenu({
   const location = useLocation();
   const { user, logout } = useAuth();
   const { phase } = usePhase();
+  const { setShowOnboarding, config } = useOnboarding();
   const panelRef = useRef<HTMLDivElement>(null);
   const firstFocusRef = useRef<HTMLButtonElement>(null);
 
@@ -144,6 +144,23 @@ export default function HamburgerMenu({
                   ))}
                 </select>
               </label>
+            </div>
+
+            {/* My Preferences */}
+            <div className="rounded-lg border border-border bg-card px-4 py-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <Settings className="w-3.5 h-3.5" />
+                My Preferences
+              </p>
+              <button
+                onClick={() => { setShowOnboarding(true); onClose(); }}
+                className="w-full text-left flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-primary/5 hover:text-primary transition-colors"
+              >
+                <span className="text-base">🎯</span>
+                {config.onboardingCompleted
+                  ? `Change Purpose & Goals`
+                  : `Set up your preferences`}
+              </button>
             </div>
 
             {/* Navigation items */}

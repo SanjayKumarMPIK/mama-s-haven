@@ -37,9 +37,6 @@ const registerSchema = z.object({
     pincode: z.string().regex(/^[0-9]{6}$/, "Enter a valid 6-digit pincode"),
   }),
   health: z.object({
-    lifeStage: z.string().min(1, "Please select an option"),
-    expectedDueDate: z.string().optional(),
-    trimester: z.string().optional(),
     lastPeriodDate: z.string().optional(),
     cycleLength: z.string().optional(),
     haemoglobin: z.string().optional(),
@@ -73,14 +70,13 @@ export default function Register() {
     defaultValues: {
       basic: { fullName: "", age: "", dob: "", mobile: "", email: "", password: "", confirmPassword: "" },
       location: { state: "", district: "", village: "", pincode: "" },
-      health: { lifeStage: "", expectedDueDate: "", trimester: "", lastPeriodDate: "", cycleLength: "", haemoglobin: "", knownConditions: "" },
+      health: { lastPeriodDate: "", cycleLength: "", haemoglobin: "", knownConditions: "" },
       consent: { terms: false, healthData: false }
     },
     mode: "onChange",
   });
 
-  const { formState: { errors }, trigger, watch } = form;
-  const watchLifeStage = watch("health.lifeStage");
+  const { formState: { errors }, trigger } = form;
 
   const handleNext = async () => {
     let isValid = false;
@@ -103,7 +99,7 @@ export default function Register() {
     if (success) {
       setShowSuccess(true);
       // Auto-redirect after showing success
-      setTimeout(() => navigate("/wellness"), 3500);
+      setTimeout(() => navigate("/"), 3500);
     }
     setIsLoading(false);
   };
@@ -138,7 +134,7 @@ export default function Register() {
               Redirecting to your personalized dashboard…
             </p>
             <button 
-              onClick={() => navigate("/wellness")} 
+              onClick={() => navigate("/")} 
               className="mt-4 text-sm font-semibold text-primary hover:underline"
             >
               Go to Dashboard now →
@@ -301,44 +297,6 @@ export default function Register() {
                       <HeartPulse className="text-primary w-6 h-6" /> Health Profile
                     </h2>
                     
-                    <div className="space-y-3 bg-primary/5 p-5 rounded-xl border border-primary/10 shadow-sm">
-                      <Label className="text-lg text-slate-800 font-semibold mb-2 block">Current Life Stage <span className="text-red-500">*</span></Label>
-                      <Select onValueChange={(v) => form.setValue("health.lifeStage", v)} defaultValue={watchLifeStage}>
-                        <SelectTrigger className="h-14 text-base bg-white border-primary/20 shadow-sm font-medium">
-                          <SelectValue placeholder="Select your current stage" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="puberty" className="py-3">Adolescence / Puberty</SelectItem>
-                          <SelectItem value="reproductive" className="py-3">Reproductive Age (Not Pregnant)</SelectItem>
-                          <SelectItem value="pregnant" className="py-3 bg-rose-50 font-medium text-rose-700">Currently Pregnant</SelectItem>
-                          <SelectItem value="postpartum" className="py-3">Postpartum (Recently delivered)</SelectItem>
-                          <SelectItem value="menopause" className="py-3">Perimenopause / Menopause</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {getErrorFields('health')?.lifeStage && <p className="text-red-500 text-sm">{getErrorFields('health').lifeStage.message}</p>}
-                    </div>
-
-                    {watchLifeStage === "pregnant" && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-in slide-in-from-top-4 fade-in bg-rose-50/50 p-5 rounded-xl border border-rose-100">
-                        <div className="space-y-2">
-                          <Label htmlFor="health.expectedDueDate" className="text-slate-700 font-medium">Expected Due Date</Label>
-                          <Input id="health.expectedDueDate" type="date" className="h-12 bg-white" {...form.register("health.expectedDueDate")} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="health.trimester" className="text-slate-700 font-medium">Current Trimester</Label>
-                          <Select onValueChange={(v) => form.setValue("health.trimester", v)}>
-                            <SelectTrigger className="h-12 bg-white">
-                              <SelectValue placeholder="Select trimester" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="1">First Trimester (1-3 months)</SelectItem>
-                              <SelectItem value="2">Second Trimester (4-6 months)</SelectItem>
-                              <SelectItem value="3">Third Trimester (7-9 months)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
                       <div className="space-y-2">

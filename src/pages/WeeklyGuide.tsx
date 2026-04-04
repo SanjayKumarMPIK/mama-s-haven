@@ -1,37 +1,32 @@
-import { useState } from "react";
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
 import { useAuth } from "@/hooks/useAuth";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useHealthLog } from "@/hooks/useHealthLog";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import { analyzeWeek } from "@/lib/weeklyAnalytics";
 import { WEEK_DATA } from "@/lib/pregnancyData";
 import { PUBERTY_GUIDE, FAMILY_PLANNING_GUIDE, MENOPAUSE_GUIDE, type PhaseGuideWeek } from "@/lib/phaseGuideData";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
-import SymptomQuickLogger from "@/components/SymptomQuickLogger";
-import WeeklyGuidance from "@/components/guidance/WeeklyGuidance";
 import {
   ChevronLeft, ChevronRight, Scale, Ruler, Heart, Apple,
   Droplets, Activity, AlertTriangle, Calendar, Flower2,
-  HeartPulse, Users, Sparkles, Lightbulb, BookOpen
+  HeartPulse, Users, Sparkles, Lightbulb, BookOpen,
+  BarChart3, TrendingUp, Shield, ArrowRight,
 } from "lucide-react";
+import { useState } from "react";
 
 // ─── Determine the effective life-stage ──────────────────────────────────────
 function useEffectiveLifeStage() {
   const { user } = useAuth();
   const { phase } = usePhase();
-
-  // Prefer the phase selector (dropdown) so the user can switch guides dynamically;
-  // fall back to the registered life-stage from auth if there's no phase selected.
   const lifeStage = phase || user?.lifeStage;
-
-  // Map registration lifeStage values AND phase values to our guide modes
   const isPregnant = lifeStage === "pregnant" || lifeStage === "maternity";
   const isPuberty = lifeStage === "puberty";
   const isMenopause = lifeStage === "menopause";
-  const isFamilyPlanning =
-    lifeStage === "family-planning" ||
-    lifeStage === "reproductive" ||
-    lifeStage === "postpartum";
 
   let mode: "pregnancy" | "puberty" | "family-planning" | "menopause";
   if (isPregnant) mode = "pregnancy";
@@ -96,7 +91,205 @@ function getGuideData(mode: keyof typeof PHASE_META): PhaseGuideWeek[] {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Component: Non-pregnancy phase guide
+// Weekly Insights Panel — reads calendar data, shows analytics
+// ═════════════════════════════════════════════════════════════════════════════
+function WeeklyInsightsPanel() {
+  const { logs } = useHealthLog();
+  const { phase } = usePhase();
+  const { config } = useOnboarding();
+  const age = config.age ?? undefined;
+
+  const analysis = useMemo(
+    () => analyzeWeek(logs, phase, age),
+    [logs, phase, age]
+  );
+
+  const {
+    dateRange,
+    daysLogged,
+    symptomFrequencies,
+    insights,
+    smartAdvice,
+    preventiveTips,
+    moodSummary,
+  } = analysis;
+
+  const formatRange = (iso: string) => {
+    const d = new Date(iso + "T12:00:00");
+    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  };
+
+  return (
+    <div className="space-y-5">
+      {/* ── Weekly Summary Card ────────────────────────────────────────────── */}
+      <ScrollReveal>
+        <div className="rounded-2xl border border-border bg-gradient-to-br from-card to-primary/5 p-5 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold">Weekly Summary</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  {formatRange(dateRange[0])} – {formatRange(dateRange[1])}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
+              {daysLogged}/7 days logged
+            </span>
+          </div>
+
+          {daysLogged === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground">No data logged this week.</p>
+              <Link
+                to="/calendar"
+                className="inline-flex items-center gap-1.5 mt-3 text-sm font-semibold text-primary hover:underline"
+              >
+                Open Calendar to log symptoms <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Symptom frequencies */}
+              {symptomFrequencies.length > 0 && (
+                <div className="space-y-2">
+                  {symptomFrequencies.slice(0, 5).map((sf) => (
+                    <div
+                      key={sf.id}
+                      className="flex items-center justify-between rounded-lg bg-background/70 border border-border/40 px-3 py-2"
+                    >
+                      <span className="text-sm font-medium">{sf.label}</span>
+                      <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                        {sf.count}× this week
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Mood summary */}
+              {moodSummary && (
+                <div className="flex items-center gap-3 rounded-lg bg-background/60 border border-border/30 px-4 py-2.5">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Mood</span>
+                  <div className="flex items-center gap-3 ml-auto">
+                    {moodSummary.good > 0 && (
+                      <span className="text-sm">😊 {moodSummary.good}d</span>
+                    )}
+                    {moodSummary.okay > 0 && (
+                      <span className="text-sm">😐 {moodSummary.okay}d</span>
+                    )}
+                    {moodSummary.low > 0 && (
+                      <span className="text-sm">😔 {moodSummary.low}d</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </ScrollReveal>
+
+      {/* ── Key Patterns ──────────────────────────────────────────────────── */}
+      {insights.length > 0 && (
+        <ScrollReveal delay={60}>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                <TrendingUp className="w-4 h-4 text-amber-600" />
+              </div>
+              <h3 className="font-semibold text-sm">Key Patterns</h3>
+            </div>
+            <div className="space-y-3">
+              {insights.map((insight, i) => (
+                <div
+                  key={i}
+                  className={`rounded-xl border px-4 py-3 ${
+                    insight.type === "alert"
+                      ? "border-red-200 bg-red-50/50"
+                      : insight.type === "pattern"
+                      ? "border-amber-200 bg-amber-50/50"
+                      : "border-blue-200 bg-blue-50/50"
+                  }`}
+                >
+                  <p className="text-sm font-semibold flex items-center gap-2">
+                    <span>{insight.emoji}</span> {insight.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    {insight.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+      )}
+
+      {/* ── Smart Suggestions ─────────────────────────────────────────────── */}
+      {smartAdvice.length > 0 && (
+        <ScrollReveal delay={120}>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                <Lightbulb className="w-4 h-4 text-purple-600" />
+              </div>
+              <h3 className="font-semibold text-sm">Smart Suggestions</h3>
+            </div>
+            <div className="space-y-3">
+              {smartAdvice.map((advice, i) => (
+                <div
+                  key={i}
+                  className="rounded-xl border border-border bg-background/60 px-4 py-3"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-base">{advice.emoji}</span>
+                    <p className="text-sm font-semibold">{advice.title}</p>
+                    <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      {advice.category}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed pl-7">
+                    {advice.description}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+      )}
+
+      {/* ── Preventive Actions ────────────────────────────────────────────── */}
+      {preventiveTips.length > 0 && (
+        <ScrollReveal delay={180}>
+          <div className="rounded-2xl border border-border bg-gradient-to-br from-card to-green-50/30 p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-green-600" />
+              </div>
+              <h3 className="font-semibold text-sm">Preventive Actions for Next Week</h3>
+            </div>
+            <ul className="space-y-2">
+              {preventiveTips.map((tip, i) => (
+                <li
+                  key={i}
+                  className="flex items-start gap-2.5 text-sm text-muted-foreground"
+                >
+                  <span className="text-base shrink-0 mt-0.5">{tip.emoji}</span>
+                  <span>{tip.text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </ScrollReveal>
+      )}
+    </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// Component: Non-pregnancy phase guide (INSIGHTS + GUIDE, NO INPUT)
 // ═════════════════════════════════════════════════════════════════════════════
 function PhaseGuideView({ mode }: { mode: "puberty" | "family-planning" | "menopause" }) {
   const { t, simpleMode } = useLanguage();
@@ -169,28 +362,12 @@ function PhaseGuideView({ mode }: { mode: "puberty" | "family-planning" | "menop
 
       {/* Content */}
       <div className="container pb-12">
-        {mode === "puberty" && (
-          <ScrollReveal>
-            <div className="mb-6">
-              <WeeklyGuidance />
-            </div>
-          </ScrollReveal>
-        )}
-        <ScrollReveal>
-          <div className="mb-4">
-            <SymptomQuickLogger />
-          </div>
-        </ScrollReveal>
-        {/* Description */}
-        <ScrollReveal>
-          <div className={`rounded-xl border p-5 shadow-sm mb-4 ${meta.bgLight} border-current/10`}>
-            <div className="flex items-center gap-2 mb-3">
-              <BookOpen className={`w-5 h-5 ${meta.color}`} />
-              <h3 className="font-semibold text-sm">About This {meta.weekLabel}</h3>
-            </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">{weekData.description}</p>
-          </div>
-        </ScrollReveal>
+        {/* ── Weekly Insights Panel (from Calendar data) ──────────────────── */}
+        <div className="mb-6">
+          <WeeklyInsightsPanel />
+        </div>
+
+
 
         <div className="grid gap-4 md:grid-cols-2">
           {/* Tips */}
@@ -446,6 +623,11 @@ function PregnancyGuideView() {
       {/* Week content */}
       {weekData && (
         <div className="container pb-12">
+          {/* Weekly Insights Panel */}
+          <div className="mb-6">
+            <WeeklyInsightsPanel />
+          </div>
+
           <div className="grid gap-4 md:grid-cols-2">
             <ScrollReveal>
               <div className="rounded-xl border border-border bg-card p-5 shadow-sm">

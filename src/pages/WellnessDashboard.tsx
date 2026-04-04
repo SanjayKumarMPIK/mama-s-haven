@@ -111,6 +111,9 @@ export default function WellnessDashboard() {
         <ScrollReveal>
           <WeeklyGuidance />
         </ScrollReveal>
+        <ScrollReveal>
+          <WeeklyGuidance />
+        </ScrollReveal>
         {/* Level + XP */}
         <ScrollReveal>
           <LevelProgress

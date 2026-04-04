@@ -54,7 +54,7 @@ export default function Login() {
     } else {
       if (values.otp) {
         const success = await loginWithOTP(values.mobile, values.otp);
-        if (success) navigate("/wellness");
+        if (success) navigate("/");
       }
     }
     setIsLoading(false);
@@ -63,7 +63,7 @@ export default function Login() {
   const onPwdSubmit = async (values: z.infer<typeof passwordSchema>) => {
     setIsLoading(true);
     const success = await loginWithPassword(values.emailOrMobile, values.password);
-    if (success) navigate("/wellness");
+    if (success) navigate("/");
     setIsLoading(false);
   };
 

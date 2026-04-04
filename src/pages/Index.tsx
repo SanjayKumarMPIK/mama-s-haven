@@ -1,45 +1,10 @@
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
-import { usePhase, type Phase } from "@/hooks/usePhase";
 import ScrollReveal from "@/components/ScrollReveal";
-import { Bot, Calendar, Apple, Search, ShieldAlert, BookOpen, Baby, Sparkles, Phone, Eye, Trophy, Flower2, HeartPulse, Users } from "lucide-react";
-
-const features = [
-  { icon: Bot, titleKey: "aiAssistant" as const, desc: "AI-powered pregnancy guidance in your language with voice support", color: "bg-primary/10 text-primary", link: "/assistant" },
-  { icon: Calendar, titleKey: "weeklyGuide" as const, desc: "Personalized week-by-week pregnancy tracking and guidance", color: "bg-lavender text-lavender-foreground", link: "/weekly-guide" },
-  { icon: Apple, titleKey: "nutritionGuide" as const, desc: "Region-specific diet plans for every trimester", color: "bg-mint text-mint-foreground", link: "/nutrition" },
-  { icon: Search, titleKey: "symptomChecker" as const, desc: "Safe symptom support with guidance on when to seek help", color: "bg-amber-100 text-amber-700", link: "/symptom-checker" },
-  { icon: ShieldAlert, titleKey: "emergency" as const, desc: "Emergency helplines and high-risk warning signs", color: "bg-red-100 text-red-600", link: "/emergency" },
-  { icon: Trophy, titleKey: "wellness" as const, desc: "Daily habit tracking, rewards, badges, and streaks", color: "bg-amber-100 text-amber-700", link: "/wellness" },
-  { icon: Baby, titleKey: "postpartum" as const, desc: "Recovery tips and newborn care milestones", color: "bg-peach text-peach-foreground", link: "/postpartum" },
-  { icon: BookOpen, titleKey: "articles" as const, desc: "Expert articles on maternal and child health", color: "bg-baby-blue text-baby-blue-foreground", link: "/articles" },
-  { icon: Eye, titleKey: "stressRelief" as const, desc: "Breathing exercises, meditations, and relaxation", color: "bg-lavender text-lavender-foreground", link: "/stress-relief" },
-  { icon: Flower2, titleKey: "aiAssistant" as const, desc: "Cycle tracker, hemoglobin guidance & personalized puberty health tips", color: "bg-pink-100 text-pink-600", link: "/puberty", customTitle: "Puberty Module" },
-  { icon: HeartPulse, titleKey: "aiAssistant" as const, desc: "Trimester guidance, warning signs & daily care for pregnant mothers", color: "bg-purple-100 text-purple-600", link: "/maternity", customTitle: "Maternity Module" },
-  { icon: Users, titleKey: "aiAssistant" as const, desc: "Fertility awareness, readiness check & lifestyle support for family planning", color: "bg-teal-100 text-teal-600", link: "/family-planning", customTitle: "Family Planning" },
-];
-
-const majorPhases: { phase: Phase; title: string; desc: string; to: string; color: string }[] = [
-  { phase: "puberty", title: "Puberty Phase", desc: "Cycle tracking, iron awareness, mood support", to: "/puberty", color: "border-pink-200 bg-pink-50/80" },
-  { phase: "maternity", title: "Maternity Phase", desc: "Trimester care, symptoms, daily guidance", to: "/maternity", color: "border-purple-200 bg-purple-50/80" },
-  { phase: "family-planning", title: "Family Planning", desc: "Fertile window, readiness, lifestyle", to: "/family-planning", color: "border-teal-200 bg-teal-50/80" },
-];
-
-const supportModules: { emoji: string; title: string; desc: string; to: string }[] = [
-  { emoji: "🧰", title: "Tools", desc: "Cycle, fertility, or pregnancy tools by phase", to: "/tools" },
-  { emoji: "🌿", title: "Wellness", desc: "Habits, mood, and stress care", to: "/wellness" },
-  { emoji: "🍎", title: "Nutrition Guide", desc: "Phase-aware food guidance", to: "/nutrition" },
-  { emoji: "🏥", title: "PHC", desc: "Prototype facility list & map links", to: "/phc-nearby" },
-  { emoji: "🛍️", title: "Care Essentials", desc: "₹ planning lists by life stage", to: "/shopping" },
-  { emoji: "📚", title: "Articles", desc: "Short reads matched to your phase", to: "/articles" },
-  { emoji: "🤖", title: "AI Guide", desc: "Ask questions with phase-aware context", to: "/assistant" },
-  { emoji: "💉", title: "Vaccine Tracker", desc: "Simple schedule checklist", to: "/vaccine-tracker" },
-  { emoji: "📅", title: "Calendar", desc: "Log symptoms by date and power analytics", to: "/calendar" },
-];
+import { Bot, Sparkles, Phone, Calendar } from "lucide-react";
 
 export default function Index() {
-  const { t, simpleMode, setSimpleMode } = useLanguage();
-  const { phase, setPhase, phaseName, phaseEmoji } = usePhase();
+  const { t, simpleMode } = useLanguage();
 
   return (
     <div className={`min-h-screen ${simpleMode ? "simple-mode" : ""}`}>
@@ -105,69 +70,29 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Life stages + support modules (context layer) */}
-      <section id="support-modules" className="py-14 bg-muted/20 border-b border-border/60">
-        <div className="container max-w-4xl mx-auto">
+      {/* Placeholder Section */}
+      <section className="py-20 bg-muted/20 border-b border-border/60">
+        <div className="container max-w-2xl mx-auto text-center">
           <ScrollReveal>
-            <p className="text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Personalised journey</p>
-            <h2 className="mt-2 text-2xl md:text-3xl font-bold text-center">
-              Current phase:{" "}
-              <span className="text-gradient-bloom">
-                {phaseEmoji} {phaseName}
-              </span>
-            </h2>
-            <p className="mt-2 text-center text-sm text-muted-foreground max-w-xl mx-auto">
-              Pick one life stage — the rest of the app uses it for tools, nutrition, articles, and AI guidance.
+            <h2 className="text-2xl md:text-3xl font-bold mb-4">Welcome to SwasthyaSakhi</h2>
+            <p className="text-muted-foreground mb-8 text-lg">
+              Start by logging your symptoms or exploring tools.
             </p>
+            <div className="flex justify-center flex-wrap gap-4">
+              <Link
+                to="/calendar"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors"
+              >
+                <Calendar className="w-5 h-5" /> Log Symptoms
+              </Link>
+              <Link
+                to="/tools"
+                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border-2 border-border bg-card font-semibold hover:bg-muted transition-colors"
+              >
+                Explore Tools →
+              </Link>
+            </div>
           </ScrollReveal>
-
-          <div className="mt-8 grid md:grid-cols-3 gap-4">
-            {majorPhases.map((m, i) => (
-              <ScrollReveal key={m.phase} delay={i * 70}>
-                <Link
-                  to={m.to}
-                  onClick={() => setPhase(m.phase)}
-                  className={`block rounded-2xl border-2 p-5 h-full transition-all hover:shadow-md hover:border-primary/30 ${m.color}`}
-                >
-                  <p className="text-xs font-semibold text-muted-foreground">Major module {i + 1}</p>
-                  <h3 className="mt-1 text-lg font-bold">{m.title}</h3>
-                  <p className="mt-2 text-xs text-muted-foreground leading-relaxed">{m.desc}</p>
-                  <span className="mt-4 inline-block text-xs font-semibold text-primary">Open module →</span>
-                </Link>
-              </ScrollReveal>
-            ))}
-          </div>
-
-          <ScrollReveal delay={120}>
-            <h3 className="mt-12 text-lg font-bold text-center">Support modules</h3>
-            <p className="text-center text-xs text-muted-foreground">Fixed order — each adapts to your selected phase</p>
-          </ScrollReveal>
-          <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {(phase === "maternity" 
-              ? [{ emoji: "🤰", title: "Pregnancy Dashboard", desc: "Track weeks, ANC & daily health", to: "/pregnancy-dashboard" }, ...supportModules]
-              : supportModules
-            ).map((mod, i) => (
-              <ScrollReveal key={mod.to} delay={i * 40}>
-                <Link
-                  to={mod.to}
-                  className={`flex gap-3 rounded-xl border p-4 shadow-sm hover:shadow-md transition-all h-full ${
-                    mod.to === "/pregnancy-dashboard"
-                      ? "border-primary/30 bg-primary/5 hover:border-primary/50"
-                      : "border-border/60 bg-card hover:border-primary/20"
-                  }`}
-                >
-                  <span className="text-2xl shrink-0">{mod.emoji}</span>
-                  <div>
-                    <p className="text-sm font-semibold leading-tight flex items-center gap-1.5">
-                      {i + 1}. {mod.title}
-                      {mod.to === "/pregnancy-dashboard" && <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground leading-snug">{mod.desc}</p>
-                  </div>
-                </Link>
-              </ScrollReveal>
-            ))}
-          </div>
         </div>
       </section>
     </div>

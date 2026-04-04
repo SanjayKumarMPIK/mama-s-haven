@@ -1,6 +1,9 @@
+import { useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
 import { useGamification } from "@/hooks/useGamification";
+import { useHealthLog } from "@/hooks/useHealthLog";
 import { DAILY_HABITS } from "@/lib/gamificationData";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
@@ -9,9 +12,11 @@ import StreakBadge from "@/components/gamification/StreakBadge";
 import BadgeGrid from "@/components/gamification/BadgeGrid";
 import LevelProgress from "@/components/gamification/LevelProgress";
 import MotivationalNudge from "@/components/gamification/MotivationalNudge";
+
 import SymptomQuickLogger from "@/components/SymptomQuickLogger";
 import WeeklyGuidance from "@/components/guidance/WeeklyGuidance";
 import { Trophy, TrendingUp, Calendar, Target, Wind } from "lucide-react";
+
 
 const STRESS_BY_PHASE: Record<string, { title: string; tips: string[] }> = {
   puberty: {
@@ -20,11 +25,11 @@ const STRESS_BY_PHASE: Record<string, { title: string; tips: string[] }> = {
   },
   maternity: {
     title: "Stress care during pregnancy",
-    tips: ["Box breathing: 4 in, hold 4, out 6 for two minutes.", "Share one worry with your partner or ANC nurse — don’t carry it alone.", "Limit doom‑scrolling; set a daily news timer."],
+    tips: ["Box breathing: 4 in, hold 4, out 6 for two minutes.", "Share one worry with your partner or ANC nurse — don't carry it alone.", "Limit doom‑scrolling; set a daily news timer."],
   },
   "family-planning": {
     title: "Stress care while planning ahead",
-    tips: ["Plan one small joyful ritual weekly (not only “tasks”).", "Split big decisions into weekly micro‑steps.", "If trying feels heavy, pause and hydrate — reset the nervous system."],
+    tips: ["Plan one small joyful ritual weekly (not only \"tasks\").", "Split big decisions into weekly micro\u2011steps.", "If trying feels heavy, pause and hydrate \u2014 reset the nervous system."],
   },
 };
 
@@ -32,9 +37,17 @@ export default function WellnessDashboard() {
   const { language, simpleMode } = useLanguage();
   const { phase, phaseName, phaseEmoji } = usePhase();
   const g = useGamification(language);
+  const { logs } = useHealthLog();
   const stress = STRESS_BY_PHASE[phase];
 
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const todayLog = logs[todayISO];
+  const todaySymptomCount = useMemo(() => {
+    if (!todayLog?.symptoms) return 0;
+    return Object.values(todayLog.symptoms).filter(Boolean).length;
+  }, [todayLog]);
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
@@ -71,8 +84,32 @@ export default function WellnessDashboard() {
       </div>
 
       <div className="container py-6 space-y-6">
+        {/* Calendar CTA — log symptoms in the Calendar (single source of truth) */}
         <ScrollReveal>
-          <SymptomQuickLogger />
+          <Link
+            to="/calendar"
+            className="block rounded-xl border border-border bg-card p-4 hover:shadow-md transition-shadow group"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <CalendarCheck className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold">Today's Health Log</p>
+                  <p className="text-xs text-muted-foreground">
+                    {todaySymptomCount > 0
+                      ? `${todaySymptomCount} symptom${todaySymptomCount > 1 ? "s" : ""} logged today`
+                      : "No symptoms logged yet — tap to open Calendar"}
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+            </div>
+          </Link>
+        </ScrollReveal>
+        <ScrollReveal>
+          <WeeklyGuidance />
         </ScrollReveal>
         <ScrollReveal>
           <WeeklyGuidance />

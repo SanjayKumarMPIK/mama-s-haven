@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { usePhase, type Phase } from "@/hooks/usePhase";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -87,12 +87,44 @@ const OnboardingContext = createContext<OnboardingContextType>({
 export function OnboardingProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const storageKey = getStorageKey(user?.id);
-
-  const [config, setConfig] = useState<OnboardingConfig>(DEFAULT_CONFIG);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const { setPhase } = usePhase();
 
-  // Load config when user changes
+  // Synchronously load config from localStorage to avoid flash of onboarding
+  // Because AuthProvider loads user async, user.id may not be available yet.
+  // So we check BOTH the generic key AND any user-specific key.
+  const [config, setConfig] = useState<OnboardingConfig>(() => {
+    try {
+      // Try user-specific key first (if user loaded from session)
+      const session = localStorage.getItem("swasthyasakhi_session");
+      let userId: string | undefined;
+      if (session) {
+        try {
+          const parsed = JSON.parse(session);
+          userId = parsed?.id;
+        } catch {}
+      }
+
+      // Try user-specific key, then generic key
+      const keys = [
+        userId ? `ss-onboarding-${userId}` : null,
+        "ss-onboarding",
+      ].filter(Boolean) as string[];
+
+      for (const key of keys) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<OnboardingConfig>;
+          if (parsed.onboardingCompleted) {
+            return { ...DEFAULT_CONFIG, ...parsed };
+          }
+        }
+      }
+    } catch {}
+    return DEFAULT_CONFIG;
+  });
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Re-load config when user changes (login/logout)
   useEffect(() => {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -103,20 +135,20 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         if (next.phase) {
           setPhase(next.phase);
         }
-      } else {
-        setConfig(DEFAULT_CONFIG);
       }
-    } catch {
-      setConfig(DEFAULT_CONFIG);
-    }
+    } catch {}
   }, [storageKey, setPhase]);
 
-  // Auto-show onboarding if not completed AND user is logged in
+  // Auto-show onboarding ONCE if not completed AND user is logged in
+  const hasAutoShown = useRef(false);
   useEffect(() => {
+    if (hasAutoShown.current) return;
     if (user && !config.onboardingCompleted) {
       setShowOnboarding(true);
+      hasAutoShown.current = true;
     } else if (!user) {
       setShowOnboarding(false);
+      hasAutoShown.current = false;
     }
   }, [config.onboardingCompleted, user]);
 

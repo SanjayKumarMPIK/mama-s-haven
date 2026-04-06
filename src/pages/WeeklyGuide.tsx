@@ -1,764 +1,715 @@
-import { useMemo } from "react";
-import { Link } from "react-router-dom";
-import { useLanguage } from "@/hooks/useLanguage";
-import { usePhase } from "@/hooks/usePhase";
-import { useAuth } from "@/hooks/useAuth";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
-import { useHealthLog } from "@/hooks/useHealthLog";
-import { useOnboarding } from "@/hooks/useOnboarding";
-import { analyzeWeek } from "@/lib/weeklyAnalytics";
-import { WEEK_DATA } from "@/lib/pregnancyData";
-import { PUBERTY_GUIDE, FAMILY_PLANNING_GUIDE, MENOPAUSE_GUIDE, type PhaseGuideWeek } from "@/lib/phaseGuideData";
+import { useState } from "react";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
 import {
-  ChevronLeft, ChevronRight, Scale, Ruler, Heart, Apple,
-  Droplets, Activity, AlertTriangle, Calendar, Flower2,
-  HeartPulse, Users, Sparkles, Lightbulb, BookOpen,
-  BarChart3, TrendingUp, Shield, ArrowRight,
+  Droplets,
+  AlertTriangle,
+  Zap,
+  Heart,
+  Smile,
+  Moon,
+  Sun,
+  Apple,
+  Thermometer,
+  Activity,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  ShieldAlert,
+  Sparkles,
+  ArrowRight,
+  Check,
 } from "lucide-react";
-import { useState } from "react";
 
-// ─── Determine the effective life-stage ──────────────────────────────────────
-function useEffectiveLifeStage() {
-  const { user } = useAuth();
-  const { phase } = usePhase();
-  const lifeStage = phase || user?.lifeStage;
-  const isPregnant = lifeStage === "pregnant" || lifeStage === "maternity";
-  const isPuberty = lifeStage === "puberty";
-  const isMenopause = lifeStage === "menopause";
-
-  let mode: "pregnancy" | "puberty" | "family-planning" | "menopause";
-  if (isPregnant) mode = "pregnancy";
-  else if (isPuberty) mode = "puberty";
-  else if (isMenopause) mode = "menopause";
-  else mode = "family-planning";
-
-  return { mode, lifeStage };
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface Phase {
+  id: string;
+  name: string;
+  days: string;
+  emoji: string;
+  color: string;
+  bgGradient: string;
+  borderColor: string;
+  textColor: string;
+  badgeBg: string;
+  what: string;
+  symptoms: string[];
+  energy: string;
+  mood: string;
+  body: string;
+  tips: string[];
 }
 
-// ─── Phase-specific metadata ─────────────────────────────────────────────────
-const PHASE_META = {
-  puberty: {
-    title: "Menstrual Cycle Guide",
-    subtitle: "Understanding your 4-week cycle — period to PMS and everything in between",
-    emoji: "🌸",
-    color: "text-pink-600",
-    bgLight: "bg-pink-50",
-    totalWeeks: 4,
-    weekLabel: "Phase",
-    icon: Flower2,
-  },
-  "family-planning": {
-    title: "Family Planning Guide",
-    subtitle: "Preconception health, contraception, spacing, and government support",
-    emoji: "🌿",
-    color: "text-teal-600",
-    bgLight: "bg-teal-50",
-    totalWeeks: 4,
-    weekLabel: "Module",
-    icon: Users,
-  },
-  menopause: {
-    title: "Menopause Wellness Guide",
-    subtitle: "Managing symptoms, staying healthy, and thriving through the transition",
-    emoji: "✨",
-    color: "text-amber-600",
-    bgLight: "bg-amber-50",
-    totalWeeks: 4,
-    weekLabel: "Module",
-    icon: Sparkles,
-  },
-  pregnancy: {
-    title: "Pregnancy Weekly Guide",
-    subtitle: "Week-by-week journey from conception to delivery",
-    emoji: "🤰",
-    color: "text-primary",
-    bgLight: "bg-primary/5",
-    totalWeeks: 40,
-    weekLabel: "Week",
-    icon: Calendar,
-  },
-};
-
-function getGuideData(mode: keyof typeof PHASE_META): PhaseGuideWeek[] {
-  switch (mode) {
-    case "puberty": return PUBERTY_GUIDE;
-    case "family-planning": return FAMILY_PLANNING_GUIDE;
-    case "menopause": return MENOPAUSE_GUIDE;
-    default: return [];
-  }
+interface Symptom {
+  name: string;
+  emoji: string;
+  category: "physical" | "emotional";
+  desc: string;
+  relief: string[];
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// Weekly Insights Panel — reads calendar data, shows analytics
-// ═════════════════════════════════════════════════════════════════════════════
-function WeeklyInsightsPanel() {
-  const { logs } = useHealthLog();
-  const { phase } = usePhase();
-  const { config } = useOnboarding();
-  const age = config.age ?? undefined;
+// ─── Data ────────────────────────────────────────────────────────────────────
 
-  const analysis = useMemo(
-    () => analyzeWeek(logs, phase, age),
-    [logs, phase, age]
+const PHASES: Phase[] = [
+  {
+    id: "menstrual",
+    name: "Menstrual",
+    days: "Days 1–5",
+    emoji: "🩸",
+    color: "rose",
+    bgGradient: "from-rose-50 to-rose-100/60",
+    borderColor: "border-rose-200",
+    textColor: "text-rose-700",
+    badgeBg: "bg-rose-100 text-rose-700",
+    what: "Your uterus sheds its lining. This is your period — totally normal and healthy.",
+    symptoms: ["Cramps", "Lower back pain", "Fatigue", "Bloating", "Mood dips"],
+    energy: "Low — your body is working hard. Rest is key.",
+    mood: "Quiet, reflective, or emotional. That's okay.",
+    body: "Bleeding occurs. Uterine muscles contract to shed the lining.",
+    tips: [
+      "Use a heating pad on your lower belly",
+      "Drink warm ginger or chamomile tea",
+      "Light walking can ease cramps",
+      "Eat iron-rich foods: spinach, lentils, dates",
+      "Sleep 8+ hours and take naps if needed",
+    ],
+  },
+  {
+    id: "follicular",
+    name: "Follicular",
+    days: "Days 6–13",
+    emoji: "🌱",
+    color: "emerald",
+    bgGradient: "from-emerald-50 to-emerald-100/60",
+    borderColor: "border-emerald-200",
+    textColor: "text-emerald-700",
+    badgeBg: "bg-emerald-100 text-emerald-700",
+    what: "Your body starts growing a new egg. Estrogen rises, and you begin to feel better.",
+    symptoms: ["Increased energy", "Clearer skin", "Better focus", "Mild appetite increase"],
+    energy: "Rising — this is a great time to be active.",
+    mood: "Optimistic, social, curious. You feel fresh.",
+    body: "Follicles in the ovary grow. The uterine lining rebuilds.",
+    tips: [
+      "Try a new workout or activity you enjoy",
+      "Eat protein-rich foods for muscle repair",
+      "Great time to study or tackle big tasks",
+      "Stay hydrated — at least 8 glasses of water",
+      "Enjoy fruits, veggies, and whole grains",
+    ],
+  },
+  {
+    id: "ovulation",
+    name: "Ovulation",
+    days: "Day 14",
+    emoji: "🌟",
+    color: "amber",
+    bgGradient: "from-amber-50 to-amber-100/60",
+    borderColor: "border-amber-200",
+    textColor: "text-amber-700",
+    badgeBg: "bg-amber-100 text-amber-700",
+    what: "A mature egg is released from the ovary. You're at peak hormone levels.",
+    symptoms: ["Slight pelvic twinge", "Increased discharge (clear, stretchy)", "Heightened senses", "Feeling confident"],
+    energy: "Peak — you feel your best right now.",
+    mood: "Social, confident, and expressive.",
+    body: "The egg travels down the fallopian tube. LH hormone surges.",
+    tips: [
+      "Perfect time for high-intensity workouts",
+      "Engage in social activities or creative work",
+      "Eat zinc-rich foods: pumpkin seeds, chickpeas",
+      "Notice discharge changes — it's just your body",
+      "You may feel extra warm — dress in layers",
+    ],
+  },
+  {
+    id: "luteal",
+    name: "Luteal",
+    days: "Days 15–28",
+    emoji: "🌙",
+    color: "purple",
+    bgGradient: "from-purple-50 to-purple-100/60",
+    borderColor: "border-purple-200",
+    textColor: "text-purple-700",
+    badgeBg: "bg-purple-100 text-purple-700",
+    what: "Progesterone rises to prepare for pregnancy. If no pregnancy, levels drop — causing PMS.",
+    symptoms: ["Bloating", "Breast tenderness", "Mood swings", "Fatigue", "Food cravings", "Headaches"],
+    energy: "Declining — especially in the last few days.",
+    mood: "Sensitive, irritable, or anxious — PMS is real.",
+    body: "Uterus prepares for possible pregnancy. If no fertilisation, the cycle restarts.",
+    tips: [
+      "Reduce caffeine and salty foods for less bloating",
+      "Magnesium-rich foods help: bananas, dark chocolate",
+      "Gentle yoga or stretching over intense workouts",
+      "Journal your feelings — it helps process emotions",
+      "Prioritise sleep and limit screen time at night",
+    ],
+  },
+];
+
+const SYMPTOMS: Symptom[] = [
+  {
+    name: "Cramps",
+    emoji: "⚡",
+    category: "physical",
+    desc: "Your uterine muscles contract to shed the lining — that's what causes cramping.",
+    relief: ["Apply a heat pad for 15–20 mins", "Drink warm ginger tea"],
+  },
+  {
+    name: "Bloating",
+    emoji: "💧",
+    category: "physical",
+    desc: "Hormonal changes cause the body to retain water, making your belly feel puffy.",
+    relief: ["Avoid salty and processed foods", "Drink peppermint tea"],
+  },
+  {
+    name: "Fatigue",
+    emoji: "😴",
+    category: "physical",
+    desc: "Blood loss and hormone shifts drain your energy, especially on heavy days.",
+    relief: ["Nap when needed — rest is productive", "Eat iron-rich foods daily"],
+  },
+  {
+    name: "Mood Swings",
+    emoji: "🌊",
+    category: "emotional",
+    desc: "Hormone levels rise and fall across your cycle, affecting brain chemistry and mood.",
+    relief: ["Track your mood daily to spot patterns", "Talk to someone you trust"],
+  },
+  {
+    name: "Irritability",
+    emoji: "😤",
+    category: "emotional",
+    desc: "Dropping progesterone before your period can make you more short-tempered.",
+    relief: ["Try 5 mins of deep breathing", "Reduce caffeine and sugar intake"],
+  },
+];
+
+const SUPPORT_ITEMS = [
+  {
+    group: "🥗 Food",
+    color: "bg-green-50 border-green-200",
+    headerColor: "text-green-700",
+    items: [
+      { icon: "🫘", tip: "Lentils, spinach, dates for iron replenishment" },
+      { icon: "🍌", tip: "Bananas and dark chocolate for magnesium" },
+      { icon: "💧", tip: "8+ glasses of water daily — staying hydrated reduces cramps" },
+      { icon: "🫚", tip: "Omega-3 foods: flaxseeds, walnuts, fish" },
+      { icon: "🚫", tip: "Limit salt, caffeine, and sugar during luteal phase" },
+    ],
+  },
+  {
+    group: "🏃 Habits",
+    color: "bg-blue-50 border-blue-200",
+    headerColor: "text-blue-700",
+    items: [
+      { icon: "🧘", tip: "Light yoga or stretching eases cramps and boosts mood" },
+      { icon: "🌙", tip: "Aim for 8 hours of sleep — your body repairs overnight" },
+      { icon: "📓", tip: "Track your cycle to predict phases and prep ahead" },
+      { icon: "🚶", tip: "Even a 10-min walk helps with energy and bloating" },
+      { icon: "📵", tip: "Reduce screen time before bed for better sleep quality" },
+    ],
+  },
+  {
+    group: "🩹 Relief",
+    color: "bg-rose-50 border-rose-200",
+    headerColor: "text-rose-700",
+    items: [
+      { icon: "🔥", tip: "Heating pad on your lower belly — 15–20 mins at a time" },
+      { icon: "🫖", tip: "Ginger or chamomile tea soothes cramps and bloating" },
+      { icon: "💊", tip: "Ibuprofen or paracetamol if pain is strong — ask an adult" },
+      { icon: "🛁", tip: "Warm baths help relax muscles and reduce discomfort" },
+      { icon: "😌", tip: "Rest without guilt — it's your body's signal to slow down" },
+    ],
+  },
+];
+
+const WARNING_SIGNS = [
+  {
+    icon: "🩸",
+    title: "Very Heavy Bleeding",
+    desc: "Soaking a pad/tampon every hour for 2+ hours in a row.",
+    action: "See a doctor — this can indicate fibroids or a clotting issue.",
+    level: "urgent",
+  },
+  {
+    icon: "💢",
+    title: "Severe Pain",
+    desc: "Pain so bad it stops you from attending school or daily activities.",
+    action: "Talk to a doctor — conditions like endometriosis can cause this.",
+    level: "urgent",
+  },
+  {
+    icon: "📅",
+    title: "Missed or Irregular Periods",
+    desc: "No period for 3+ months (and you're not pregnant), or very irregular timing.",
+    action: "Consult a doctor to check for PCOS, thyroid, or stress-related causes.",
+    level: "watch",
+  },
+  {
+    icon: "😵",
+    title: "Dizziness or Fainting",
+    desc: "Feeling faint, seeing spots, or passing out during your period.",
+    action: "Lie down, sip water, and see a doctor — could signal anaemia.",
+    level: "urgent",
+  },
+];
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function SectionHeader({ emoji, title, subtitle }: { emoji: string; title: string; subtitle?: string }) {
+  return (
+    <div className="flex items-start gap-3 mb-5">
+      <span className="text-3xl shrink-0">{emoji}</span>
+      <div>
+        <h2 className="text-lg font-bold leading-tight">{title}</h2>
+        {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
+      </div>
+    </div>
   );
+}
 
-  const {
-    dateRange,
-    daysLogged,
-    symptomFrequencies,
-    insights,
-    smartAdvice,
-    preventiveTips,
-    moodSummary,
-  } = analysis;
-
-  const formatRange = (iso: string) => {
-    const d = new Date(iso + "T12:00:00");
-    return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-  };
+function PhaseCard({ phase }: { phase: Phase }) {
+  const [open, setOpen] = useState(false);
 
   return (
-    <div className="space-y-5">
-      {/* ── Weekly Summary Card ────────────────────────────────────────────── */}
-      <ScrollReveal>
-        <div className="rounded-2xl border border-border bg-gradient-to-br from-card to-primary/5 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold">Weekly Summary</h3>
-                <p className="text-[11px] text-muted-foreground">
-                  {formatRange(dateRange[0])} – {formatRange(dateRange[1])}
-                </p>
-              </div>
-            </div>
-            <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-1 rounded-full">
-              {daysLogged}/7 days logged
+    <div
+      className={`rounded-2xl border-2 ${phase.borderColor} bg-gradient-to-br ${phase.bgGradient} overflow-hidden transition-all duration-300`}
+    >
+      {/* Header */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full text-left p-4 flex items-center gap-3"
+        aria-expanded={open}
+      >
+        <span className="text-3xl">{phase.emoji}</span>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`text-base font-bold ${phase.textColor}`}>{phase.name} Phase</span>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${phase.badgeBg}`}>
+              {phase.days}
             </span>
           </div>
-
-          {daysLogged === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-sm text-muted-foreground">No data logged this week.</p>
-              <Link
-                to="/calendar"
-                className="inline-flex items-center gap-1.5 mt-3 text-sm font-semibold text-primary hover:underline"
-              >
-                Open Calendar to log symptoms <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Symptom frequencies */}
-              {symptomFrequencies.length > 0 && (
-                <div className="space-y-2">
-                  {symptomFrequencies.slice(0, 5).map((sf) => (
-                    <div
-                      key={sf.id}
-                      className="flex items-center justify-between rounded-lg bg-background/70 border border-border/40 px-3 py-2"
-                    >
-                      <span className="text-sm font-medium">{sf.label}</span>
-                      <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                        {sf.count}× this week
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Mood summary */}
-              {moodSummary && (
-                <div className="flex items-center gap-3 rounded-lg bg-background/60 border border-border/30 px-4 py-2.5">
-                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Mood</span>
-                  <div className="flex items-center gap-3 ml-auto">
-                    {moodSummary.good > 0 && (
-                      <span className="text-sm">😊 {moodSummary.good}d</span>
-                    )}
-                    {moodSummary.okay > 0 && (
-                      <span className="text-sm">😐 {moodSummary.okay}d</span>
-                    )}
-                    {moodSummary.low > 0 && (
-                      <span className="text-sm">😔 {moodSummary.low}d</span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          <p className="text-sm text-muted-foreground mt-0.5 leading-snug">{phase.what}</p>
         </div>
-      </ScrollReveal>
+        <span className={`ml-auto shrink-0 ${phase.textColor}`}>
+          {open ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+        </span>
+      </button>
 
-      {/* ── Key Patterns ──────────────────────────────────────────────────── */}
-      {insights.length > 0 && (
-        <ScrollReveal delay={60}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                <TrendingUp className="w-4 h-4 text-amber-600" />
-              </div>
-              <h3 className="font-semibold text-sm">Key Patterns</h3>
-            </div>
-            <div className="space-y-3">
-              {insights.map((insight, i) => (
-                <div
-                  key={i}
-                  className={`rounded-xl border px-4 py-3 ${
-                    insight.type === "alert"
-                      ? "border-red-200 bg-red-50/50"
-                      : insight.type === "pattern"
-                      ? "border-amber-200 bg-amber-50/50"
-                      : "border-blue-200 bg-blue-50/50"
-                  }`}
+      {/* Expanded content */}
+      {open && (
+        <div className="px-4 pb-5 space-y-4 border-t border-current/10">
+          {/* Symptoms */}
+          <div className="pt-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+              Common Symptoms
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {phase.symptoms.map((s) => (
+                <span
+                  key={s}
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full ${phase.badgeBg}`}
                 >
-                  <p className="text-sm font-semibold flex items-center gap-2">
-                    <span>{insight.emoji}</span> {insight.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    {insight.description}
-                  </p>
-                </div>
+                  {s}
+                </span>
               ))}
             </div>
           </div>
-        </ScrollReveal>
-      )}
 
-      {/* ── Smart Suggestions ─────────────────────────────────────────────── */}
-      {smartAdvice.length > 0 && (
-        <ScrollReveal delay={120}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Lightbulb className="w-4 h-4 text-purple-600" />
-              </div>
-              <h3 className="font-semibold text-sm">Smart Suggestions</h3>
-            </div>
-            <div className="space-y-3">
-              {smartAdvice.map((advice, i) => (
-                <div
-                  key={i}
-                  className="rounded-xl border border-border bg-background/60 px-4 py-3"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-base">{advice.emoji}</span>
-                    <p className="text-sm font-semibold">{advice.title}</p>
-                    <span className="ml-auto text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                      {advice.category}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed pl-7">
-                    {advice.description}
-                  </p>
+          {/* Impact grid */}
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: "Energy", value: phase.energy, icon: <Zap className="w-3.5 h-3.5" /> },
+              { label: "Mood", value: phase.mood, icon: <Smile className="w-3.5 h-3.5" /> },
+              { label: "Body", value: phase.body, icon: <Heart className="w-3.5 h-3.5" /> },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="rounded-xl bg-white/70 border border-white/60 p-3"
+              >
+                <div className={`flex items-center gap-1 mb-1 ${phase.textColor} font-semibold text-[10px] uppercase tracking-wide`}>
+                  {item.icon} {item.label}
                 </div>
-              ))}
-            </div>
-          </div>
-        </ScrollReveal>
-      )}
-
-      {/* ── Preventive Actions ────────────────────────────────────────────── */}
-      {preventiveTips.length > 0 && (
-        <ScrollReveal delay={180}>
-          <div className="rounded-2xl border border-border bg-gradient-to-br from-card to-green-50/30 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                <Shield className="w-4 h-4 text-green-600" />
+                <p className="text-xs text-foreground/80 leading-snug">{item.value}</p>
               </div>
-              <h3 className="font-semibold text-sm">Preventive Actions for Next Week</h3>
-            </div>
-            <ul className="space-y-2">
-              {preventiveTips.map((tip, i) => (
-                <li
-                  key={i}
-                  className="flex items-start gap-2.5 text-sm text-muted-foreground"
-                >
-                  <span className="text-base shrink-0 mt-0.5">{tip.emoji}</span>
-                  <span>{tip.text}</span>
+            ))}
+          </div>
+
+          {/* Tips */}
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+              What Helps
+            </p>
+            <ul className="space-y-1.5">
+              {phase.tips.map((tip) => (
+                <li key={tip} className="flex items-start gap-2 text-sm text-foreground/80">
+                  <Check className={`w-3.5 h-3.5 mt-0.5 shrink-0 ${phase.textColor}`} />
+                  {tip}
                 </li>
               ))}
             </ul>
           </div>
-        </ScrollReveal>
+        </div>
       )}
     </div>
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-// Component: Non-pregnancy phase guide (INSIGHTS + GUIDE, NO INPUT)
-// ═════════════════════════════════════════════════════════════════════════════
-function PhaseGuideView({ mode }: { mode: "puberty" | "family-planning" | "menopause" }) {
-  const { t, simpleMode } = useLanguage();
-  const meta = PHASE_META[mode];
-  const data = getGuideData(mode);
-  const [selectedWeek, setSelectedWeek] = useState(1);
-  const weekData = data[selectedWeek - 1];
-
-  if (!weekData) return null;
-
+function SymptomCard({ symptom }: { symptom: Symptom }) {
   return (
-    <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
-      {/* Header */}
-      <div className={`border-b border-border ${meta.bgLight}`}>
-        <div className="container py-6">
-          <ScrollReveal>
-            <div className="flex items-center gap-3 mb-2">
-              <div className={`w-12 h-12 rounded-xl ${meta.bgLight} border border-current/10 flex items-center justify-center`}>
-                <meta.icon className={`w-6 h-6 ${meta.color}`} />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold">{meta.title}</h1>
-                <p className="text-sm text-muted-foreground">{meta.subtitle}</p>
-              </div>
-            </div>
-          </ScrollReveal>
+    <div className="rounded-xl border border-border bg-card p-4 shadow-sm flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        <span className="text-2xl">{symptom.emoji}</span>
+        <div>
+          <p className="font-semibold text-sm">{symptom.name}</p>
+          <span
+            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              symptom.category === "physical"
+                ? "bg-blue-100 text-blue-700"
+                : "bg-purple-100 text-purple-700"
+            }`}
+          >
+            {symptom.category}
+          </span>
         </div>
       </div>
-
-      {/* Week/Module navigator */}
-      <div className="container py-4">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setSelectedWeek(Math.max(1, selectedWeek - 1))}
-            disabled={selectedWeek <= 1}
-            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium bg-muted hover:bg-muted/80 transition-colors disabled:opacity-30"
-          >
-            <ChevronLeft className="w-4 h-4" /> Prev
-          </button>
-          <div className="text-center">
-            <p className={`text-xs font-semibold uppercase tracking-wider ${meta.color}`}>{meta.weekLabel} {selectedWeek} of {meta.totalWeeks}</p>
-            <p className="text-sm font-bold mt-0.5">{weekData.title}</p>
+      <p className="text-xs text-muted-foreground leading-relaxed">{symptom.desc}</p>
+      <div className="space-y-1">
+        {symptom.relief.map((r) => (
+          <div key={r} className="flex items-start gap-1.5 text-xs text-foreground/70">
+            <ArrowRight className="w-3 h-3 mt-0.5 shrink-0 text-primary" /> {r}
           </div>
-          <button
-            onClick={() => setSelectedWeek(Math.min(meta.totalWeeks, selectedWeek + 1))}
-            disabled={selectedWeek >= meta.totalWeeks}
-            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium bg-muted hover:bg-muted/80 transition-colors disabled:opacity-30"
-          >
-            Next <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Quick selector */}
-        <div className="mt-3 flex gap-2 justify-center">
-          {Array.from({ length: meta.totalWeeks }, (_, i) => i + 1).map((w) => (
-            <button
-              key={w}
-              onClick={() => setSelectedWeek(w)}
-              className={`shrink-0 w-10 h-10 rounded-full text-xs font-semibold transition-all duration-150 ${
-                w === selectedWeek
-                  ? "bg-primary text-primary-foreground shadow-md"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {w}
-            </button>
-          ))}
-        </div>
+        ))}
       </div>
-
-      {/* Content */}
-      <div className="container pb-12">
-        {/* ── Weekly Insights Panel (from Calendar data) ──────────────────── */}
-        <div className="mb-6">
-          <WeeklyInsightsPanel />
-        </div>
-
-
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {/* Tips */}
-          <ScrollReveal>
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm h-full">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-lavender/70 flex items-center justify-center">
-                  <Lightbulb className="w-4 h-4 text-foreground/80" />
-                </div>
-                <h3 className="font-semibold text-sm">Key Tips</h3>
-              </div>
-              <ul className="space-y-2">
-                {weekData.tips.map((tip, i) => (
-                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <span className="text-primary mt-0.5 shrink-0">•</span> {tip}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </ScrollReveal>
-
-          {/* Nutrition */}
-          <ScrollReveal delay={80}>
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm h-full">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-mint flex items-center justify-center">
-                  <Apple className="w-4 h-4 text-mint-foreground" />
-                </div>
-                <h3 className="font-semibold text-sm">{t("nutritionTips")}</h3>
-              </div>
-              <ul className="space-y-2">
-                {weekData.nutrition.map((tip, i) => (
-                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <span className="text-green-500 mt-0.5 shrink-0">•</span> {tip}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </ScrollReveal>
-
-          {/* Activity */}
-          <ScrollReveal delay={160}>
-            <div className="rounded-xl border border-border bg-card p-5 shadow-sm h-full">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-baby-blue flex items-center justify-center">
-                  <Activity className="w-4 h-4 text-baby-blue-foreground" />
-                </div>
-                <h3 className="font-semibold text-sm">{t("activityTips")}</h3>
-              </div>
-              <ul className="space-y-2">
-                {weekData.activity.map((tip, i) => (
-                  <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5 shrink-0">•</span> {tip}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </ScrollReveal>
-
-          {/* Warning Signs */}
-          <ScrollReveal delay={240}>
-            <div className="rounded-xl border-2 border-red-200 bg-red-50/50 p-5 shadow-sm h-full">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-                  <AlertTriangle className="w-4 h-4 text-red-600" />
-                </div>
-                <h3 className="font-semibold text-sm text-red-800">{t("warningSigns")}</h3>
-              </div>
-              <ul className="space-y-2">
-                {weekData.warnings.map((sign, i) => (
-                  <li key={i} className="text-sm text-red-700 flex items-start gap-2">
-                    <AlertTriangle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
-                    {sign}
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-3 text-xs text-red-600 font-medium">{t("visitCenter")}</p>
-            </div>
-          </ScrollReveal>
-        </div>
-      </div>
-
-      <SafetyDisclaimer />
-    </main>
+    </div>
   );
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// Component: Pregnancy guide (original, with due-date setup)
-// ═════════════════════════════════════════════════════════════════════════════
-function PregnancyGuideView() {
-  const { t, simpleMode } = useLanguage();
-  const { profile, saveProfile, currentWeek, daysLeft, trimester, progress } = usePregnancyProfile();
-  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
-  const [setupName, setSetupName] = useState(profile.name);
-  const [setupDueDate, setSetupDueDate] = useState(profile.dueDate);
-  const [setupRegion, setSetupRegion] = useState(profile.region);
-
-  const weekData = WEEK_DATA[selectedWeek - 1];
-
-  const handleSave = () => {
-    if (setupDueDate) {
-      saveProfile({ name: setupName, dueDate: setupDueDate, region: setupRegion });
-    }
-  };
-
-  // Setup screen — only for pregnancy
-  if (!profile.isSetup) {
-    return (
-      <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
-        <div className="container py-16 max-w-lg">
-          <ScrollReveal>
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-8 h-8 text-primary" />
-              </div>
-              <h1 className="text-2xl font-bold">{t("profileSetup")}</h1>
-              <p className="mt-2 text-muted-foreground text-sm">{t("enterDueDate")}</p>
-            </div>
-          </ScrollReveal>
-          <div className="space-y-4 bg-card rounded-2xl border border-border p-6 shadow-sm">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">{t("name")}</label>
-              <input
-                type="text"
-                value={setupName}
-                onChange={(e) => setSetupName(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                placeholder="Your name"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">{t("dueDate")}</label>
-              <input
-                type="date"
-                value={setupDueDate}
-                onChange={(e) => setSetupDueDate(e.target.value)}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">{t("region")}</label>
-              <select
-                value={setupRegion}
-                onChange={(e) => setSetupRegion(e.target.value as any)}
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              >
-                <option value="north">{t("northIndia")}</option>
-                <option value="south">{t("southIndia")}</option>
-                <option value="east">{t("eastIndia")}</option>
-                <option value="west">{t("westIndia")}</option>
-              </select>
-            </div>
-            <button
-              onClick={handleSave}
-              disabled={!setupDueDate}
-              className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-40"
-            >
-              {t("save")} →
-            </button>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  const trimesterLabel = trimester === 1 ? t("firstTrimester") : trimester === 2 ? t("secondTrimester") : t("thirdTrimester");
-  const getFetalMetrics = (week: number) => {
-    if (week >= 37) return { weight: "3.2 - 3.6 kg", length: "48 - 52 cm", summary: "Fully developed and ready for delivery." };
-    if (week >= 28) return { weight: "1.0 - 2.9 kg", length: "35 - 47 cm", summary: "Rapid growth with maturity of lungs and brain." };
-    if (week >= 13) return { weight: "0.02 - 0.9 kg", length: "9 - 34 cm", summary: "Steady structural growth and organ development." };
-    return { weight: "< 0.02 kg", length: "< 9 cm", summary: "Early organ formation and foundational development." };
-  };
-  const fetal = getFetalMetrics(selectedWeek);
-
-  return (
-    <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
-      {/* Progress header */}
-      <div className="border-b border-border bg-card/60 backdrop-blur-sm">
-        <div className="container py-5">
-          <ScrollReveal>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{trimesterLabel}</p>
-                <h1 className="text-2xl font-bold mt-1">
-                  {t("yourWeek")} {selectedWeek} <span className="text-muted-foreground font-normal text-lg">/ 40</span>
-                </h1>
-                {profile.name && <p className="text-sm text-muted-foreground mt-0.5">{profile.name}</p>}
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">{daysLeft}</p>
-                  <p className="text-xs text-muted-foreground">{t("daysRemaining")}</p>
-                </div>
-                <div className="relative w-16 h-16">
-                  <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--primary))" strokeWidth="3" strokeDasharray={`${progress}, 100`} strokeLinecap="round" />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">{progress}%</div>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4 w-full bg-muted rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
-            </div>
-          </ScrollReveal>
-        </div>
-      </div>
-
-      {/* Week navigator */}
-      <div className="container py-4">
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setSelectedWeek(Math.max(1, selectedWeek - 1))}
-            disabled={selectedWeek <= 1}
-            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium bg-muted hover:bg-muted/80 transition-colors disabled:opacity-30"
-          >
-            <ChevronLeft className="w-4 h-4" /> Prev
-          </button>
-          <div className="text-center">
-            <p className="text-xs text-muted-foreground">Fetal Development Overview</p>
-            <p className="text-sm font-semibold">Week {selectedWeek} status</p>
-          </div>
-          <button
-            onClick={() => setSelectedWeek(Math.min(40, selectedWeek + 1))}
-            disabled={selectedWeek >= 40}
-            className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium bg-muted hover:bg-muted/80 transition-colors disabled:opacity-30"
-          >
-            Next <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="mt-3 flex gap-1 overflow-x-auto pb-2 scrollbar-hide">
-          {Array.from({ length: 40 }, (_, i) => i + 1).map((w) => (
-            <button
-              key={w}
-              onClick={() => setSelectedWeek(w)}
-              className={`shrink-0 w-8 h-8 rounded-full text-xs font-medium transition-all duration-150 ${
-                w === selectedWeek
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : w === currentWeek
-                  ? "bg-primary/20 text-primary ring-1 ring-primary/30"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-              }`}
-            >
-              {w}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Week content */}
-      {weekData && (
-        <div className="container pb-12">
-          {/* Weekly Insights Panel */}
-          <div className="mb-6">
-            <WeeklyInsightsPanel />
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <ScrollReveal>
-              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-lavender/70 flex items-center justify-center">
-                    <Scale className="w-4 h-4 text-foreground/80" />
-                  </div>
-                  <h3 className="font-semibold text-sm">Fetal Development Overview</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-lg border border-border bg-background p-3">
-                    <p className="text-[11px] text-muted-foreground">Average Weight</p>
-                    <p className="mt-1 text-sm font-semibold inline-flex items-center gap-1.5">
-                      <Scale className="w-3.5 h-3.5 text-primary" /> {fetal.weight}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-border bg-background p-3">
-                    <p className="text-[11px] text-muted-foreground">Average Length</p>
-                    <p className="mt-1 text-sm font-semibold inline-flex items-center gap-1.5">
-                      <Ruler className="w-3.5 h-3.5 text-primary" /> {fetal.length}
-                    </p>
-                  </div>
-                </div>
-                <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{fetal.summary}</p>
-                <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{weekData.development}</p>
-              </div>
-            </ScrollReveal>
-
-            <ScrollReveal delay={80}>
-              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-peach flex items-center justify-center">
-                    <Heart className="w-4 h-4 text-peach-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-sm">{t("whatMomFeels")}</h3>
-                </div>
-                <p className="text-sm text-muted-foreground leading-relaxed">{weekData.momFeels}</p>
-              </div>
-            </ScrollReveal>
-
-            <ScrollReveal delay={160}>
-              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-mint flex items-center justify-center">
-                    <Apple className="w-4 h-4 text-mint-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-sm">{t("nutritionTips")}</h3>
-                </div>
-                <ul className="space-y-1.5">
-                  {weekData.nutritionTips.map((tip, i) => (
-                    <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-primary mt-0.5">•</span> {tip}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </ScrollReveal>
-
-            <ScrollReveal delay={240}>
-              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-baby-blue flex items-center justify-center">
-                    <Droplets className="w-4 h-4 text-baby-blue-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-sm">{t("hygieneTips")}</h3>
-                </div>
-                <ul className="space-y-1.5">
-                  {weekData.hygieneTips.map((tip, i) => (
-                    <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-blue-500 mt-0.5">•</span> {tip}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </ScrollReveal>
-
-            <ScrollReveal delay={320}>
-              <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-mint flex items-center justify-center">
-                    <Activity className="w-4 h-4 text-mint-foreground" />
-                  </div>
-                  <h3 className="font-semibold text-sm">{t("activityTips")}</h3>
-                </div>
-                <ul className="space-y-1.5">
-                  {weekData.activityTips.map((tip, i) => (
-                    <li key={i} className="text-sm text-muted-foreground flex items-start gap-2">
-                      <span className="text-green-500 mt-0.5">•</span> {tip}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </ScrollReveal>
-
-            <ScrollReveal delay={400}>
-              <div className="rounded-xl border-2 border-red-200 bg-red-50/50 p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-                    <AlertTriangle className="w-4 h-4 text-red-600" />
-                  </div>
-                  <h3 className="font-semibold text-sm text-red-800">{t("warningSigns")}</h3>
-                </div>
-                <ul className="space-y-1.5">
-                  {weekData.warningSigns.map((sign, i) => (
-                    <li key={i} className="text-sm text-red-700 flex items-start gap-2">
-                      <AlertTriangle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
-                      {sign}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-3 text-xs text-red-600 font-medium">{t("visitCenter")}</p>
-              </div>
-            </ScrollReveal>
-          </div>
-        </div>
-      )}
-
-      <SafetyDisclaimer />
-    </main>
-  );
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-// Main export — routes to the correct guide based on life stage
+// Main Export
 // ═════════════════════════════════════════════════════════════════════════════
 export default function WeeklyGuide() {
-  const { mode } = useEffectiveLifeStage();
+  return (
+    <main className="min-h-screen bg-background">
 
-  if (mode === "pregnancy") {
-    return <PregnancyGuideView />;
-  }
+      {/* ── HERO HEADER ───────────────────────────────────────────────────── */}
+      <div className="border-b border-border bg-gradient-to-br from-pink-50 via-rose-50 to-purple-50">
+        <div className="container py-8">
+          <ScrollReveal>
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-rose-400 to-pink-500 flex items-center justify-center shadow-lg shadow-rose-200">
+                <Droplets className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase tracking-widest text-rose-500 mb-0.5">
+                  Educational Guide
+                </p>
+                <h1 className="text-2xl font-bold">Menstrual Guide</h1>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Your body, your cycle — understand it all
+                </p>
+              </div>
+            </div>
 
-  return <PhaseGuideView mode={mode} />;
+            {/* Phase indicator pills */}
+            <div className="flex gap-2 mt-5 flex-wrap">
+              {[
+                { label: "🩸 Menstrual", color: "bg-rose-100 text-rose-700" },
+                { label: "🌱 Follicular", color: "bg-emerald-100 text-emerald-700" },
+                { label: "🌟 Ovulation", color: "bg-amber-100 text-amber-700" },
+                { label: "🌙 Luteal", color: "bg-purple-100 text-purple-700" },
+              ].map((p) => (
+                <span
+                  key={p.label}
+                  className={`${p.color} text-xs font-semibold px-3 py-1.5 rounded-full`}
+                >
+                  {p.label}
+                </span>
+              ))}
+            </div>
+          </ScrollReveal>
+        </div>
+      </div>
+
+      <div className="container py-8 space-y-10">
+
+        {/* ── SECTION 1: WHAT IS A PERIOD? ────────────────────────────────── */}
+        <ScrollReveal>
+          <section id="what-is-period">
+            <SectionHeader
+              emoji="💬"
+              title="What is a Period?"
+              subtitle="Quick, simple, no-drama explanation"
+            />
+            <div className="rounded-2xl border border-pink-200 bg-gradient-to-br from-pink-50 to-rose-50 p-5 space-y-3">
+              <p className="text-sm leading-relaxed text-foreground/80">
+                A period is when the uterus sheds its lining each month — blood and tissue leave the body through the vagina over 3–7 days.
+              </p>
+              <p className="text-sm leading-relaxed text-foreground/80">
+                It's a sign your reproductive system is healthy and working. It begins in puberty (usually ages 10–15) and continues until menopause (around 45–55).
+              </p>
+
+              <div className="grid grid-cols-3 gap-3 pt-2">
+                {[
+                  { icon: <Clock className="w-4 h-4" />, label: "Duration", value: "3–7 days" },
+                  { icon: <Activity className="w-4 h-4" />, label: "Cycle Length", value: "21–35 days" },
+                  { icon: <Moon className="w-4 h-4" />, label: "Starts", value: "Ages 10–15" },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    className="rounded-xl bg-white/80 border border-pink-100 p-3 text-center"
+                  >
+                    <div className="text-pink-500 flex justify-center mb-1">{stat.icon}</div>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{stat.label}</p>
+                    <p className="text-sm font-bold text-foreground">{stat.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl bg-white/60 border border-pink-100 px-4 py-3 flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-pink-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Image tip:</span> Search "menstrual cycle diagram simple illustration" for a clean educational visual.
+                </p>
+              </div>
+            </div>
+          </section>
+        </ScrollReveal>
+
+        {/* ── SECTION 2: CYCLE PHASES ─────────────────────────────────────── */}
+        <ScrollReveal delay={60}>
+          <section id="cycle-phases">
+            <SectionHeader
+              emoji="🔄"
+              title="Menstrual Cycle Phases"
+              subtitle="Tap each phase to explore what happens, symptoms & tips"
+            />
+            <div className="space-y-3">
+              {PHASES.map((phase) => (
+                <PhaseCard key={phase.id} phase={phase} />
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl bg-muted/50 border border-border px-4 py-3 flex items-start gap-2">
+              <Sun className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Image tip:</span> Search "4 phases of menstrual cycle diagram color coded" for a great visual reference.
+              </p>
+            </div>
+          </section>
+        </ScrollReveal>
+
+        {/* ── SECTION 3: COMMON SYMPTOMS ──────────────────────────────────── */}
+        <ScrollReveal delay={80}>
+          <section id="common-symptoms">
+            <SectionHeader
+              emoji="🌡️"
+              title="Common Symptoms"
+              subtitle="Know what to expect — and how to handle it"
+            />
+
+            {/* Category labels */}
+            <div className="flex gap-2 mb-4">
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-100 text-blue-700">
+                🧍 Physical
+              </span>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-purple-100 text-purple-700">
+                💭 Emotional
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {SYMPTOMS.map((symptom) => (
+                <SymptomCard key={symptom.name} symptom={symptom} />
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl bg-muted/50 border border-border px-4 py-3 flex items-start gap-2">
+              <Thermometer className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Image tip:</span> Search "menstrual symptoms icon set flat illustration" for simple icons.
+              </p>
+            </div>
+          </section>
+        </ScrollReveal>
+
+        {/* ── SECTION 4: DAILY SUPPORT ────────────────────────────────────── */}
+        <ScrollReveal delay={100}>
+          <section id="daily-support">
+            <SectionHeader
+              emoji="💪"
+              title="What Helps"
+              subtitle="Daily habits that actually make a difference"
+            />
+
+            <div className="space-y-3">
+              {SUPPORT_ITEMS.map((group) => (
+                <div
+                  key={group.group}
+                  className={`rounded-2xl border ${group.color} p-5`}
+                >
+                  <p className={`font-bold text-sm mb-3 ${group.headerColor}`}>{group.group}</p>
+                  <ul className="space-y-2">
+                    {group.items.map((item) => (
+                      <li key={item.tip} className="flex items-start gap-2 text-sm text-foreground/80">
+                        <span className="text-base shrink-0">{item.icon}</span>
+                        {item.tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl bg-muted/50 border border-border px-4 py-3 flex items-start gap-2">
+              <Apple className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Image tip:</span> Search "menstrual health lifestyle illustration food exercise rest" for a warm, relatable visual.
+              </p>
+            </div>
+          </section>
+        </ScrollReveal>
+
+        {/* ── SECTION 5: WARNING SIGNS ────────────────────────────────────── */}
+        <ScrollReveal delay={120}>
+          <section id="warning-signs">
+            <SectionHeader
+              emoji="🚨"
+              title="Warning Signs"
+              subtitle="Know when to reach out for help — it's always okay to ask"
+            />
+
+            <div className="space-y-3">
+              {WARNING_SIGNS.map((ws) => (
+                <div
+                  key={ws.title}
+                  className={`rounded-2xl border-2 p-4 ${
+                    ws.level === "urgent"
+                      ? "border-red-200 bg-red-50/60"
+                      : "border-amber-200 bg-amber-50/60"
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <span className="text-2xl shrink-0">{ws.icon}</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <p className={`font-bold text-sm ${ws.level === "urgent" ? "text-red-800" : "text-amber-800"}`}>
+                          {ws.title}
+                        </p>
+                        <span
+                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                            ws.level === "urgent"
+                              ? "bg-red-100 text-red-700"
+                              : "bg-amber-100 text-amber-700"
+                          }`}
+                        >
+                          {ws.level === "urgent" ? "See a doctor" : "Monitor"}
+                        </span>
+                      </div>
+                      <p className={`text-xs leading-relaxed mb-2 ${ws.level === "urgent" ? "text-red-700" : "text-amber-700"}`}>
+                        {ws.desc}
+                      </p>
+                      <div className={`flex items-start gap-1.5 text-xs font-medium ${ws.level === "urgent" ? "text-red-800" : "text-amber-800"}`}>
+                        <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        {ws.action}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4 rounded-xl bg-muted/50 border border-border px-4 py-3 flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Image tip:</span> Search "medical warning sign period health icon flat" for a clear, simple visual.
+              </p>
+            </div>
+          </section>
+        </ScrollReveal>
+
+        {/* ── SECTION 6: WHAT TO EXPECT NEXT ──────────────────────────────── */}
+        <ScrollReveal delay={140}>
+          <section id="whats-next">
+            <SectionHeader
+              emoji="🗓️"
+              title="What to Expect Next"
+              subtitle="Your cycle is predictable — once you know the pattern"
+            />
+
+            <div className="rounded-2xl border border-border bg-gradient-to-br from-card to-primary/5 p-5 space-y-4">
+
+              {/* Flow arrows */}
+              <div className="flex items-center gap-1 flex-wrap">
+                {[
+                  { label: "🩸 Period", bg: "bg-rose-100 text-rose-700" },
+                  { label: "→", bg: "" },
+                  { label: "🌱 Energy up", bg: "bg-emerald-100 text-emerald-700" },
+                  { label: "→", bg: "" },
+                  { label: "🌟 Peak", bg: "bg-amber-100 text-amber-700" },
+                  { label: "→", bg: "" },
+                  { label: "🌙 PMS", bg: "bg-purple-100 text-purple-700" },
+                  { label: "→", bg: "" },
+                  { label: "🔁 Repeat", bg: "bg-muted text-foreground" },
+                ].map((item, i) => (
+                  item.bg === "" ? (
+                    <span key={i} className="text-muted-foreground font-bold">{item.label}</span>
+                  ) : (
+                    <span key={i} className={`text-xs font-semibold px-2.5 py-1 rounded-full ${item.bg}`}>
+                      {item.label}
+                    </span>
+                  )
+                ))}
+              </div>
+
+              {/* Phase previews */}
+              <div className="space-y-2">
+                {[
+                  {
+                    phase: "After your period ends",
+                    hint: "Energy returns. Great time to exercise, study, and socialise.",
+                    color: "border-emerald-200 bg-emerald-50/50",
+                  },
+                  {
+                    phase: "Around mid-cycle",
+                    hint: "You feel confident and sharp — your peak performance window.",
+                    color: "border-amber-200 bg-amber-50/50",
+                  },
+                  {
+                    phase: "Week before your period",
+                    hint: "PMS symptoms begin. Slow down, prioritise rest and comfort foods.",
+                    color: "border-purple-200 bg-purple-50/50",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.phase}
+                    className={`rounded-xl border px-4 py-3 ${item.color}`}
+                  >
+                    <p className="text-sm font-semibold">{item.phase}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.hint}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-xl bg-primary/5 border border-primary/10 px-4 py-3 flex items-start gap-2">
+                <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Pro tip:</span> Log your cycle for 2–3 months and you'll clearly see your patterns — mood, energy, and symptoms.
+                </p>
+              </div>
+
+              <div className="flex items-start gap-2">
+                <Sun className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Image tip:</span> Search "menstrual cycle flow chart circular diagram simple" for an intuitive visual.
+                </p>
+              </div>
+            </div>
+          </section>
+        </ScrollReveal>
+
+      </div>
+
+      <SafetyDisclaimer />
+    </main>
+  );
 }

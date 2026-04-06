@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -23,15 +23,14 @@ type SecondaryKey = "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | 
 
 const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; icon: LucideIcon }[] = [
   { to: "/", labelKey: "home" as const, icon: Home },
-  { to: "/profile", label: "My Profile", icon: User },
   { to: "/assistant", labelKey: "aiAssistant" as const, icon: Bot },
-  { to: "/weekly-guide", labelKey: "weeklyGuide" as const, icon: Calendar },
   { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/nutrition", labelKey: "nutritionGuide" as const, icon: Apple },
   { to: "/symptom-checker", labelKey: "symptomChecker" as const, icon: Search },
   { to: "/wellness", labelKey: "wellness" as const, icon: Trophy },
   { to: "/tools", label: "Tools", icon: Wrench },
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
+  { to: "/weekly-guide", label: "Menstrual Guide", icon: Calendar },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
   { to: "/pregnancy-dashboard", label: "Pregnancy Dashboard", icon: Baby },
 ];
@@ -47,6 +46,7 @@ export default function HamburgerMenu({
   const { user, logout } = useAuth();
   const { phase } = usePhase();
   const { setShowOnboarding, config } = useOnboarding();
+  const [isProfileExpanded, setIsProfileExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const firstFocusRef = useRef<HTMLButtonElement>(null);
 
@@ -125,44 +125,50 @@ export default function HamburgerMenu({
 
         <div className="flex flex-col h-[calc(100%-57px)]">
           <div className="flex-1 overflow-y-auto space-y-5 px-5 py-4">
-            {/* Language selector */}
-            <div className="rounded-lg border border-border bg-card px-4 py-3">
-              <label className="flex items-center justify-between gap-3">
-                <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                  <Globe className="h-3.5 w-3.5" />
-                  Language
-                </span>
-                <select
-                  value={language}
-                  onChange={(e) => onLanguageChange(e.target.value as Language)}
-                  className="h-9 min-w-[170px] rounded-md border border-input bg-background px-2.5 text-xs font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label="Select language"
+            {/* User Profile Accordion (if logged in) */}
+            {user && (
+              <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
+                <button
+                  onClick={() => setIsProfileExpanded(!isProfileExpanded)}
+                  className="w-full flex items-center justify-between p-3 bg-primary/5 hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  {LANGUAGES.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.native}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            {/* My Preferences */}
-            <div className="rounded-lg border border-border bg-card px-4 py-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                <Settings className="w-3.5 h-3.5" />
-                My Preferences
-              </p>
-              <button
-                onClick={() => { setShowOnboarding(true); onClose(); }}
-                className="w-full text-left flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-600 hover:bg-primary/5 hover:text-primary transition-colors"
-              >
-                <span className="text-base">🎯</span>
-                {config.onboardingCompleted
-                  ? `Change Purpose & Goals`
-                  : `Set up your preferences`}
-              </button>
-            </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="text-left">
+                      <p className="text-sm font-semibold text-foreground">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">My Profile</p>
+                    </div>
+                  </div>
+                  <ChevronDown className={cn("w-5 h-5 text-muted-foreground transition-transform duration-200", isProfileExpanded && "rotate-180")} />
+                </button>
+                
+                <div className={cn("grid transition-all duration-200", isProfileExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+                  <div className="overflow-hidden">
+                    <div className="p-2 bg-card border-t border-border space-y-1">
+                      <Link
+                        to="/profile"
+                        onClick={onClose}
+                        className="w-full text-left flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <User className="w-4 h-4 text-primary/70" />
+                        View Profile
+                      </Link>
+                      <button
+                        onClick={() => { setShowOnboarding(true); onClose(); }}
+                        className="w-full text-left flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <Settings className="w-4 h-4 text-primary/70" />
+                        {config.onboardingCompleted
+                          ? `Change Purpose & Goals`
+                          : `Set up your preferences`}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Navigation items */}
             <nav className="space-y-2" aria-label="Secondary navigation">
@@ -182,18 +188,13 @@ export default function HamburgerMenu({
           {/* Auth section at bottom */}
           <div className="border-t border-border px-5 py-4">
             {user ? (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  Logged in as <span className="font-semibold text-foreground">{user.name}</span>
-                </p>
-                <button
-                  onClick={() => { logout(); onClose(); }}
-                  className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-slate-50 text-slate-600"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </button>
-              </div>
+              <button
+                onClick={() => { logout(); onClose(); }}
+                className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-slate-50 text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <LogOut className="w-4 h-4" />
+                Logout
+              </button>
             ) : (
               <div className="space-y-2">
                 <Link

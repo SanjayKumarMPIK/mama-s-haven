@@ -70,31 +70,7 @@ export default function Index() {
         </div>
       </div>
 
-      {/* Placeholder Section */}
-      <section className="py-20 bg-muted/20 border-b border-border/60">
-        <div className="container max-w-2xl mx-auto text-center">
-          <ScrollReveal>
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">Welcome to SwasthyaSakhi</h2>
-            <p className="text-muted-foreground mb-8 text-lg">
-              Start by logging your symptoms or exploring tools.
-            </p>
-            <div className="flex justify-center flex-wrap gap-4">
-              <Link
-                to="/calendar"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-primary/10 text-primary font-semibold hover:bg-primary/20 transition-colors"
-              >
-                <Calendar className="w-5 h-5" /> Log Symptoms
-              </Link>
-              <Link
-                to="/tools"
-                className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl border-2 border-border bg-card font-semibold hover:bg-muted transition-colors"
-              >
-                Explore Tools →
-              </Link>
-            </div>
-          </ScrollReveal>
-        </div>
-      </section>
+
     </div>
   );
 }

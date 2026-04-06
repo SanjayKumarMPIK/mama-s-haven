@@ -40,6 +40,7 @@ import Calendar from "./pages/Calendar";
 import WeeklyBodyReport from "./pages/WeeklyBodyReport";
 import Profile from "./pages/Profile";
 import MissedLogReminder from "@/components/MissedLogReminder";
+import Dashboard from "./pages/Dashboard";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const App = () => (
                         <Route path="/calendar" element={<Calendar />} />
                         <Route path="/weekly-report" element={<WeeklyBodyReport />} />
                         <Route path="/profile" element={<Profile />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/about" element={<About />} />
                         <Route path="/contact" element={<Contact />} />
                         <Route path="*" element={<NotFound />} />

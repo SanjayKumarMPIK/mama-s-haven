@@ -173,7 +173,11 @@ export default function HamburgerMenu({
 
             {/* Navigation items */}
             <nav className="space-y-2" aria-label="Secondary navigation">
-              {SECONDARY_ITEMS.filter(item => phase === "maternity" || item.to !== "/pregnancy-dashboard").map((item) => (
+              {SECONDARY_ITEMS.filter(item => {
+                if (item.to === "/pregnancy-dashboard" && phase !== "maternity") return false;
+                if (item.to === "/dashboard" && phase !== "puberty") return false;
+                return true;
+              }).map((item) => (
                 <NavItem
                   key={item.to}
                   to={item.to}

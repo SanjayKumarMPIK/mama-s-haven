@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useProfile } from "@/hooks/useProfile";
 import { usePhase } from "@/hooks/usePhase";
 import { useAuth } from "@/hooks/useAuth";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   User,
@@ -225,6 +225,20 @@ export default function ProfilePage() {
   const { profile, updateWeight, updateHeight, updatePeriodDuration } = useProfile();
   const { phase, phaseName, phaseEmoji, phaseColor } = usePhase();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const isSetup = searchParams.get("setup") === "true";
+  
+  const handleFinishSetup = () => {
+    if (profile.weight === null || profile.height === null) {
+      toast.error("Please add your weight and height to finish the setup profile", {
+        description: "This will help us calculate your BMI and personalize recommendations."
+      });
+      return;
+    }
+    navigate("/");
+  };
 
   const showCycleSettings = phase === "puberty" || phase === "family-planning";
 
@@ -271,14 +285,16 @@ export default function ProfilePage() {
       <div className="bg-gradient-to-br from-violet-50 via-pink-50/30 to-white border-b border-border/60">
         <div className="container py-6">
           <div className="flex items-center gap-3 mb-4">
-            <Link
-              to="/"
-              className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted border border-border/40 transition-colors"
-              aria-label="Back to home"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Link>
-            <h1 className="text-xl font-bold">My Profile</h1>
+            {!isSetup && (
+              <Link
+                to="/"
+                className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted border border-border/40 transition-colors"
+                aria-label="Back to home"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+            )}
+            <h1 className="text-xl font-bold">{isSetup ? "Setup Your Profile" : "My Profile"}</h1>
           </div>
 
           {/* Avatar + Name */}
@@ -537,6 +553,18 @@ export default function ProfilePage() {
             To update your name, DOB, or location, please re-register.
           </p>
         </div>
+
+        {/* ── Finish Setup Button ──────────────────────────────────── */}
+        {isSetup && (
+          <div className="pt-4 pb-8 flex justify-center">
+            <button
+              onClick={handleFinishSetup}
+              className="w-full max-w-sm rounded-xl py-4 bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/30 hover:bg-primary/90 transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
+            >
+              Finish Setup & Go to Home
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );

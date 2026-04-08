@@ -5,12 +5,24 @@ import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 import type { ReactNode } from "react";
 
 /**
- * AuthGate enforces login → onboarding → dashboard flow.
+ * AuthGate enforces login → onboarding → profile setup → dashboard flow.
  *
  * - Not logged in → redirect to /login (except /login, /register, /emergency)
  * - Logged in + onboarding incomplete → show OnboardingFlow overlay
- * - Logged in + onboarding complete → render children normally
+ * - Logged in + profile unconfigured → redirect to /profile
+ * - Logged in + everything complete → render children normally
  */
+function hasCompletedProfileSetup() {
+  try {
+    const raw = localStorage.getItem("ss-wellness-profile");
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return !!(parsed.weight && parsed.height);
+  } catch {
+    return false;
+  }
+}
+
 export default function AuthGate({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const { config, showOnboarding } = useOnboarding();
@@ -40,6 +52,12 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   // Logged in but on auth pages → redirect to dashboard
   if (location.pathname === "/login" || location.pathname === "/register") {
     return <Navigate to="/" replace />;
+  }
+
+  // Require profile setup (weight & height) before allowing access to the rest of the application
+  const isProfileComplete = hasCompletedProfileSetup();
+  if (!isProfileComplete && location.pathname !== "/profile") {
+    return <Navigate to="/profile?setup=true" replace />;
   }
 
   // Logged in → show onboarding if not completed (or if manually re-opened)

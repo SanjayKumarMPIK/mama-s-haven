@@ -7,6 +7,7 @@ import type { KeySymptomId } from "@/lib/symptomAnalysis";
 export type MoodType = "Good" | "Okay" | "Low";
 export type FlowIntensity = "Light" | "Medium" | "Heavy";
 export type FatigueLevel = "Low" | "Medium" | "High";
+export type SleepQuality = "Good" | "Okay" | "Poor";
 
 export interface PubertyEntry {
   phase: "puberty";
@@ -22,6 +23,8 @@ export interface PubertyEntry {
     breastTenderness: boolean;
   };
   mood: MoodType | null;
+  sleepHours: number | null;
+  sleepQuality: SleepQuality | null;
   notes?: string;
 }
 
@@ -30,6 +33,7 @@ export interface MaternityEntry {
   fatigueLevel: FatigueLevel | null;
   hydrationGlasses: number | null;
   sleepHours: number | null;
+  sleepQuality: SleepQuality | null;
   symptoms: {
     nausea: boolean;
     dizziness: boolean;
@@ -55,6 +59,7 @@ export interface FamilyPlanningEntry {
   };
   mood: MoodType | null;
   sleepHours: number | null;
+  sleepQuality: SleepQuality | null;
   notes?: string;
 }
 
@@ -69,6 +74,7 @@ export interface MenopauseEntry {
     fatigue: boolean;
   };
   sleepHours: number | null;
+  sleepQuality: SleepQuality | null;
   mood: MoodType | null;
   notes?: string;
 }
@@ -505,6 +511,8 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
               breastTenderness: false,
             },
             mood: null,
+            sleepHours: null,
+            sleepQuality: null,
           };
         }
         if (phase === "maternity") {
@@ -521,6 +529,7 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
               sleepDisturbance: false,
             },
             mood: null,
+            sleepQuality: null,
           };
         }
         if (phase === "family-planning") {
@@ -538,6 +547,7 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
             },
             mood: null,
             sleepHours: null,
+            sleepQuality: null,
           };
         }
         return {
@@ -551,6 +561,7 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
             fatigue: false,
           },
           sleepHours: null,
+          sleepQuality: null,
           mood: null,
         };
       };

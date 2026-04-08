@@ -431,6 +431,42 @@ export default function WellnessDashboard() {
     return tips.slice(0, 3);
   }, [recommendation]);
 
+  // Yesterday's sleep data
+  const yesterdaySleep = useMemo(() => {
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    const iso = yest.toISOString().slice(0, 10);
+    const entry = logs[iso] as any;
+    if (entry && entry.sleepHours != null) {
+      return { hours: Number(entry.sleepHours), quality: entry.sleepQuality };
+    }
+    return null;
+  }, [logs]);
+
+  const sleepInsights = useMemo(() => {
+    if (!yesterdaySleep) return null;
+    const poorSleep = yesterdaySleep.hours < 6 || yesterdaySleep.quality === "Poor";
+    const goodSleep = yesterdaySleep.hours >= 7 && (yesterdaySleep.quality === "Good" || !yesterdaySleep.quality);
+    if (poorSleep) return `Low energy (${yesterdaySleep.hours}h sleep last night)`;
+    if (goodSleep) return "Great energy (well rested)";
+    return null;
+  }, [yesterdaySleep]);
+
+  const sleepCorrelation = useMemo(() => {
+    if (!yesterdaySleep || !recommendation) return null;
+    const poorSleep = yesterdaySleep.hours < 6 || yesterdaySleep.quality === "Poor";
+    const goodSleep = yesterdaySleep.hours >= 7;
+    const syms = recommendation.dominantSymptoms.map(s => s.toLowerCase());
+    const hasCramps = syms.some(s => s.includes("cramp"));
+    const hasMood = syms.some(s => s.includes("mood"));
+
+    if (poorSleep && hasCramps) return "You experience stronger cramps when sleep is below 6 hours.";
+    if (poorSleep && hasMood) return "Mood drops on days after poor sleep.";
+    if (poorSleep) return "Your body needs more recovery time to reduce symptom severity.";
+    if (goodSleep) return "Energy improves when sleep exceeds 7 hours. Keep it up!";
+    return null;
+  }, [yesterdaySleep, recommendation]);
+
   // --- Setup phase ---
   if (!isProfileComplete || !recommendation) {
     return (
@@ -446,11 +482,15 @@ export default function WellnessDashboard() {
   const rec = recommendation;
 
   // Personalized insight line based on data context
-  const insightLine = rec.dominantSymptoms.length > 0
+  let insightLine = rec.dominantSymptoms.length > 0
     ? `Based on your recent ${rec.dominantSymptoms.join(", ").toLowerCase()} symptoms`
     : rec.cyclePhaseLabel
     ? `Tailored for your ${rec.cyclePhaseLabel.toLowerCase()}`
     : `Tailored for your ${phaseName.toLowerCase()} journey`;
+    
+  if (sleepInsights && sleepInsights.includes("Low energy")) {
+    insightLine = sleepInsights;
+  }
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
@@ -691,12 +731,45 @@ export default function WellnessDashboard() {
                   <Moon className="w-4 h-4 text-indigo-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold">Sleep</p>
-                  <p className="text-xs text-muted-foreground">For you</p>
+                  <p className="text-sm font-semibold">Sleep Analytics</p>
+                  <p className="text-xs text-muted-foreground">{yesterdaySleep ? "Based on last night" : "For you"}</p>
                 </div>
               </div>
-              <p className="text-2xl font-bold text-indigo-700">{rec.sleep.hours}</p>
-              <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{rec.sleep.tip}</p>
+              
+              {yesterdaySleep ? (
+                <>
+                  <div className="flex items-end gap-2 mb-3">
+                    <p className="text-2xl font-bold text-indigo-700">{yesterdaySleep.hours}h</p>
+                    <p className="text-sm text-indigo-500 font-medium pb-0.5">{yesterdaySleep.quality || "Logged"}</p>
+                  </div>
+                  {sleepCorrelation && (
+                    <div className="rounded-lg bg-indigo-50/50 p-3 mb-3 border border-indigo-100/50">
+                      <p className="text-xs text-indigo-900 font-medium leading-relaxed">💡 {sleepCorrelation}</p>
+                    </div>
+                  )}
+                  <div className="space-y-1.5 mt-2">
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">Actions</p>
+                    <p className="text-xs text-foreground/80 flex items-start gap-2">
+                      <span className="text-indigo-400 mt-0.5">•</span> Aim for 7-8 hours of sleep tonight
+                    </p>
+                    {(yesterdaySleep.hours < 6 || yesterdaySleep.quality === "Poor") && (
+                      <>
+                        <p className="text-xs text-foreground/80 flex items-start gap-2">
+                          <span className="text-indigo-400 mt-0.5">•</span> Avoid caffeine after 4 PM
+                        </p>
+                        <p className="text-xs text-foreground/80 flex items-start gap-2">
+                          <span className="text-indigo-400 mt-0.5">•</span> Wind down with low screen exposure before bed
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-2xl font-bold text-indigo-700">{rec.sleep.hours}</p>
+                  <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{rec.sleep.tip}</p>
+                </>
+              )}
             </div>
 
             {/* Activity */}

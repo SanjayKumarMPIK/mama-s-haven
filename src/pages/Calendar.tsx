@@ -2,7 +2,7 @@ import { useMemo, useState, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
 
@@ -597,6 +597,14 @@ function SymptomLogPanel({
     if (existingEntry && (existingEntry as any).mood) return (existingEntry as any).mood;
     return "";
   });
+  const [sleepHours, setSleepHours] = useState<number | "">(() => {
+    if (existingEntry && (existingEntry as any).sleepHours != null) return (existingEntry as any).sleepHours;
+    return "";
+  });
+  const [sleepQuality, setSleepQuality] = useState<"Good" | "Okay" | "Poor" | "">(() => {
+    if (existingEntry && (existingEntry as any).sleepQuality) return (existingEntry as any).sleepQuality;
+    return "";
+  });
   const [notes, setNotes] = useState<string>(() => {
     if (existingEntry && (existingEntry as any).notes) return (existingEntry as any).notes;
     return "";
@@ -640,10 +648,11 @@ function SymptomLogPanel({
     // Require at least one piece of data
     const hasSymptoms = Object.values(selectedSymptoms).some(Boolean);
     const hasMood = mood !== "";
+    const hasSleep = sleepHours !== "" || sleepQuality !== "";
     const hasNotes = notes.trim().length > 0;
     const hasPeriod = phase === "puberty" && periodStarted;
-    if (!hasSymptoms && !hasMood && !hasNotes && !hasPeriod) {
-      toast.error("Please select at least one symptom, mood, or add a note before saving.");
+    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod) {
+      toast.error("Please select at least one symptom, sleep log, mood, or add a note before saving.");
       return;
     }
 
@@ -652,6 +661,8 @@ function SymptomLogPanel({
     // Build the correct entry for the current phase
     let entry: HealthLogEntry;
     const moodValue = mood !== "" ? (mood as "Good" | "Okay" | "Low") : null;
+    const sleepHoursValue = sleepHours !== "" ? Number(sleepHours) : null;
+    const sleepQualityValue = sleepQuality !== "" ? (sleepQuality as "Good" | "Okay" | "Poor") : null;
 
     if (phase === "puberty") {
       entry = {
@@ -668,6 +679,8 @@ function SymptomLogPanel({
           breastTenderness: !!selectedSymptoms.breastTenderness,
         },
         mood: moodValue,
+        sleepHours: sleepHoursValue,
+        sleepQuality: sleepQualityValue,
         notes: notes || undefined,
       };
     } else if (phase === "maternity") {
@@ -675,7 +688,8 @@ function SymptomLogPanel({
         phase: "maternity",
         fatigueLevel: selectedSymptoms.fatigue ? "Medium" : null,
         hydrationGlasses: null,
-        sleepHours: null,
+        sleepHours: sleepHoursValue,
+        sleepQuality: sleepQualityValue,
         symptoms: {
           nausea: !!selectedSymptoms.nausea,
           dizziness: !!selectedSymptoms.dizziness,
@@ -701,7 +715,8 @@ function SymptomLogPanel({
           sleepIssues: !!selectedSymptoms.sleepIssues,
         },
         mood: moodValue,
-        sleepHours: null,
+        sleepHours: sleepHoursValue,
+        sleepQuality: sleepQualityValue,
         notes: notes || undefined,
       };
     } else {
@@ -716,7 +731,8 @@ function SymptomLogPanel({
           sleepDisturbance: !!selectedSymptoms.sleepDisturbance,
           fatigue: !!selectedSymptoms.fatigue,
         },
-        sleepHours: null,
+        sleepHours: sleepHoursValue,
+        sleepQuality: sleepQualityValue,
         mood: moodValue,
         notes: notes || undefined,
       };
@@ -901,6 +917,52 @@ function SymptomLogPanel({
                   {m === "Good" ? "😊" : m === "Okay" ? "😐" : "😔"} {m}
                 </button>
               ))}
+            </div>
+          </section>
+
+          {/* Sleep Tracking */}
+          <section className="space-y-4 rounded-xl border border-border bg-card p-4">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              <Moon className="w-4 h-4 text-indigo-500" />
+              Sleep Tracking
+            </h3>
+            
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-foreground">Duration (hours)</span>
+                <span className="text-sm font-bold text-indigo-700">{sleepHours !== "" ? sleepHours : "–"} h</span>
+              </div>
+              <input 
+                type="range" 
+                min="0" max="15" step="0.5" 
+                value={sleepHours !== "" ? sleepHours : 0} 
+                onChange={(e) => setSleepHours(Number(e.target.value))} 
+                className="w-full accent-indigo-500"
+              />
+              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+                <span>0h</span><span>5h</span><span>10h+</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
+              <span className="text-xs font-medium text-foreground">Quality</span>
+              <div className="flex gap-2">
+                {(["Good", "Okay", "Poor"] as const).map((q) => (
+                  <button
+                    key={q}
+                    type="button"
+                    onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
+                    className={cn(
+                      "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
+                      sleepQuality === q
+                        ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                        : "bg-background border-border hover:bg-muted/50 text-foreground"
+                    )}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
 

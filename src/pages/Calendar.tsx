@@ -61,12 +61,61 @@ function formatDisplayDate(iso: string): string {
   return d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
-/** Check if a date is a period day (puberty phase with periodStarted) */
+/** Check if a date is a period day (puberty phase with periodStarted or auto-marked) */
 function isPeriodDay(entry: HealthLogEntry | undefined): boolean {
   if (!entry) return false;
   if (entry.phase !== "puberty") return false;
   const e = entry as PubertyEntry;
   return e.periodStarted || !!(e as any)._periodAutoMarked;
+}
+
+/** Check if a date is a period START day (not a continuation day) */
+function isPeriodStartDay(entry: HealthLogEntry | undefined): boolean {
+  if (!entry) return false;
+  if (entry.phase !== "puberty") return false;
+  return (entry as PubertyEntry).periodStarted === true;
+}
+
+/** Check if a date is an auto-marked continuation day (not a manual start) */
+function isAutoMarkedContinuation(entry: HealthLogEntry | undefined): boolean {
+  if (!entry) return false;
+  if (entry.phase !== "puberty") return false;
+  return !!(entry as any)._periodAutoMarked && !(entry as PubertyEntry).periodStarted;
+}
+
+/**
+ * Check if a date falls within any existing period range in logs.
+ * Returns the start date ISO of the range it belongs to, or null.
+ */
+function findPeriodRangeForDate(dateISO: string, logs: HealthLogs): string | null {
+  // Find all period start dates
+  const periodStarts = Object.entries(logs)
+    .filter(([, e]) => e.phase === "puberty" && (e as PubertyEntry).periodStarted)
+    .map(([d]) => d)
+    .sort();
+
+  for (const startISO of periodStarts) {
+    // Check if dateISO is on or after this start, and within a reasonable period window (max 10 days)
+    const startMs = new Date(startISO + "T12:00:00").getTime();
+    const dateMs = new Date(dateISO + "T12:00:00").getTime();
+    const dayDiff = Math.round((dateMs - startMs) / (1000 * 60 * 60 * 24));
+    if (dayDiff >= 0 && dayDiff < 10) {
+      // Check if consecutive auto-marked days exist from start to this date
+      let inRange = true;
+      for (let d = 1; d <= dayDiff; d++) {
+        const checkDate = new Date(startISO + "T12:00:00");
+        checkDate.setDate(checkDate.getDate() + d);
+        const checkISO = checkDate.toISOString().slice(0, 10);
+        const checkEntry = logs[checkISO];
+        if (!isPeriodDay(checkEntry)) {
+          inRange = false;
+          break;
+        }
+      }
+      if (inRange) return startISO;
+    }
+  }
+  return null;
 }
 
 /** Check if a date has any logged data at all (symptoms OR mood OR notes) */
@@ -136,7 +185,7 @@ function buildTooltipForEntry(entry: HealthLogEntry | undefined): string | undef
 // ─── Calendar Page Component ──────────────────────────────────────────────────
 
 export default function CalendarPage() {
-  const { logs, saveLog, saveBulkLogs, getLog } = useHealthLog();
+  const { logs, saveLog, saveBulkLogs, getLog, clearAllLogs } = useHealthLog();
   const { phase } = usePhase();
   const { profile } = useProfile();
 
@@ -449,6 +498,19 @@ export default function CalendarPage() {
               <p className="text-sm text-muted-foreground mt-1">
                 Log symptoms by date and power analytics instantly.
               </p>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm("Are you sure you want to clear all your health logs? This action cannot be undone.")) {
+                    clearAllLogs();
+                    toast.success("All data logs cleared successfully");
+                  }
+                }}
+                className="mt-3 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear All Data
+              </button>
             </div>
 
             <div className="flex items-center gap-3">
@@ -538,7 +600,6 @@ export default function CalendarPage() {
             onSaveBulk={saveBulkLogs}
             getLog={getLog}
             periodDuration={profile.periodDuration}
-            cycleLength={profile.cycleLength ?? 28}
           />
         )}
       </div>
@@ -559,7 +620,6 @@ interface SymptomLogPanelProps {
   onSaveBulk: (entries: Record<string, HealthLogEntry>) => void;
   getLog: (dateISO: string) => HealthLogEntry | undefined;
   periodDuration: number;
-  cycleLength: number;
 }
 
 const SYMPTOM_TIME_OPTIONS: { value: SymptomTime; label: string }[] = [
@@ -581,7 +641,6 @@ function SymptomLogPanel({
   onSaveBulk,
   getLog,
   periodDuration,
-  cycleLength,
 }: SymptomLogPanelProps) {
   const existingEntry = getLog(dateISO);
 
@@ -611,12 +670,27 @@ function SymptomLogPanel({
   });
   const [selectedAnalyticsId, setSelectedAnalyticsId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Determine if this date is already within an existing period range
+  const existingPeriodRange = useMemo(() => findPeriodRangeForDate(dateISO, logs), [dateISO, logs]);
+  const isExistingPeriodStart = isPeriodStartDay(existingEntry);
+  const isExistingContinuation = isAutoMarkedContinuation(existingEntry);
+  const isWithinExistingRange = existingPeriodRange !== null;
+
+  // Period Started toggle should only reflect actual period start status (not continuation days)
   const [periodStarted, setPeriodStarted] = useState<boolean>(() => {
     if (existingEntry?.phase === "puberty") {
-      return (existingEntry as PubertyEntry).periodStarted || !!(existingEntry as any)._periodAutoMarked;
+      // Only show as "started" if this is an actual period start date
+      return (existingEntry as PubertyEntry).periodStarted === true;
     }
     return false;
   });
+
+  // Track whether the user explicitly changed the period toggle in this session
+  const [periodToggleChanged, setPeriodToggleChanged] = useState(false);
+  const handlePeriodToggle = useCallback((checked: boolean) => {
+    setPeriodStarted(checked);
+    setPeriodToggleChanged(true);
+  }, []);
 
   const activeSymptomIds = useMemo(
     () => Object.entries(selectedSymptoms).filter(([, v]) => v).map(([k]) => k),
@@ -738,63 +812,89 @@ function SymptomLogPanel({
       };
     }
 
+    // If this date is within an existing period range and user didn't explicitly toggle period,
+    // preserve the period markers from the existing entry
+    if (phase === "puberty" && isWithinExistingRange && !periodToggleChanged) {
+      if (existingEntry?.phase === "puberty") {
+        (entry as any).periodStarted = (existingEntry as PubertyEntry).periodStarted;
+        if ((existingEntry as any)._periodAutoMarked) {
+          (entry as any)._periodAutoMarked = true;
+        }
+      }
+    }
+
     onSave(dateISO, entry);
 
-    // Auto-mark ALL future period windows for 12 months using cycle length
-    if (phase === "puberty" && periodStarted) {
-      const bulkEntries: Record<string, HealthLogEntry> = {};
-      const startDate = new Date(dateISO + "T12:00:00");
-      const endDate = new Date(startDate);
-      endDate.setFullYear(endDate.getFullYear() + 1); // Project 12 months ahead
+    // Only auto-mark period days when:
+    // 1. Phase is puberty
+    // 2. User explicitly toggled "Period Started" ON in this session
+    // 3. This is a NEW period start (not re-saving an existing one)
+    const isNewPeriodStart = phase === "puberty" 
+      && periodStarted 
+      && periodToggleChanged 
+      && !isExistingPeriodStart;
 
-      let cycleStart = new Date(startDate);
-      let totalCyclesMarked = 0;
+    if (isNewPeriodStart) {
+      // Check for overlapping period ranges — prevent if another period start is too close
+      const existingStarts = Object.entries(logs)
+        .filter(([, e]) => e.phase === "puberty" && (e as PubertyEntry).periodStarted)
+        .map(([d]) => d)
+        .sort();
 
-      while (cycleStart < endDate) {
-        // For each cycle, mark the period duration days
-        for (let dayOffset = 0; dayOffset < periodDuration; dayOffset++) {
-          const periodDay = new Date(cycleStart);
+      const startMs = new Date(dateISO + "T12:00:00").getTime();
+      const hasOverlap = existingStarts.some((s) => {
+        const sMs = new Date(s + "T12:00:00").getTime();
+        const dayDiff = Math.abs(Math.round((sMs - startMs) / (1000 * 60 * 60 * 24)));
+        return dayDiff > 0 && dayDiff < periodDuration; // Too close to another cycle start
+      });
+
+      if (hasOverlap) {
+        toast.warning("Period range overlaps with an existing cycle", {
+          description: "This date is too close to another period start. Adjust the existing cycle or choose a different date.",
+        });
+      } else {
+        // Mark ONLY the current cycle's period duration days (not 12 months of predictions)
+        const bulkEntries: Record<string, HealthLogEntry> = {};
+
+        for (let dayOffset = 1; dayOffset < periodDuration; dayOffset++) {
+          const periodDay = new Date(dateISO + "T12:00:00");
           periodDay.setDate(periodDay.getDate() + dayOffset);
           const periodISO = periodDay.toISOString().slice(0, 10);
 
-          // Skip the original start date (already saved above)
-          if (periodISO === dateISO) continue;
-
           // Don't overwrite existing manually-set period starts
-          const existing = logs[periodISO];
-          if (existing && existing.phase === "puberty" && (existing as PubertyEntry).periodStarted && !(existing as any)._periodAutoMarked) {
+          const existingLog = logs[periodISO];
+          if (existingLog && existingLog.phase === "puberty" && (existingLog as PubertyEntry).periodStarted && !(existingLog as any)._periodAutoMarked) {
             continue;
           }
 
           // Merge with existing entry data or create new
-          const base: any = existing?.phase === "puberty" ? { ...existing } : {
+          const base: any = existingLog?.phase === "puberty" ? { ...existingLog } : {
             phase: "puberty",
             periodStarted: false,
-            periodEnded: false,
+            periodEnded: dayOffset === periodDuration - 1, // Last day is period end
             flowIntensity: null,
             symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
             mood: null,
           };
           base._periodAutoMarked = true;
-          // First day of each cycle is the predicted start, rest are continuation
-          base.periodStarted = dayOffset === 0;
+          base.periodStarted = false; // Continuation days are NOT start days
+          base.periodEnded = dayOffset === periodDuration - 1;
           bulkEntries[periodISO] = base as HealthLogEntry;
         }
 
-        totalCyclesMarked++;
+        if (Object.keys(bulkEntries).length > 0) {
+          onSaveBulk(bulkEntries);
+        }
 
-        // Move to next cycle start
-        cycleStart = new Date(cycleStart);
-        cycleStart.setDate(cycleStart.getDate() + cycleLength);
+        const totalDaysMarked = Object.keys(bulkEntries).length + 1; // +1 for the start day
+        toast.success(`Period marked for ${totalDaysMarked} days`, {
+          description: `${periodDuration}-day period starting ${formatDisplayDate(dateISO)}. Log "Period Started" again on your next cycle's first day.`,
+        });
       }
-
-      if (Object.keys(bulkEntries).length > 0) {
-        onSaveBulk(bulkEntries);
-      }
-
-      const totalDaysMarked = Object.keys(bulkEntries).length + 1; // +1 for the original date
-      toast.success(`Period projected for ${totalCyclesMarked} cycles over the next 12 months`, {
-        description: `${totalDaysMarked} day(s) marked based on ${cycleLength}-day cycle. You can edit any day to adjust for irregularity or pregnancy.`,
+    } else if (phase === "puberty" && periodStarted && isExistingPeriodStart && !periodToggleChanged) {
+      // Re-saving an existing period start without toggling — just save symptoms, no re-projection
+      toast.success(`Symptoms updated for ${formatDisplayDate(dateISO)}`, {
+        description: "Period start preserved. Symptoms and mood updated.",
       });
     } else {
       toast.success(`Symptoms logged for ${formatDisplayDate(dateISO)}`, {
@@ -840,24 +940,38 @@ function SymptomLogPanel({
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
           {/* Period Start Toggle (Puberty only) */}
           {phase === "puberty" && (
-            <section className="rounded-xl border-2 border-pink-200 bg-gradient-to-r from-pink-50 to-rose-50 p-4">
+            <section className={cn(
+              "rounded-xl border-2 p-4",
+              isExistingContinuation
+                ? "border-pink-100 bg-gradient-to-r from-pink-50/50 to-rose-50/50 opacity-75"
+                : "border-pink-200 bg-gradient-to-r from-pink-50 to-rose-50"
+            )}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
                     <Droplets className="w-5 h-5 text-pink-600" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-pink-900">Period Started</p>
+                    <p className="text-sm font-semibold text-pink-900">
+                      {isExistingContinuation
+                        ? "Period Day (auto-marked)"
+                        : isExistingPeriodStart
+                        ? "Period Start Day"
+                        : "Period Started"}
+                    </p>
                     <p className="text-[11px] text-pink-600">
-                      {periodStarted
-                        ? `Will auto-mark ${periodDuration}-day periods every ${cycleLength} days for 12 months`
+                      {isExistingContinuation
+                        ? `Part of period starting ${existingPeriodRange ?? "unknown"}. Log symptoms without affecting the period range.`
+                        : periodStarted
+                        ? `Will mark ${periodDuration} days as period starting this date`
                         : "Toggle if your period started on this day"}
                     </p>
                   </div>
                 </div>
                 <Switch
                   checked={periodStarted}
-                  onCheckedChange={setPeriodStarted}
+                  onCheckedChange={handlePeriodToggle}
+                  disabled={isExistingContinuation}
                   className="data-[state=checked]:bg-pink-500"
                 />
               </div>

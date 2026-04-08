@@ -99,7 +99,7 @@ export default function Register() {
     if (success) {
       setShowSuccess(true);
       // Auto-redirect after showing success
-      setTimeout(() => navigate("/"), 3500);
+      setTimeout(() => navigate("/profile?setup=true"), 3500);
     }
     setIsLoading(false);
   };
@@ -131,13 +131,13 @@ export default function Register() {
               </p>
             </div>
             <p className="mt-6 text-sm text-slate-500 animate-pulse">
-              Redirecting to your personalized dashboard…
+              Redirecting to your profile setup…
             </p>
             <button 
-              onClick={() => navigate("/")} 
+              onClick={() => navigate("/profile?setup=true")} 
               className="mt-4 text-sm font-semibold text-primary hover:underline"
             >
-              Go to Dashboard now →
+              Go to Profile Setup now →
             </button>
           </div>
         </div>

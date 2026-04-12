@@ -195,7 +195,6 @@ export default function CalendarPage() {
   const [month0, setMonth0] = useState(now.getMonth());
   const [selectedDateISO, setSelectedDateISO] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
-  const [loggingDuringPeriod, setLoggingDuringPeriod] = useState(true);
 
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -516,18 +515,10 @@ export default function CalendarPage() {
             <div className="flex items-center gap-3">
               {mode === "year" ? (
                 <div className="flex items-center gap-2 border border-border/50 rounded-xl bg-background px-2 py-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setYear((y) => y - 1)}
-                    className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
-                    aria-label="Previous year"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
                   <select
                     value={year}
                     onChange={(e) => setYear(Number(e.target.value))}
-                    className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm font-semibold"
+                    className="rounded-lg border-0 bg-transparent px-2 py-1 text-sm font-semibold focus:ring-0 focus:outline-none flex-1 text-center"
                     aria-label="Select year"
                   >
                     {Array.from({ length: 8 }, (_, i) => now.getFullYear() - 2 + i).map((y) => (
@@ -536,14 +527,6 @@ export default function CalendarPage() {
                       </option>
                     ))}
                   </select>
-                  <button
-                    type="button"
-                    onClick={() => setYear((y) => y + 1)}
-                    className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors"
-                    aria-label="Next year"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 border border-border/50 rounded-xl bg-background px-2 py-1.5">
@@ -568,18 +551,6 @@ export default function CalendarPage() {
                 ? "Hover to see symptom summaries. Click any date to log or edit."
                 : "Use arrows to navigate months. Click a date to log symptoms."}
             </p>
-            {phase === "puberty" && (
-              <div className="mt-4 flex items-center gap-3 rounded-xl border border-border/60 bg-background px-4 py-3 max-w-md">
-                <Switch
-                  id="period-phase-log"
-                  checked={loggingDuringPeriod}
-                  onCheckedChange={setLoggingDuringPeriod}
-                />
-                <Label htmlFor="period-phase-log" className="text-sm font-medium leading-snug cursor-pointer">
-                  Log these entries as period-phase symptoms
-                </Label>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -594,7 +565,6 @@ export default function CalendarPage() {
             phase={phase}
             logs={logs}
             symptomOptions={symptomOptions}
-            loggingDuringPeriod={loggingDuringPeriod}
             onClose={() => setModalOpen(false)}
             onSave={saveLog}
             onSaveBulk={saveBulkLogs}
@@ -615,7 +585,6 @@ interface SymptomLogPanelProps {
   phase: Phase;
   logs: HealthLogs;
   symptomOptions: { id: string; label: string }[];
-  loggingDuringPeriod: boolean;
   onClose: () => void;
   onSave: (dateISO: string, entry: HealthLogEntry) => void;
   onSaveBulk: (entries: Record<string, HealthLogEntry>) => void;
@@ -637,7 +606,6 @@ function SymptomLogPanel({
   phase,
   logs,
   symptomOptions,
-  loggingDuringPeriod,
   onClose,
   onSave,
   onSaveBulk,

@@ -222,7 +222,7 @@ function InfoRow({
 // ─── Main Profile Page ────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const { profile, updateWeight, updateHeight, updatePeriodDuration } = useProfile();
+  const { profile, updateWeight, updateHeight, updateCycleConfig } = useProfile();
   const { phase, phaseName, phaseEmoji, phaseColor } = usePhase();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -460,13 +460,35 @@ export default function ProfilePage() {
                 iconBg="bg-pink-50"
                 iconColor="text-pink-600"
               />
-              <InfoRow
-                icon={Activity}
-                label="Average Cycle Length"
-                value={profile.cycleLength ? `${profile.cycleLength} days` : "Not recorded"}
-                iconBg="bg-purple-50"
-                iconColor="text-purple-600"
-              />
+              {/* Cycle Length Slider */}
+              <div className="rounded-xl border border-border bg-background p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-purple-600" />
+                    <p className="text-sm font-semibold">Average Cycle Length</p>
+                  </div>
+                  <span className="text-lg font-bold text-purple-700">{profile.cycleLength || 28} days</span>
+                </div>
+                <input
+                  type="range"
+                  min={15}
+                  max={45}
+                  step={1}
+                  value={profile.cycleLength || 28}
+                  onChange={(e) => updateCycleConfig(profile.periodDuration, parseInt(e.target.value, 10))}
+                  className="w-full h-2 rounded-full appearance-none bg-gradient-to-r from-purple-200 to-purple-500 cursor-pointer
+                    [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-purple-600 [&::-webkit-slider-thumb]:shadow-md
+                    [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-purple-600 [&::-moz-range-thumb]:shadow-md"
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5 px-0.5">
+                  <span>15</span>
+                  <span>28</span>
+                  <span>45</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2">
+                  This helps predict your upcoming cycles accurately.
+                </p>
+              </div>
 
               {/* Period Duration Slider */}
               <div className="rounded-xl border border-border bg-background p-4">
@@ -483,7 +505,7 @@ export default function ProfilePage() {
                   max={7}
                   step={1}
                   value={profile.periodDuration}
-                  onChange={(e) => updatePeriodDuration(parseInt(e.target.value, 10))}
+                  onChange={(e) => updateCycleConfig(parseInt(e.target.value, 10), profile.cycleLength || 28)}
                   className="w-full h-2 rounded-full appearance-none bg-gradient-to-r from-pink-200 to-pink-400 cursor-pointer
                     [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-pink-500 [&::-webkit-slider-thumb]:shadow-md
                     [&::-moz-range-thumb]:w-5 [&::-moz-range-thumb]:h-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-pink-500 [&::-moz-range-thumb]:shadow-md"

@@ -7,6 +7,7 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 
 export interface ProfileExtras {
   periodDuration: number; // 3-7 days, default 5
+  cycleLength: number;    // 21-35 days, default 28
 }
 
 export interface ProfileData {
@@ -56,10 +57,11 @@ function readExtras(): ProfileExtras {
       const parsed = JSON.parse(raw);
       return {
         periodDuration: parsed.periodDuration ?? 5,
+        cycleLength: parsed.cycleLength ?? 28,
       };
     }
   } catch {}
-  return { periodDuration: 5 };
+  return { periodDuration: 5, cycleLength: 28 };
 }
 
 function writeExtras(extras: ProfileExtras) {
@@ -146,7 +148,7 @@ export function useProfile() {
     const bmi = computeBMI(weight, height);
     const bmiCategory = getBMICategory(bmi);
 
-    const cycleLength = health?.cycleLength ? parseInt(health.cycleLength, 10) : (config.age ? null : null);
+    const cycleLength = extras.cycleLength ?? (health?.cycleLength ? parseInt(health.cycleLength, 10) : 28);
     const lastPeriodDate = health?.lastPeriodDate ?? "";
     const periodDuration = extras.periodDuration;
 
@@ -203,9 +205,10 @@ export function useProfile() {
     setWellnessProfile(updated);
   }, []);
 
-  const updatePeriodDuration = useCallback((days: number) => {
-    const clamped = Math.max(3, Math.min(7, days));
-    const updated = { ...extras, periodDuration: clamped };
+  const updateCycleConfig = useCallback((days: number, cycle: number) => {
+    const clampedDur = Math.max(1, Math.min(10, days));
+    const clampedCycle = Math.max(15, Math.min(45, cycle));
+    const updated = { ...extras, periodDuration: clampedDur, cycleLength: clampedCycle };
     writeExtras(updated);
     setExtras(updated);
   }, [extras]);
@@ -214,6 +217,6 @@ export function useProfile() {
     profile,
     updateWeight,
     updateHeight,
-    updatePeriodDuration,
+    updateCycleConfig,
   };
 }

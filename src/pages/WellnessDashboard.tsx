@@ -6,6 +6,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { SYMPTOM_FOOD_BOOSTS } from "@/lib/wellnessEngine";
+import { computeDailyRecommendations } from "@/lib/dailyStateEngine";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import type { Region } from "@/lib/nutritionData";
@@ -34,6 +35,13 @@ import {
   Clock,
   Zap,
   Sun,
+  Dumbbell,
+  UtensilsCrossed,
+  Brain,
+  BatteryCharging,
+  Check,
+  X,
+  Lightbulb,
 } from "lucide-react";
 
 // ─── Region config ────────────────────────────────────────────────────────────
@@ -390,7 +398,7 @@ function ProfileStrip({
 
 export default function WellnessDashboard() {
   const { simpleMode } = useLanguage();
-  const { phaseEmoji, phaseName, phaseColor } = usePhase();
+  const { phase, phaseEmoji, phaseName, phaseColor } = usePhase();
   const { user, fullProfile } = useAuth();
   const { logs } = useHealthLog();
   const {
@@ -466,6 +474,11 @@ export default function WellnessDashboard() {
     if (goodSleep) return "Energy improves when sleep exceeds 7 hours. Keep it up!";
     return null;
   }, [yesterdaySleep, recommendation]);
+
+  // 5. Daily State Engine — Hormone → Performance Translator
+  const dailyRec = useMemo(() => {
+    return computeDailyRecommendations(logs, phase, recommendation?.cyclePhase ?? null);
+  }, [logs, phase, recommendation]);
 
   // --- Setup phase ---
   if (!isProfileComplete || !recommendation) {
@@ -585,7 +598,7 @@ export default function WellnessDashboard() {
           </ScrollReveal>
         )}
 
-        {/* ── Today's Focus (Hero Card) ────────────────────────────────────── */}
+        {/* ── Today's Focus — Hormone → Performance Translator ───────────── */}
         <ScrollReveal delay={60}>
           <div
             id="wellness-focus"
@@ -597,10 +610,23 @@ export default function WellnessDashboard() {
             <div className="absolute top-1/2 right-12 w-16 h-16 rounded-full bg-white/5" />
 
             <div className="relative">
+              {/* Title + Execution Mode */}
               <p className="text-xs font-semibold text-white/80 uppercase tracking-wider mb-1">
                 {firstName ? `${firstName}'s Focus for Today` : "Today's Focus"}
               </p>
-              <p className="text-lg font-bold leading-snug">{rec.todayFocus}</p>
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider rounded-full px-3 py-1 backdrop-blur-md ${
+                  dailyRec.executionMode === "Recovery Day"
+                    ? "bg-amber-400/30 text-amber-100 border border-amber-300/30"
+                    : dailyRec.executionMode === "Peak Performance Day"
+                    ? "bg-emerald-300/30 text-emerald-100 border border-emerald-200/30"
+                    : "bg-white/20 text-white/90 border border-white/20"
+                }`}>
+                  {dailyRec.executionMode === "Recovery Day" ? "🛌" : dailyRec.executionMode === "Peak Performance Day" ? "⚡" : "⚖️"}
+                  {dailyRec.executionMode}
+                </span>
+              </div>
+              <p className="text-lg font-bold leading-snug">{dailyRec.summary}</p>
 
               {rec.dominantSymptoms.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-3">
@@ -614,6 +640,110 @@ export default function WellnessDashboard() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ── Why This Recommendation ──────────────────────────────────────── */}
+        <ScrollReveal delay={70}>
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+              Why this recommendation
+            </p>
+            <div className="space-y-2">
+              {dailyRec.why.map((reason, i) => (
+                <div key={i} className="flex items-start gap-2">
+                  <span className="w-5 h-5 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
+                    {i + 1}
+                  </span>
+                  <p className="text-xs text-foreground/80 leading-relaxed">{reason}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ── Today's Plan (4 categories) ─────────────────────────────────── */}
+        <ScrollReveal delay={75}>
+          <div className="rounded-2xl border border-border bg-card p-4">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-3">
+              Today's Plan
+            </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              <div className="rounded-xl bg-green-50 border border-green-100 p-3">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Dumbbell className="w-3.5 h-3.5 text-green-600" />
+                  <p className="text-[10px] font-bold text-green-700 uppercase">Movement</p>
+                </div>
+                <p className="text-xs text-green-900/80 leading-snug">{dailyRec.plan.movement}</p>
+              </div>
+              <div className="rounded-xl bg-orange-50 border border-orange-100 p-3">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <UtensilsCrossed className="w-3.5 h-3.5 text-orange-600" />
+                  <p className="text-[10px] font-bold text-orange-700 uppercase">Nutrition</p>
+                </div>
+                <p className="text-xs text-orange-900/80 leading-snug">{dailyRec.plan.nutrition}</p>
+              </div>
+              <div className="rounded-xl bg-violet-50 border border-violet-100 p-3">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <Brain className="w-3.5 h-3.5 text-violet-600" />
+                  <p className="text-[10px] font-bold text-violet-700 uppercase">Productivity</p>
+                </div>
+                <p className="text-xs text-violet-900/80 leading-snug">{dailyRec.plan.productivity}</p>
+              </div>
+              <div className="rounded-xl bg-sky-50 border border-sky-100 p-3">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <BatteryCharging className="w-3.5 h-3.5 text-sky-600" />
+                  <p className="text-[10px] font-bold text-sky-700 uppercase">Recovery</p>
+                </div>
+                <p className="text-xs text-sky-900/80 leading-snug">{dailyRec.plan.recovery}</p>
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ── Do / Avoid ──────────────────────────────────────────────────── */}
+        <ScrollReveal delay={80}>
+          <div className="grid grid-cols-2 gap-3">
+            {/* DO */}
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4">
+              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-2.5 flex items-center gap-1">
+                <Check className="w-3.5 h-3.5" /> Do
+              </p>
+              <div className="space-y-2">
+                {dailyRec.doItems.map((item, i) => (
+                  <p key={i} className="text-[11px] text-emerald-900/80 flex items-start gap-1.5 leading-snug">
+                    <span className="text-emerald-400 shrink-0 mt-0.5">✦</span>
+                    {item}
+                  </p>
+                ))}
+              </div>
+            </div>
+            {/* AVOID */}
+            <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4">
+              <p className="text-[10px] font-bold text-red-700 uppercase tracking-wider mb-2.5 flex items-center gap-1">
+                <X className="w-3.5 h-3.5" /> Avoid
+              </p>
+              <div className="space-y-2">
+                {dailyRec.avoidItems.map((item, i) => (
+                  <p key={i} className="text-[11px] text-red-900/80 flex items-start gap-1.5 leading-snug">
+                    <span className="text-red-300 shrink-0 mt-0.5">✕</span>
+                    {item}
+                  </p>
+                ))}
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ── Prediction ──────────────────────────────────────────────────── */}
+        <ScrollReveal delay={85}>
+          <div className="rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 p-3.5 flex items-start gap-2.5">
+            <TrendingUp className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-0.5">Prediction</p>
+              <p className="text-xs text-indigo-900/80 leading-relaxed">{dailyRec.prediction}</p>
             </div>
           </div>
         </ScrollReveal>

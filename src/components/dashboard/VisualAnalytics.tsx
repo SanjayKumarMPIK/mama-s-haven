@@ -79,13 +79,26 @@ export default function VisualAnalytics({ pubertyLogs }: { pubertyLogs: PubertyL
   const [range, setRange] = useState<TimeRange>("weekly");
   const [tab, setTab] = useState<ChartTab>("mood");
 
-  const sliceCount = range === "weekly" ? 7 : 30;
+  // Create two separate timestamp-filtered datasets
+  const last7DaysData = useMemo(() => {
+    const now = new Date();
+    const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+    return pubertyLogs.filter((log) => new Date(log.date) >= cutoff);
+  }, [pubertyLogs]);
 
-  // Build chart data
+  const last30DaysData = useMemo(() => {
+    const now = new Date();
+    const cutoff = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 30);
+    return pubertyLogs.filter((log) => new Date(log.date) >= cutoff);
+  }, [pubertyLogs]);
+
+  // Select the correct dataset based on the active time range
+  const filteredLogs = range === "weekly" ? last7DaysData : last30DaysData;
+
+  // Build chart data from the filtered dataset — recomputed on every range/tab change
   const chartData = useMemo(() => {
-    return pubertyLogs
-      .slice(0, sliceCount)
-      .reverse()
+    return [...filteredLogs]
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map((log) => ({
         date: shortDate(log.date),
         mood: moodScore(log.entry.mood),
@@ -97,7 +110,7 @@ export default function VisualAnalytics({ pubertyLogs }: { pubertyLogs: PubertyL
         headache: log.entry.symptoms.headache ? 1 : 0,
         acne: log.entry.symptoms.acne ? 1 : 0,
       }));
-  }, [pubertyLogs, sliceCount]);
+  }, [filteredLogs]);
 
   const tabs: { id: ChartTab; label: string; color: string }[] = [
     { id: "mood", label: "Mood", color: "from-violet-500 to-purple-600" },
@@ -105,7 +118,7 @@ export default function VisualAnalytics({ pubertyLogs }: { pubertyLogs: PubertyL
     { id: "symptoms", label: "Symptoms", color: "from-rose-500 to-pink-500" },
   ];
 
-  if (chartData.length < 2) return null;
+  const hasEnoughData = chartData.length >= 2;
 
   return (
     <section
@@ -164,83 +177,96 @@ export default function VisualAnalytics({ pubertyLogs }: { pubertyLogs: PubertyL
         ))}
       </div>
 
-      {/* Chart */}
-      <div className="h-[200px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          {tab === "mood" ? (
-            <LineChart data={chartData} margin={{ top: 10, right: 5, left: -15, bottom: 0 }}>
-              <defs>
-                <linearGradient id="moodGrad" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#8b5cf6" />
-                  <stop offset="100%" stopColor="#a855f7" />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94a3b8" }} dy={8} />
-              <YAxis
-                axisLine={false} tickLine={false}
-                tick={{ fontSize: 10, fill: "#94a3b8" }}
-                domain={[0, 3]}
-                ticks={[1, 2, 3]}
-                tickFormatter={(v: number) => moodLabel(v)}
-              />
-              <Tooltip content={<ChartTooltip />} />
-              <Line
-                type="monotone" dataKey="mood" name="Mood"
-                stroke="url(#moodGrad)" strokeWidth={3}
-                dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 2, stroke: "#fff" }}
-                activeDot={{ r: 6, fill: "#7c3aed", strokeWidth: 2, stroke: "#fff" }}
-              />
-            </LineChart>
-          ) : tab === "energy" ? (
-            <AreaChart data={chartData} margin={{ top: 10, right: 5, left: -15, bottom: 0 }}>
-              <defs>
-                <linearGradient id="energyFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94a3b8" }} dy={8} />
-              <YAxis
-                axisLine={false} tickLine={false}
-                tick={{ fontSize: 10, fill: "#94a3b8" }}
-                domain={[0, 3]}
-                ticks={[1, 2, 3]}
-                tickFormatter={(v: number) => v === 3 ? "High" : v === 2 ? "Mid" : "Low"}
-              />
-              <Tooltip content={<ChartTooltip />} />
-              <Area
-                type="monotone" dataKey="energy" name="Energy"
-                stroke="#f59e0b" strokeWidth={3}
-                fill="url(#energyFill)" fillOpacity={1}
-                dot={{ r: 4, fill: "#f59e0b", strokeWidth: 2, stroke: "#fff" }}
-              />
-            </AreaChart>
-          ) : (
-            <BarChart data={chartData} margin={{ top: 10, right: 5, left: -15, bottom: 0 }}>
-              <defs>
-                <linearGradient id="symptomFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f43f5e" />
-                  <stop offset="100%" stopColor="#ec4899" />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94a3b8" }} dy={8} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94a3b8" }} domain={[0, 6]} />
-              <Tooltip content={<ChartTooltip />} />
-              <Bar dataKey="symptoms" name="Symptom Count" fill="url(#symptomFill)" radius={[6, 6, 0, 0]} barSize={20} />
-            </BarChart>
-          )}
-        </ResponsiveContainer>
-      </div>
+      {/* Chart or empty state */}
+      {hasEnoughData ? (
+        <>
+          <div className="h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              {tab === "mood" ? (
+                <LineChart data={chartData} margin={{ top: 10, right: 5, left: -15, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="moodGrad" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#8b5cf6" />
+                      <stop offset="100%" stopColor="#a855f7" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94a3b8" }} dy={8} />
+                  <YAxis
+                    axisLine={false} tickLine={false}
+                    tick={{ fontSize: 10, fill: "#94a3b8" }}
+                    domain={[0, 3]}
+                    ticks={[1, 2, 3]}
+                    tickFormatter={(v: number) => moodLabel(v)}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Line
+                    type="monotone" dataKey="mood" name="Mood"
+                    stroke="url(#moodGrad)" strokeWidth={3}
+                    dot={{ r: 4, fill: "#8b5cf6", strokeWidth: 2, stroke: "#fff" }}
+                    activeDot={{ r: 6, fill: "#7c3aed", strokeWidth: 2, stroke: "#fff" }}
+                  />
+                </LineChart>
+              ) : tab === "energy" ? (
+                <AreaChart data={chartData} margin={{ top: 10, right: 5, left: -15, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="energyFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94a3b8" }} dy={8} />
+                  <YAxis
+                    axisLine={false} tickLine={false}
+                    tick={{ fontSize: 10, fill: "#94a3b8" }}
+                    domain={[0, 3]}
+                    ticks={[1, 2, 3]}
+                    tickFormatter={(v: number) => v === 3 ? "High" : v === 2 ? "Mid" : "Low"}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Area
+                    type="monotone" dataKey="energy" name="Energy"
+                    stroke="#f59e0b" strokeWidth={3}
+                    fill="url(#energyFill)" fillOpacity={1}
+                    dot={{ r: 4, fill: "#f59e0b", strokeWidth: 2, stroke: "#fff" }}
+                  />
+                </AreaChart>
+              ) : (
+                <BarChart data={chartData} margin={{ top: 10, right: 5, left: -15, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="symptomFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f43f5e" />
+                      <stop offset="100%" stopColor="#ec4899" />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94a3b8" }} dy={8} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#94a3b8" }} domain={[0, 6]} />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Bar dataKey="symptoms" name="Symptom Count" fill="url(#symptomFill)" radius={[6, 6, 0, 0]} barSize={20} />
+                </BarChart>
+              )}
+            </ResponsiveContainer>
+          </div>
 
-      {/* Legend  */}
-      <p className="text-[10px] text-center text-slate-400 mt-4 font-medium uppercase tracking-wider">
-        {tab === "mood" && "Mood Trend • Low (1) → Good (3)"}
-        {tab === "energy" && "Energy Level • Low (1) → High (3)"}
-        {tab === "symptoms" && "Symptom Frequency • Count per day (max 6)"}
-      </p>
+          {/* Legend */}
+          <p className="text-[10px] text-center text-slate-400 mt-4 font-medium uppercase tracking-wider">
+            {tab === "mood" && "Mood Trend • Low (1) → Good (3)"}
+            {tab === "energy" && "Energy Level • Low (1) → High (3)"}
+            {tab === "symptoms" && "Symptom Frequency • Count per day (max 6)"}
+          </p>
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-[200px] text-center">
+          <p className="text-sm text-slate-400 font-medium">
+            Not enough data for the {range === "weekly" ? "7-day" : "30-day"} view.
+          </p>
+          <p className="text-xs text-slate-300 mt-1">
+            Log at least 2 days of symptoms to see trends.
+          </p>
+        </div>
+      )}
     </section>
   );
 }

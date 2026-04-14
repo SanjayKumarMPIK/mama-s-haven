@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from "react";
 import type { Phase } from "@/hooks/usePhase";
 import type { KeySymptomId } from "@/lib/symptomAnalysis";
 
@@ -428,7 +428,27 @@ const LS_KEY = "ss-health-logs";
 function readLS(): HealthLogs {
   try {
     const raw = localStorage.getItem(LS_KEY);
-    return raw ? (JSON.parse(raw) as HealthLogs) : {};
+    if (!raw) return {};
+    
+    const parsed = JSON.parse(raw) as HealthLogs;
+    let modified = false;
+
+    // MIGRATION FIX: Auto-classify existing legacy mixed logs that lack a strictly defined phase
+    for (const [date, entry] of Object.entries(parsed)) {
+      if (!entry.phase) {
+        if ("periodStarted" in entry || "flowIntensity" in entry) {
+          (entry as any).phase = "puberty";
+        } else {
+          (entry as any).phase = "maternity";
+        }
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      writeLS(parsed);
+    }
+    return parsed;
   } catch {
     return {};
   }
@@ -441,7 +461,9 @@ function writeLS(logs: HealthLogs) {
 }
 
 interface HealthLogContextType {
-  logs: HealthLogs;
+  logs: HealthLogs; // Kept for backwards compatibility
+  maternityLogs: HealthLogs; // Strictly maternity logs
+  pubertyLogs: HealthLogs; // Strictly puberty logs
   getLog: (dateISO: string) => HealthLogEntry | undefined;
   saveLog: (dateISO: string, entry: HealthLogEntry) => void;
   saveBulkLogs: (entries: Record<string, HealthLogEntry>) => void;
@@ -452,6 +474,8 @@ interface HealthLogContextType {
 
 const HealthLogContext = createContext<HealthLogContextType>({
   logs: {},
+  maternityLogs: {},
+  pubertyLogs: {},
   getLog: () => undefined,
   saveLog: () => {},
   saveBulkLogs: () => {},
@@ -462,6 +486,22 @@ const HealthLogContext = createContext<HealthLogContextType>({
 
 export function HealthLogProvider({ children }: { children: ReactNode }) {
   const [logs, setLogs] = useState<HealthLogs>(() => readLS());
+
+  // Strictly separated state references (Option B style structure)
+  const separatedLogs = useMemo(() => {
+    const state = {
+      maternity: {} as HealthLogs,
+      puberty: {} as HealthLogs,
+      "family-planning": {} as HealthLogs,
+      menopause: {} as HealthLogs,
+    };
+    for (const [date, entry] of Object.entries(logs)) {
+      if (entry.phase in state) {
+        state[entry.phase as keyof typeof state][date] = entry;
+      }
+    }
+    return state;
+  }, [logs]);
 
   const getLog = useCallback(
     (dateISO: string) => logs[dateISO],
@@ -597,7 +637,12 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <HealthLogContext.Provider value={{ logs, getLog, saveLog, saveBulkLogs, deleteLog, clearAllLogs, logKeySymptom }}>
+    <HealthLogContext.Provider value={{ 
+      logs,
+      maternityLogs: separatedLogs.maternity,
+      pubertyLogs: separatedLogs.puberty, 
+      getLog, saveLog, saveBulkLogs, deleteLog, clearAllLogs, logKeySymptom 
+    }}>
       {children}
     </HealthLogContext.Provider>
   );

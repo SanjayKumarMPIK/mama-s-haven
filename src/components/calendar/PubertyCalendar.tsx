@@ -15,7 +15,6 @@ import {
   type KeySymptomId,
 } from "@/lib/symptomAnalysis";
 import { cn } from "@/lib/utils";
-import MaternityCalendar from "@/components/calendar/MaternityCalendar";
 
 type CalendarMode = "year" | "month";
 type SymptomTime = "morning" | "afternoon" | "evening";
@@ -186,19 +185,7 @@ function buildTooltipForEntry(entry: HealthLogEntry | undefined): string | undef
 // ─── Calendar Page Component ──────────────────────────────────────────────────
 
 export default function CalendarPage() {
-  const { phase } = usePhase();
-
-  // Phase isolation: render dedicated MaternityCalendar for maternity users
-  if (phase === "maternity") {
-    return <MaternityCalendar />;
-  }
-
-  // All code below is for puberty / other phases — completely unaffected
-  return <PubertyCalendarView />;
-}
-
-function PubertyCalendarView() {
-  const { pubertyLogs: phaseLogs, saveLog, saveBulkLogs, clearAllLogs } = useHealthLog();
+  const { logs, saveLog, saveBulkLogs, getLog, clearAllLogs } = useHealthLog();
   const { phase } = usePhase();
   const { profile } = useProfile();
 
@@ -251,7 +238,7 @@ function PubertyCalendarView() {
               return <div key={`empty-${idx}`} className="h-7 rounded-md" />;
             const iso = toISODate(year, monthIndex0, day);
             const isFuture = iso > todayISO;
-            const entry = phaseLogs[iso];
+            const entry = logs[iso];
             const hasData = hasAnyLogData(entry);
             const sympCount = getSymptomCountFromEntry(entry);
             const maxSev = getMaxSeverityFromEntry(entry);
@@ -311,7 +298,7 @@ function PubertyCalendarView() {
 
   function DayCell({ dateISO }: { dateISO: string }) {
     const isFuture = dateISO > todayISO;
-    const entry = phaseLogs[dateISO];
+    const entry = logs[dateISO];
     const hasData = hasAnyLogData(entry);
     const sympCount = getSymptomCountFromEntry(entry);
     const maxSev = getMaxSeverityFromEntry(entry);
@@ -398,9 +385,9 @@ function PubertyCalendarView() {
     while (cells.length % 7 !== 0) cells.push(null);
 
     // Monthly summary
-    const monthEntries = Object.entries(phaseLogs).filter(([d]) => {
+    const monthEntries = Object.entries(logs).filter(([d, e]) => {
       const [y, m] = d.split("-").map(Number);
-      return y === year && m === month0 + 1;
+      return y === year && m === month0 + 1 && e.phase === phase;
     });
     const totalLogged = monthEntries.length;
     const totalSymptoms = monthEntries.reduce((acc, [, e]) => acc + getSymptomCountFromEntry(e), 0);
@@ -576,11 +563,12 @@ function PubertyCalendarView() {
           <SymptomLogPanel
             dateISO={selectedDateISO}
             phase={phase}
-            logs={phaseLogs}
+            logs={logs}
             symptomOptions={symptomOptions}
             onClose={() => setModalOpen(false)}
             onSave={saveLog}
             onSaveBulk={saveBulkLogs}
+            getLog={getLog}
             periodDuration={profile.periodDuration}
             cycleLength={profile.cycleLength}
           />
@@ -600,6 +588,7 @@ interface SymptomLogPanelProps {
   onClose: () => void;
   onSave: (dateISO: string, entry: HealthLogEntry) => void;
   onSaveBulk: (entries: Record<string, HealthLogEntry>) => void;
+  getLog: (dateISO: string) => HealthLogEntry | undefined;
   periodDuration: number;
   cycleLength: number | null;
 }
@@ -620,11 +609,11 @@ function SymptomLogPanel({
   onClose,
   onSave,
   onSaveBulk,
+  getLog,
   periodDuration,
   cycleLength,
 }: SymptomLogPanelProps) {
-  // STRICT SEPARATION: the phaseLogs passed here only contain the current phase's data
-  const existingEntry = logs[dateISO];
+  const existingEntry = getLog(dateISO);
 
   // Build initial symptom selection from existing entry
   const initialSymptoms = useMemo<Record<string, boolean>>(() => {

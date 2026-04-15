@@ -259,7 +259,7 @@ export default function NutritionGuide() {
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                 </Link>
                 <Link
-                  to="/wellness-dashboard"
+                  to="/wellness"
                   className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
                 >
                   <Sparkles className={`w-5 h-5 ${accent.text}`} />

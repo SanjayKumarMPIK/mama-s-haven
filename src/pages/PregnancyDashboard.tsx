@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyDashboard } from "@/hooks/usePregnancyDashboard";
 import { WEEK_DATA } from "@/lib/pregnancyData";
 import { DAILY_CHECKLIST } from "@/lib/pregnancyDashboardData";
@@ -11,7 +12,7 @@ import {
   Calendar, ChevronRight, CheckCircle2, Circle, Clock,
   Baby, Heart, Apple, Droplets, Activity, AlertTriangle,
   Syringe, ClipboardList, Milestone as MilestoneIcon, Shield,
-  Flame, ArrowLeft, Sparkles, Phone, FileText
+  Flame, ArrowLeft, Sparkles, Phone, FileText, RotateCcw
 } from "lucide-react";
 
 // ─── Baby size visuals per trimester range ───────────────────────────────────
@@ -72,6 +73,7 @@ function getMilestoneTypeColor(type: string) {
 // ─── Setup Screen ────────────────────────────────────────────────────────────
 function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
   const { saveProfile, profile } = usePregnancyProfile();
+  const navigate = useNavigate();
   const [name, setName] = useState(profile.name);
   const [dueDate, setDueDate] = useState(profile.dueDate);
   const [region, setRegion] = useState(profile.region);
@@ -122,7 +124,7 @@ function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
             </select>
           </div>
           <button
-            onClick={() => { if (dueDate) saveProfile({ name, dueDate, region }); }}
+            onClick={() => { if (dueDate) { saveProfile({ name, dueDate, region }); navigate("/", { replace: true }); } }}
             disabled={!dueDate}
             className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-40"
           >
@@ -140,6 +142,12 @@ function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
 export default function PregnancyDashboard() {
   const { simpleMode } = useLanguage();
   const { profile, currentWeek, daysLeft, trimester, progress } = usePregnancyProfile();
+  const { phase } = usePhase();
+
+  // Route guard: only maternity users can access this page
+  if (phase !== "maternity") {
+    return <Navigate to="/" replace />;
+  }
 
   if (!profile.isSetup) {
     return <SetupScreen simpleMode={simpleMode} />;
@@ -162,6 +170,7 @@ function DashboardView({
   profileName: string; simpleMode: boolean;
 }) {
   const dash = usePregnancyDashboard(currentWeek);
+  const { clearProfile } = usePregnancyProfile();
   const weekData = WEEK_DATA[Math.min(currentWeek, 40) - 1];
   const babyVisual = getBabyVisual(currentWeek);
   const trimesterLabel = trimester === 1 ? "1st Trimester" : trimester === 2 ? "2nd Trimester" : "3rd Trimester";
@@ -173,9 +182,18 @@ function DashboardView({
       <div className="bg-tricolor-gradient border-b border-border">
         <div className="container py-6">
           <ScrollReveal>
-            <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-4">
-              <ArrowLeft className="w-3.5 h-3.5" /> Home
-            </Link>
+            <div className="flex items-center justify-between mb-4">
+              <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="w-3.5 h-3.5" /> Home
+              </Link>
+              <button
+                onClick={clearProfile}
+                title="Clear pregnancy data"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors"
+              >
+                <RotateCcw className="w-3.5 h-3.5" /> Clear Data
+              </button>
+            </div>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">

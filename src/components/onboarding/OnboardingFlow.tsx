@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useOnboarding, type Goal, type OnboardingConfig } from "@/hooks/useOnboarding";
 import { useAuth } from "@/hooks/useAuth";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import type { Phase } from "@/hooks/usePhase";
 import { X, ChevronRight, ChevronLeft, AlertTriangle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -170,13 +171,19 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 export default function OnboardingFlow() {
   const { config, showOnboarding, setShowOnboarding, saveConfig } = useOnboarding();
   const { fullProfile } = useAuth();
+  const { saveProfile } = usePregnancyProfile();
 
   // Local state for form
-  const [step, setStep] = useState(1); // 1 = purpose, 2 = goals
+  const [step, setStep] = useState(1); // 1 = purpose, 2 = goals (or maternity setup), 3 = puberty questions
   const [selectedPhase, setSelectedPhase] = useState<Phase | null>(config.onboardingCompleted ? config.phase : null);
   const [selectedGoals, setSelectedGoals] = useState<Set<Goal>>(new Set(config.goals));
   const [ageWarning, setAgeWarning] = useState<string | null>(null);
   const [phaseToConfirm, setPhaseToConfirm] = useState<Phase | null>(null);
+
+  // Maternity setup form state
+  const [maternityName, setMaternityName] = useState("");
+  const [maternityDueDate, setMaternityDueDate] = useState("");
+  const [maternityRegion, setMaternityRegion] = useState<"north" | "south" | "east" | "west">("north");
 
   // Pre-fill when re-opening
   useEffect(() => {
@@ -224,7 +231,7 @@ export default function OnboardingFlow() {
     if (checkAgeForPhase(phase)) {
       setSelectedPhase(phase);
       setSelectedGoals(new Set());
-      setStep(2);
+      setStep(2); // For maternity: shows setup form. For others: shows goals.
     }
   };
 
@@ -266,6 +273,24 @@ export default function OnboardingFlow() {
     const cfg: Partial<OnboardingConfig> = {
       phase: selectedPhase,
       goals: Array.from(selectedGoals),
+      age: userAge,
+      onboardingCompleted: true,
+    };
+    saveConfig(cfg);
+    setShowOnboarding(false);
+  };
+
+  // ─── Maternity setup submit ────────────────────────────────────────────────
+  const handleMaternitySetupSubmit = () => {
+    if (!maternityDueDate) return;
+
+    // Save pregnancy profile data
+    saveProfile({ name: maternityName, dueDate: maternityDueDate, region: maternityRegion });
+
+    // Save onboarding config
+    const cfg: Partial<OnboardingConfig> = {
+      phase: "maternity",
+      goals: [],
       age: userAge,
       onboardingCompleted: true,
     };
@@ -349,8 +374,76 @@ export default function OnboardingFlow() {
             </div>
           )}
 
-          {/* ───── Step 2: Sub-Purpose Selection ───── */}
-          {step === 2 && selectedPhase && (
+          {/* ───── Step 2 (Maternity): Set Up Your Dashboard ───── */}
+          {step === 2 && selectedPhase === "maternity" && (
+            <div className="animate-fadeIn">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-3xl">🤰</span>
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800">Set Up Your Dashboard</h2>
+                <p className="mt-2 text-sm text-slate-500">Enter your expected due date to personalize your pregnancy tracker.</p>
+              </div>
+
+              <div className="space-y-4 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm max-w-lg mx-auto">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Your Name</label>
+                  <input
+                    type="text"
+                    value={maternityName}
+                    onChange={(e) => setMaternityName(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder="Your name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Expected Due Date</label>
+                  <input
+                    type="date"
+                    value={maternityDueDate}
+                    onChange={(e) => setMaternityDueDate(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Region</label>
+                  <select
+                    value={maternityRegion}
+                    onChange={(e) => setMaternityRegion(e.target.value as any)}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  >
+                    <option value="north">North India</option>
+                    <option value="south">South India</option>
+                    <option value="east">East India</option>
+                    <option value="west">West India</option>
+                  </select>
+                </div>
+                <button
+                  onClick={handleMaternitySetupSubmit}
+                  disabled={!maternityDueDate}
+                  className="w-full rounded-xl bg-primary text-white py-3 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Start Tracking →
+                </button>
+              </div>
+
+              {/* Back button */}
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={() => {
+                    setSelectedPhase(null);
+                    setStep(1);
+                  }}
+                  className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Back
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ───── Step 2 (Non-Maternity): Sub-Purpose Selection ───── */}
+          {step === 2 && selectedPhase && selectedPhase !== "maternity" && (
             <div className="animate-fadeIn">
               <h2 className="text-xl md:text-2xl font-bold text-center text-slate-800 mb-2">
                 What would you like help with?

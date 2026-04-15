@@ -1,6 +1,8 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { usePhase } from "@/hooks/usePhase";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 import type { ReactNode } from "react";
 
@@ -26,6 +28,8 @@ function hasCompletedProfileSetup() {
 export default function AuthGate({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const { config, showOnboarding } = useOnboarding();
+  const { phase } = usePhase();
+  const { profile: pregnancyProfile } = usePregnancyProfile();
   const location = useLocation();
 
   // Don't flash anything while checking session
@@ -58,6 +62,16 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const isProfileComplete = hasCompletedProfileSetup();
   if (!isProfileComplete && location.pathname !== "/profile") {
     return <Navigate to="/profile?setup=true" replace />;
+  }
+
+  // Maternity users without pregnancy profile setup → redirect to pregnancy dashboard setup
+  if (
+    config.onboardingCompleted &&
+    phase === "maternity" &&
+    !pregnancyProfile.isSetup &&
+    location.pathname !== "/pregnancy-dashboard"
+  ) {
+    return <Navigate to="/pregnancy-dashboard" replace />;
   }
 
   // Logged in → show onboarding if not completed (or if manually re-opened)

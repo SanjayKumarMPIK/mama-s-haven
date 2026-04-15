@@ -9,7 +9,22 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase, type Phase } from "@/hooks/usePhase";
 import { useVoice } from "@/hooks/useVoice";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
-import { checkEmergencyKeywords } from "@/lib/symptoms";
+const EMERGENCY_KEYWORDS = [
+  "hemorrhage", "bleeding heavily", "heavy bleeding", "blood clot",
+  "no fetal movement", "baby not moving", "baby stopped moving",
+  "seizure", "convulsion", "unconscious", "fainted",
+  "severe headache", "blurred vision", "seeing spots",
+  "severe abdominal pain", "sharp pain",
+  "high fever", "fever above 100",
+  "water broke", "water breaking", "leaking fluid",
+  "chest pain", "difficulty breathing", "can't breathe",
+  "swelling face", "swollen face", "sudden swelling",
+  "preeclampsia", "eclampsia",
+];
+function checkEmergencyKeywords(text: string): boolean {
+  const lower = text.toLowerCase();
+  return EMERGENCY_KEYWORDS.some((kw) => lower.includes(kw));
+}
 import VoiceButton from "@/components/VoiceButton";
 import EmergencyCard from "@/components/EmergencyCard";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
@@ -122,6 +137,7 @@ const QUICK_BY_PHASE: Record<Phase, string[]> = {
   puberty: ["What’s a normal cycle length?", "How can I ease period pain at school?", "Iron foods that are easy to pack?"],
   maternity: [],
   "family-planning": ["How do I track fertile days simply?", "When should we see a doctor before conceiving?", "Stress making planning hard — ideas?"],
+  menopause: ["What are common menopause symptoms?", "How can I manage hot flashes?", "What foods help during menopause?"],
 };
 
 export default function Assistant() {

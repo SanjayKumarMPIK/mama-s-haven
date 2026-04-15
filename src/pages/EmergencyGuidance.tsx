@@ -55,14 +55,14 @@ export default function EmergencyGuidance() {
               </div>
             </a>
             <a
-              href="tel:102"
+              href="tel:108"
               className="flex items-center gap-3 rounded-xl bg-white border-2 border-red-200 p-5 shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
             >
               <div className="w-12 h-12 rounded-full bg-red-500 text-white flex items-center justify-center shrink-0">
                 <Phone className="w-5 h-5" />
               </div>
               <div>
-                <p className="font-bold text-lg text-red-700">102</p>
+                <p className="font-bold text-lg text-red-700">108</p>
                 <p className="text-xs text-muted-foreground">{t("helplineAmbulance")}</p>
               </div>
             </a>
@@ -102,7 +102,7 @@ export default function EmergencyGuidance() {
                   <Phone className="w-5 h-5" />
                 </div>
                 <h3 className="font-semibold text-sm mb-1">Step 1</h3>
-                <p className="text-xs text-muted-foreground">{t("callHelpline")} — 104 or 102</p>
+                <p className="text-xs text-muted-foreground">{t("callHelpline")} — 104 or 108</p>
               </div>
               <div className="rounded-xl bg-orange-50 border border-orange-100 p-5 text-center">
                 <div className="w-12 h-12 rounded-full bg-orange-500 text-white flex items-center justify-center mx-auto mb-3">

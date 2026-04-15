@@ -238,10 +238,10 @@ function WarningSigns() {
           📞 Call 104 – Maternal Helpline
         </a>
         <a
-          href="tel:102"
+          href="tel:108"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-red-400 text-red-700 text-sm font-semibold hover:bg-red-100 transition-all active:scale-[0.97]"
         >
-          🚑 Call 102 – Ambulance
+          🚑 Call 108 – Ambulance
         </a>
       </div>
     </div>

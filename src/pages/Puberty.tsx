@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { usePhase } from "@/hooks/usePhase";
+import { useOnboarding, type PubertyGoal } from "@/hooks/useOnboarding";
 import { ArrowLeft, CalendarDays, AlertTriangle, Droplets, Sparkles, CheckCircle2, Info } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
+import EducationCards from "@/components/puberty/EducationCards";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -115,17 +117,46 @@ export function CycleTracker({
 }: {
   onResultChange: (args: { cycleLength: number | null; isIrregular: boolean }) => void;
 }) {
+  const PERIOD_REMINDER_KEY = "ss-period-reminder";
+
   const [lastPeriod, setLastPeriod] = useState("");
   const [cycleLengthStr, setCycleLengthStr] = useState("");
   const [nextPeriod, setNextPeriod] = useState<string | null>(null);
+  const [nextPeriodDate, setNextPeriodDate] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const [periodReminder, setPeriodReminder] = useState<{
+    nextPeriodISO: string;
+    createdAt: string;
+  } | null>(null);
+  const [periodReminderMessage, setPeriodReminderMessage] = useState<string | null>(null);
 
   const cycleLength = cycleLengthStr !== "" ? Number(cycleLengthStr) : null;
   const isIrregular = cycleLength !== null && (cycleLength < 21 || cycleLength > 35);
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PERIOD_REMINDER_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { nextPeriodISO?: string; createdAt?: string };
+      if (!parsed.nextPeriodISO || !parsed.createdAt) return;
+      setPeriodReminder({ nextPeriodISO: parsed.nextPeriodISO, createdAt: parsed.createdAt });
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const periodDueDate = periodReminder?.nextPeriodISO ? new Date(periodReminder.nextPeriodISO) : null;
+  const diffDays =
+    periodDueDate && !Number.isNaN(periodDueDate.getTime())
+      ? Math.round((startOfDay(periodDueDate).getTime() - startOfDay(new Date()).getTime()) / 86400000)
+      : null;
+
   const handleCalculate = () => {
     setError(null);
     setNextPeriod(null);
+    setNextPeriodDate(null);
 
     if (!lastPeriod) {
       setError("Please select your last period date.");
@@ -148,6 +179,7 @@ export function CycleTracker({
 
     const next = addDays(date, cycleLength);
     setNextPeriod(formatDate(next));
+    setNextPeriodDate(next);
     onResultChange({ cycleLength, isIrregular });
   };
 
@@ -235,12 +267,50 @@ export function CycleTracker({
           Calculate Next Period
         </button>
 
+        {/* Reminder notifications */}
+        {diffDays === 2 && (
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
+            <p className="text-sm font-semibold text-amber-900">Your period is expected in 2 days</p>
+          </div>
+        )}
+        {diffDays === 0 && (
+          <div className="p-4 rounded-xl bg-green-50 border border-green-200">
+            <p className="text-sm font-semibold text-green-900">Your period is due today</p>
+          </div>
+        )}
+
         {/* Result */}
         {nextPeriod && (
           <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-center">
             <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-2" />
             <p className="text-xs text-muted-foreground">Your next expected period is on:</p>
             <p className="mt-1 text-base font-bold text-green-800">{nextPeriod}</p>
+
+            {nextPeriodDate && (
+              <button
+                type="button"
+                onClick={() => {
+                  const iso = nextPeriodDate.toISOString().slice(0, 10);
+                  const createdAt = new Date().toISOString();
+                  const payload = { nextPeriodISO: iso, createdAt };
+                  setPeriodReminder(payload);
+                  try {
+                    localStorage.setItem(PERIOD_REMINDER_KEY, JSON.stringify(payload));
+                  } catch {
+                    // ignore
+                  }
+                  const formatted = nextPeriodDate.toLocaleDateString("en-US", { month: "long", day: "numeric" });
+                  setPeriodReminderMessage(`Reminder set for your next period on ${formatted}`);
+                }}
+                className="mt-4 w-full py-3 rounded-xl bg-primary/10 text-primary font-semibold shadow-sm hover:bg-primary/15 transition-all duration-300 active:scale-[0.97]"
+              >
+                Set Period Reminder
+              </button>
+            )}
+
+            {periodReminderMessage && (
+              <p className="mt-3 text-xs text-muted-foreground">{periodReminderMessage}</p>
+            )}
           </div>
         )}
       </div>
@@ -498,9 +568,20 @@ function MoodSupport({
 
 export default function Puberty() {
   const { setPhase } = usePhase();
+  const { config } = useOnboarding();
   useEffect(() => {
     setPhase("puberty");
   }, [setPhase]);
+
+  // Determine which goals are active (default: show everything)
+  const goals = config.onboardingCompleted && config.phase === "puberty" && config.goals.length > 0
+    ? (config.goals as PubertyGoal[])
+    : (["track_periods", "understand_body", "manage_symptoms", "learn_patterns", "just_exploring"] as PubertyGoal[]);
+
+  const showCalendar = goals.includes("track_periods") || goals.includes("just_exploring");
+  const showEducation = goals.includes("understand_body") || goals.includes("just_exploring");
+  const showSymptoms = goals.includes("manage_symptoms") || goals.includes("just_exploring");
+  const showPatterns = goals.includes("learn_patterns") || goals.includes("just_exploring");
 
   const [cycleState, setCycleState] = useState<{ cycleLength: number | null; isIrregular: boolean }>({
     cycleLength: null,
@@ -563,27 +644,43 @@ export default function Puberty() {
 
         <div className="space-y-6">
           {/* Cycle tracker + irregular detection (Features 1 & 2) */}
-          <ScrollReveal>
-            <CycleTracker
-              onResultChange={(args) => setCycleState(args)}
-            />
-          </ScrollReveal>
+          {showCalendar && (
+            <ScrollReveal>
+              <CycleTracker
+                onResultChange={(args) => setCycleState(args)}
+              />
+            </ScrollReveal>
+          )}
 
-          {/* Hemoglobin panel (Feature 3) */}
-          <ScrollReveal delay={80}>
-            <HemoglobinPanel
-              onHbChange={(args) => setHbState(args)}
-            />
-          </ScrollReveal>
+          {/* Education Cards — "Understand my body changes" */}
+          {showEducation && (
+            <ScrollReveal delay={60}>
+              <EducationCards />
+            </ScrollReveal>
+          )}
 
-          <ScrollReveal delay={120}>
-            <MoodSupport onSymptomsChange={onSymptomsChange} />
-          </ScrollReveal>
+          {/* Hemoglobin panel (Feature 3) — "Learn patterns" */}
+          {showPatterns && (
+            <ScrollReveal delay={80}>
+              <HemoglobinPanel
+                onHbChange={(args) => setHbState(args)}
+              />
+            </ScrollReveal>
+          )}
 
-          {/* Personalized suggestions (Feature 4) */}
-          <ScrollReveal delay={160}>
-            <SuggestionPanel suggestions={suggestions} />
-          </ScrollReveal>
+          {/* Mood & Symptom support — "Manage symptoms" */}
+          {showSymptoms && (
+            <ScrollReveal delay={120}>
+              <MoodSupport onSymptomsChange={onSymptomsChange} />
+            </ScrollReveal>
+          )}
+
+          {/* Personalized suggestions (Feature 4) — always if patterns or symptoms */}
+          {(showPatterns || showSymptoms) && (
+            <ScrollReveal delay={160}>
+              <SuggestionPanel suggestions={suggestions} />
+            </ScrollReveal>
+          )}
         </div>
       </div>
     </div>

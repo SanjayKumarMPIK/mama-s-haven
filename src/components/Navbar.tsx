@@ -1,30 +1,19 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Building2, Menu, Siren, ShieldCheck, Phone } from "lucide-react";
+import { Building2, Menu, Siren, ShieldCheck, Phone, LogIn, UserPlus, LogOut } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useAuth } from "@/hooks/useAuth";
 import HamburgerMenu from "@/components/navigation/HamburgerMenu";
 import NavItem from "@/components/navigation/NavItem";
-import PhaseSelector from "@/components/navigation/PhaseSelector";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const { t, setLanguage, language } = useLanguage();
-  const { phase, setPhase } = usePhase();
-  const { clearProfile } = usePregnancyProfile();
-
-  const handlePhaseChange = (newPhase: typeof phase) => {
-    if (newPhase === phase) return;
-    const confirmChange = window.confirm(
-      "Changing phase will reset your current data. Do you want to continue?",
-    );
-    if (!confirmChange) return;
-    clearProfile();
-    setPhase(newPhase);
-  };
+  const { phaseName } = usePhase();
+  const { user, logout } = useAuth();
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 backdrop-blur">
@@ -34,7 +23,7 @@ export default function Navbar() {
           <span className="font-medium tracking-wide">{t("appName")} — {t("poweredBy")}</span>
           <div className="hidden sm:flex items-center gap-3">
             <a href="tel:104" className="flex items-center gap-1 hover:underline"><Phone className="w-2.5 h-2.5" /> 104</a>
-            <a href="tel:102" className="flex items-center gap-1 hover:underline"><Phone className="w-2.5 h-2.5" /> 102</a>
+            <a href="tel:108" className="flex items-center gap-1 hover:underline"><Phone className="w-2.5 h-2.5" /> 108</a>
           </div>
         </div>
       </div>
@@ -49,19 +38,54 @@ export default function Navbar() {
 
         {/* Desktop mandatory items */}
         <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
-          <NavItem to="/phc-nearby" label="PHC Nearby" icon={Building2} active={location.pathname === "/phc-nearby"} compact />
+          <NavItem to="/phc-nearby" label="PHC" icon={Building2} active={location.pathname === "/phc-nearby"} compact />
           <NavItem to="/vaccine-tracker" label="Vaccine Tracker" icon={Siren} active={location.pathname === "/vaccine-tracker"} compact />
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 lg:flex">
-          <PhaseSelector
-            value={phase}
-            onChange={handlePhaseChange}
-            className="rounded-md border border-border bg-card px-2 py-1"
-            labelClassName="text-[11px]"
-            selectClassName="min-w-[150px]"
-          />
+          {/* Phase badge (read-only — change via Settings) */}
+          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap px-2 py-1 rounded-full bg-muted/50 border border-border/60">
+            Phase: <span className="font-semibold text-foreground">{phaseName}</span>
+          </span>
           <LanguageSwitcher />
+
+          {/* Auth buttons */}
+          {user ? (
+            <div className="flex items-center gap-2 border-l pl-2 border-border/50">
+              <Link
+                to="/profile"
+                className="text-xs font-medium text-slate-700 max-w-[100px] truncate hover:text-primary transition-colors"
+              >
+                {user.name}
+              </Link>
+              <button
+                onClick={logout}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold shadow-sm transition-colors hover:bg-slate-50 text-slate-600"
+                aria-label="Logout"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 border-l pl-2 border-border/50">
+              <Link
+                to="/login"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold shadow-sm transition-colors hover:bg-slate-50"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Log in
+              </Link>
+              <Link
+                to="/register"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+                Sign up
+              </Link>
+            </div>
+          )}
+
           <Link
             to="/emergency"
             className="inline-flex h-9 items-center rounded-md bg-red-600 px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
@@ -79,7 +103,7 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile: logo + emergency + hamburger only */}
+        {/* Mobile: emergency + hamburger */}
         <div className="ml-auto flex items-center gap-2 lg:hidden">
           <Link
             to="/emergency"
@@ -96,6 +120,15 @@ export default function Navbar() {
           >
             <Menu className="h-4 w-4" />
           </button>
+        </div>
+      </div>
+
+      {/* Mobile phase badge (read-only) */}
+      <div className="border-t border-border/60 bg-background lg:hidden">
+        <div className="container flex items-center justify-center py-1.5">
+          <span className="text-xs font-medium text-muted-foreground">
+            Phase: <span className="font-semibold text-foreground">{phaseName}</span>
+          </span>
         </div>
       </div>
 

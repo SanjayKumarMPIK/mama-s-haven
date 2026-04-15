@@ -486,7 +486,7 @@ export default function SymptomChecker() {
                 {/* Connect cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
                   <Link
-                    to="/wellness-dashboard"
+                    to="/wellness"
                     className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
                   >
                     <BarChart3 className={`w-5 h-5 ${accent.text}`} />

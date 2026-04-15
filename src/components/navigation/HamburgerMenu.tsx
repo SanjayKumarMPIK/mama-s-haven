@@ -175,6 +175,7 @@ export default function HamburgerMenu({
             <nav className="space-y-2" aria-label="Secondary navigation">
               {SECONDARY_ITEMS.filter(item => {
                 if (item.to === "/pregnancy-dashboard" && phase !== "maternity") return false;
+                if (item.to === "/wellness" && phase === "maternity") return false;
 
                 return true;
               }).map((item) => (

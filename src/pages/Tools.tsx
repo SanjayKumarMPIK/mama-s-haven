@@ -315,6 +315,26 @@ export default function Tools() {
             for hemoglobin, mood, and personalised suggestions.
           </p>
         )}
+
+        {/* Wellness Dashboard link — visible for non-maternity phases */}
+        {phase !== "maternity" && (
+          <ScrollReveal>
+            <Link
+              to="/wellness"
+              className="mt-8 flex items-center gap-4 rounded-2xl border border-primary/20 bg-gradient-to-r from-teal-50 to-emerald-50 p-5 hover:shadow-md hover:border-primary/30 transition-all duration-200 group"
+            >
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shrink-0 shadow-md shadow-teal-200/40">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold mb-0.5">Wellness Dashboard</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Full health overview — BMI, water intake, health score, and daily wellness plans.
+                </p>
+              </div>
+            </Link>
+          </ScrollReveal>
+        )}
       </div>
     </div>
   );

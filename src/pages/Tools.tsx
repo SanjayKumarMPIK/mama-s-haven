@@ -4,7 +4,7 @@ import { Calculator, Activity, Timer, Heart, ArrowLeft, Wrench, BarChart3 } from
 import ScrollReveal from "@/components/ScrollReveal";
 import { usePhase } from "@/hooks/usePhase";
 import { CycleTracker } from "@/pages/Puberty";
-import { FertilityWindowSection } from "@/pages/FamilyPlanning";
+import { FertilityCycleInsights } from "@/pages/FamilyPlanning";
 import { TrimesterSelector, type Trimester } from "@/pages/Maternity";
 
 // Due Date Calculator
@@ -280,9 +280,9 @@ export default function Tools() {
             </ScrollReveal>
           )}
 
-          {phase === "maternity" && (
+          {phase === "family-planning" && (
             <ScrollReveal delay={80}>
-              <FertilityWindowSection onResult={() => {}} />
+              <FertilityCycleInsights />
             </ScrollReveal>
           )}
 

@@ -20,28 +20,31 @@ function formatDate(date: Date): string {
   });
 }
 
-// ─── Feature 1: Fertility Window ──────────────────────────────────────────────
+// ─── Feature 1: Fertility & Cycle Insights ───────────────────────────────────
 
-interface FertileWindow {
-  ovulationDate: string;
-  fertileStart: string;
-  fertileEnd: string;
+type UserIntent = "conceive" | "avoid";
+
+interface CycleResult {
+  ovulationDate: Date;
+  fertileStart: Date;
+  fertileEnd: Date;
+  safeStart: Date;
+  safeEnd: Date;
+  nextPeriod: Date;
 }
 
-export function FertilityWindowSection({
-  onResult,
-}: {
-  onResult: (result: FertileWindow | null) => void;
-}) {
+export function FertilityCycleInsights() {
+  const [intent, setIntent] = useState<UserIntent>("conceive");
   const [lastPeriod, setLastPeriod] = useState("");
   const [cycleLengthStr, setCycleLengthStr] = useState("");
-  const [result, setResult] = useState<FertileWindow | null>(null);
+  const [result, setResult] = useState<CycleResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const isConceive = intent === "conceive";
 
   const handleCalculate = () => {
     setError(null);
     setResult(null);
-    onResult(null);
 
     if (!lastPeriod) {
       setError("Please select your last period date.");
@@ -59,35 +62,121 @@ export function FertilityWindowSection({
       return;
     }
 
-    // Ovulation ≈ 14 days before next cycle
+    // Ovulation ≈ 14 days before next cycle start
     const nextCycleStart = addDays(lmpDate, cycleLength);
     const ovulation = addDays(nextCycleStart, -14);
     const fertileStart = addDays(ovulation, -5);
     const fertileEnd = addDays(ovulation, 1);
 
-    const window: FertileWindow = {
-      ovulationDate: formatDate(ovulation),
-      fertileStart: formatDate(fertileStart),
-      fertileEnd: formatDate(fertileEnd),
-    };
+    // Safe days: after period ends (approx day 6) to fertile start,
+    // and from fertile end to next period
+    const safeStart = addDays(fertileEnd, 1);
+    const safeEnd = addDays(nextCycleStart, -1);
 
-    setResult(window);
-    onResult(window);
+    setResult({
+      ovulationDate: ovulation,
+      fertileStart,
+      fertileEnd,
+      safeStart,
+      safeEnd,
+      nextPeriod: nextCycleStart,
+    });
   };
 
+  const clearResult = () => {
+    setResult(null);
+    setError(null);
+  };
+
+  // ── Intent-driven styles ──
+  const intentStyles = isConceive
+    ? {
+        resultBg: "bg-emerald-50 border-emerald-200",
+        resultIcon: "text-emerald-600",
+        resultTitle: "Your Cycle Predictions",
+        cardPrimary: "bg-emerald-100 border-emerald-200",
+        cardPrimaryLabel: "text-emerald-600",
+        cardPrimaryValue: "text-emerald-900",
+        cardHighlight: "bg-emerald-200/70 border-emerald-300",
+        cardHighlightLabel: "text-emerald-700",
+        cardHighlightValue: "text-emerald-950",
+        messageText: "text-emerald-700",
+        message: "High chance of conception during this window — best days to try.",
+        ovulationLabel: "Peak Fertility",
+        fertileLabel: "Best Days to Try",
+        fertileStartLabel: "Fertile Start",
+        fertileEndLabel: "Fertile End",
+      }
+    : {
+        resultBg: "bg-amber-50 border-amber-200",
+        resultIcon: "text-amber-600",
+        resultTitle: "Your Risk Assessment",
+        cardPrimary: "bg-red-100 border-red-200",
+        cardPrimaryLabel: "text-red-600",
+        cardPrimaryValue: "text-red-900",
+        cardHighlight: "bg-red-200/70 border-red-300",
+        cardHighlightLabel: "text-red-700",
+        cardHighlightValue: "text-red-950",
+        messageText: "text-red-700",
+        message: "High risk of pregnancy during these days — take precautions or use protection.",
+        ovulationLabel: "Highest Risk",
+        fertileLabel: "High-Risk Days",
+        fertileStartLabel: "Risk Starts",
+        fertileEndLabel: "Risk Ends",
+      };
+
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-6 md:p-8 shadow-sm">
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-          <CalendarDays className="w-5 h-5 text-green-600" />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold">Fertility Window Estimation</h2>
-          <p className="text-xs text-muted-foreground">Calculate your likely fertile days</p>
+    <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+      {/* ── Section header ── */}
+      <div className="p-6 md:p-8 pb-0 md:pb-0">
+        <div className="flex items-center gap-3 mb-1">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isConceive ? "bg-emerald-100" : "bg-amber-100"} transition-colors duration-300`}>
+            <CalendarDays className={`w-5 h-5 ${isConceive ? "text-emerald-600" : "text-amber-600"} transition-colors duration-300`} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold">Fertility &amp; Cycle Insights</h2>
+            <p className="text-xs text-muted-foreground">Cycle-based predictions tailored to your goals</p>
+          </div>
         </div>
       </div>
 
-      <div className="space-y-4">
+      {/* ── Intent toggle ── */}
+      <div className="px-6 md:px-8 pt-5">
+        <label className="block text-sm font-medium mb-2.5">What is your goal?</label>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => { setIntent("conceive"); clearResult(); }}
+            className={`relative py-3.5 px-4 rounded-xl border-2 text-sm font-semibold transition-all duration-300 active:scale-[0.97] ${
+              isConceive
+                ? "border-emerald-400 bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-100"
+                : "border-border bg-muted/40 text-muted-foreground hover:bg-muted/70"
+            }`}
+          >
+            <span className="block text-lg mb-0.5">🤱</span>
+            Trying to Conceive
+            {isConceive && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            )}
+          </button>
+          <button
+            onClick={() => { setIntent("avoid"); clearResult(); }}
+            className={`relative py-3.5 px-4 rounded-xl border-2 text-sm font-semibold transition-all duration-300 active:scale-[0.97] ${
+              !isConceive
+                ? "border-amber-400 bg-amber-50 text-amber-700 shadow-sm shadow-amber-100"
+                : "border-border bg-muted/40 text-muted-foreground hover:bg-muted/70"
+            }`}
+          >
+            <span className="block text-lg mb-0.5">🛡️</span>
+            Avoid Pregnancy
+            {!isConceive && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Input form ── */}
+      <div className="p-6 md:p-8 space-y-4">
         <div>
           <label className="block text-sm font-medium mb-1.5">
             Last period date <span className="text-red-500">*</span>
@@ -96,7 +185,7 @@ export function FertilityWindowSection({
             type="date"
             value={lastPeriod}
             max={new Date().toISOString().split("T")[0]}
-            onChange={(e) => { setLastPeriod(e.target.value); setResult(null); onResult(null); }}
+            onChange={(e) => { setLastPeriod(e.target.value); clearResult(); }}
             className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
           />
         </div>
@@ -111,13 +200,13 @@ export function FertilityWindowSection({
             max={60}
             placeholder="e.g. 28"
             value={cycleLengthStr}
-            onChange={(e) => { setCycleLengthStr(e.target.value); setResult(null); onResult(null); }}
+            onChange={(e) => { setCycleLengthStr(e.target.value); clearResult(); }}
             className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
           />
         </div>
 
         {error && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
@@ -125,36 +214,77 @@ export function FertilityWindowSection({
 
         <button
           onClick={handleCalculate}
-          className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold shadow-sm hover:shadow-md transition-all duration-300 active:scale-[0.97]"
+          className={`w-full py-3 rounded-xl font-semibold shadow-sm hover:shadow-md transition-all duration-300 active:scale-[0.97] ${
+            isConceive
+              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+              : "bg-amber-600 text-white hover:bg-amber-700"
+          }`}
         >
-          Calculate Fertile Window
+          Get Cycle Predictions
         </button>
 
+        {/* ── Results ── */}
         {result && (
-          <div className="p-5 rounded-xl bg-green-50 border border-green-200">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckCircle2 className="w-5 h-5 text-green-600" />
-              <p className="text-sm font-bold text-green-800">Your Estimated Fertility Window</p>
+          <div className={`p-5 rounded-xl border ${intentStyles.resultBg} space-y-4 animate-fadeIn`}>
+            {/* Title */}
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className={`w-5 h-5 ${intentStyles.resultIcon}`} />
+              <p className={`text-sm font-bold ${intentStyles.cardHighlightValue}`}>{intentStyles.resultTitle}</p>
             </div>
+
+            {/* Primary message */}
+            <div className={`flex items-start gap-2 p-3 rounded-lg ${isConceive ? "bg-emerald-100/60" : "bg-red-100/60"}`}>
+              <span className="text-sm mt-0.5">{isConceive ? "💡" : "⚠️"}</span>
+              <p className={`text-sm font-medium ${intentStyles.messageText}`}>{intentStyles.message}</p>
+            </div>
+
+            {/* Date cards */}
             <div className="grid sm:grid-cols-3 gap-3">
-              <div className="text-center p-3 rounded-lg bg-green-100 border border-green-200">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 mb-1">Fertile Start</p>
-                <p className="text-sm font-bold text-green-900">{result.fertileStart}</p>
+              <div className={`text-center p-3.5 rounded-xl border ${intentStyles.cardPrimary} transition-all`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${intentStyles.cardPrimaryLabel}`}>
+                  {intentStyles.fertileStartLabel}
+                </p>
+                <p className={`text-sm font-bold ${intentStyles.cardPrimaryValue}`}>{formatDate(result.fertileStart)}</p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-emerald-100 border border-emerald-200">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-600 mb-1">Peak Ovulation</p>
-                <p className="text-sm font-bold text-emerald-900">{result.ovulationDate}</p>
+              <div className={`text-center p-3.5 rounded-xl border ${intentStyles.cardHighlight} transition-all`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${intentStyles.cardHighlightLabel}`}>
+                  {intentStyles.ovulationLabel}
+                </p>
+                <p className={`text-sm font-bold ${intentStyles.cardHighlightValue}`}>{formatDate(result.ovulationDate)}</p>
               </div>
-              <div className="text-center p-3 rounded-lg bg-green-100 border border-green-200">
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 mb-1">Fertile End</p>
-                <p className="text-sm font-bold text-green-900">{result.fertileEnd}</p>
+              <div className={`text-center p-3.5 rounded-xl border ${intentStyles.cardPrimary} transition-all`}>
+                <p className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 ${intentStyles.cardPrimaryLabel}`}>
+                  {intentStyles.fertileEndLabel}
+                </p>
+                <p className={`text-sm font-bold ${intentStyles.cardPrimaryValue}`}>{formatDate(result.fertileEnd)}</p>
               </div>
             </div>
-            <p className="mt-3 text-xs text-green-700 text-center">
-              Your likely fertile window is between <strong>{result.fertileStart}</strong> and <strong>{result.fertileEnd}</strong>.
+
+            {/* Safe days — shown for avoid mode */}
+            {!isConceive && (
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="text-center p-3.5 rounded-xl border bg-green-100 border-green-200">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 mb-1.5">Lower-Risk Start</p>
+                  <p className="text-sm font-bold text-green-900">{formatDate(result.safeStart)}</p>
+                </div>
+                <div className="text-center p-3.5 rounded-xl border bg-green-100 border-green-200">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-green-600 mb-1.5">Lower-Risk End</p>
+                  <p className="text-sm font-bold text-green-900">{formatDate(result.safeEnd)}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Summary */}
+            <p className={`text-xs text-center ${isConceive ? "text-emerald-700" : "text-amber-700"}`}>
+              {isConceive
+                ? <>Your best window is <strong>{formatDate(result.fertileStart)}</strong> to <strong>{formatDate(result.fertileEnd)}</strong>, with peak fertility on <strong>{formatDate(result.ovulationDate)}</strong>.</>
+                : <>Avoid unprotected intercourse from <strong>{formatDate(result.fertileStart)}</strong> to <strong>{formatDate(result.fertileEnd)}</strong>. Lower-risk days are <strong>{formatDate(result.safeStart)}</strong> onwards.</>
+              }
             </p>
-            <p className="mt-2 text-[10px] text-muted-foreground text-center">
-              ⚕️ This is an estimate based on a standard 14-day luteal phase. Results may vary. Consult a doctor for personalised fertility advice.
+
+            {/* Disclaimer */}
+            <p className="text-[10px] text-muted-foreground text-center pt-1 border-t border-dashed border-current/10">
+              ⚕️ This is an estimate based on a standard 14-day luteal phase. Results may vary. Consult a healthcare professional for personalised advice.
             </p>
           </div>
         )}
@@ -432,9 +562,9 @@ export default function FamilyPlanning() {
         </ScrollReveal>
 
         <div className="space-y-6">
-          {/* Fertility window */}
+          {/* Fertility & Cycle Insights */}
           <ScrollReveal>
-            <FertilityWindowSection onResult={() => {}} />
+            <FertilityCycleInsights />
           </ScrollReveal>
 
           {/* Readiness indicator */}

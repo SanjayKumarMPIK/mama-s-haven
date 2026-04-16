@@ -468,6 +468,7 @@ interface HealthLogContextType {
   saveLog: (dateISO: string, entry: HealthLogEntry) => void;
   saveBulkLogs: (entries: Record<string, HealthLogEntry>) => void;
   deleteLog: (dateISO: string) => void;
+  deleteBulkLogs: (dateISOs: string[]) => void;
   clearAllLogs: () => void;
   logKeySymptom: (dateISO: string, phase: Phase, symptomId: KeySymptomId) => void;
 }
@@ -480,6 +481,7 @@ const HealthLogContext = createContext<HealthLogContextType>({
   saveLog: () => {},
   saveBulkLogs: () => {},
   deleteLog: () => {},
+  deleteBulkLogs: () => {},
   clearAllLogs: () => {},
   logKeySymptom: () => {},
 });
@@ -528,6 +530,18 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
     setLogs((prev) => {
       const next = { ...prev };
       delete next[dateISO];
+      writeLS(next);
+      return next;
+    });
+  }, []);
+
+  const deleteBulkLogs = useCallback((dateISOs: string[]) => {
+    if (dateISOs.length === 0) return;
+    setLogs((prev) => {
+      const next = { ...prev };
+      for (const d of dateISOs) {
+        delete next[d];
+      }
       writeLS(next);
       return next;
     });
@@ -641,7 +655,7 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
       logs,
       maternityLogs: separatedLogs.maternity,
       pubertyLogs: separatedLogs.puberty, 
-      getLog, saveLog, saveBulkLogs, deleteLog, clearAllLogs, logKeySymptom 
+      getLog, saveLog, saveBulkLogs, deleteLog, deleteBulkLogs, clearAllLogs, logKeySymptom 
     }}>
       {children}
     </HealthLogContext.Provider>

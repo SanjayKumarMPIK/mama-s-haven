@@ -198,9 +198,12 @@ export default function CalendarPage() {
 }
 
 function PubertyCalendarView() {
-  const { pubertyLogs: phaseLogs, saveLog, saveBulkLogs, clearAllLogs } = useHealthLog();
+  const { logs: allLogs, pubertyLogs, saveLog, saveBulkLogs, deleteBulkLogs, clearAllLogs } = useHealthLog();
   const { phase } = usePhase();
   const { profile } = useProfile();
+
+  // For symptom display, use phase-specific logs; for period data, use puberty logs (single source of truth)
+  const phaseLogs = phase === "family-planning" ? { ...allLogs } : pubertyLogs;
 
   const now = new Date();
   const [mode, setMode] = useState<CalendarMode>("year");
@@ -455,7 +458,7 @@ function PubertyCalendarView() {
 
           {/* Legend */}
           <div className="px-6 py-3 border-t border-border/40 flex items-center gap-4 flex-wrap">
-            {phase === "puberty" && (
+            {(phase === "puberty" || phase === "family-planning") && (
               <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <span className="w-2 h-2 rounded-full bg-pink-500" />
                 Period day
@@ -577,10 +580,12 @@ function PubertyCalendarView() {
             dateISO={selectedDateISO}
             phase={phase}
             logs={phaseLogs}
+            allLogs={allLogs}
             symptomOptions={symptomOptions}
             onClose={() => setModalOpen(false)}
             onSave={saveLog}
             onSaveBulk={saveBulkLogs}
+            onDeleteBulk={deleteBulkLogs}
             periodDuration={profile.periodDuration}
             cycleLength={profile.cycleLength}
           />
@@ -596,10 +601,12 @@ interface SymptomLogPanelProps {
   dateISO: string;
   phase: Phase;
   logs: HealthLogs;
+  allLogs: HealthLogs;
   symptomOptions: { id: string; label: string }[];
   onClose: () => void;
   onSave: (dateISO: string, entry: HealthLogEntry) => void;
   onSaveBulk: (entries: Record<string, HealthLogEntry>) => void;
+  onDeleteBulk: (dateISOs: string[]) => void;
   periodDuration: number;
   cycleLength: number | null;
 }
@@ -616,10 +623,12 @@ function SymptomLogPanel({
   dateISO,
   phase,
   logs,
+  allLogs,
   symptomOptions,
   onClose,
   onSave,
   onSaveBulk,
+  onDeleteBulk,
   periodDuration,
   cycleLength,
 }: SymptomLogPanelProps) {
@@ -652,17 +661,19 @@ function SymptomLogPanel({
   });
   const [selectedAnalyticsId, setSelectedAnalyticsId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // For period data lookups, always use allLogs (which contains puberty entries = single source of truth)
+  const periodEntry = allLogs[dateISO];
   // Determine if this date is already within an existing period range
-  const existingPeriodRange = useMemo(() => findPeriodRangeForDate(dateISO, logs), [dateISO, logs]);
-  const isExistingPeriodStart = isPeriodStartDay(existingEntry);
-  const isExistingContinuation = isAutoMarkedContinuation(existingEntry);
+  const existingPeriodRange = useMemo(() => findPeriodRangeForDate(dateISO, allLogs), [dateISO, allLogs]);
+  const isExistingPeriodStart = isPeriodStartDay(periodEntry);
+  const isExistingContinuation = isAutoMarkedContinuation(periodEntry);
   const isWithinExistingRange = existingPeriodRange !== null;
 
   // Period Started toggle should only reflect actual period start status (not continuation days)
   const [periodStarted, setPeriodStarted] = useState<boolean>(() => {
-    if (existingEntry?.phase === "puberty") {
+    if (periodEntry?.phase === "puberty") {
       // Only show as "started" if this is an actual period start date
-      return (existingEntry as PubertyEntry).periodStarted === true;
+      return (periodEntry as PubertyEntry).periodStarted === true;
     }
     return false;
   });
@@ -706,7 +717,7 @@ function SymptomLogPanel({
     const hasMood = mood !== "";
     const hasSleep = sleepHours !== "" || sleepQuality !== "";
     const hasNotes = notes.trim().length > 0;
-    const hasPeriod = phase === "puberty" && periodStarted;
+    const hasPeriod = (phase === "puberty" || phase === "family-planning") && periodStarted;
     if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod) {
       toast.error("Please select at least one symptom, sleep log, mood, or add a note before saving.");
       return;
@@ -797,28 +808,81 @@ function SymptomLogPanel({
     // If this date is within an existing period range and user didn't explicitly toggle period,
     // preserve the period markers from the existing entry
     if (phase === "puberty" && isWithinExistingRange && !periodToggleChanged) {
-      if (existingEntry?.phase === "puberty") {
-        (entry as any).periodStarted = (existingEntry as PubertyEntry).periodStarted;
-        if ((existingEntry as any)._periodAutoMarked) {
+      if (periodEntry?.phase === "puberty") {
+        (entry as any).periodStarted = (periodEntry as PubertyEntry).periodStarted;
+        if ((periodEntry as any)._periodAutoMarked) {
           (entry as any)._periodAutoMarked = true;
         }
       }
     }
 
+    // For family-planning, save the symptom entry as family-planning but handle period separately
+    const isPeriodRelevantPhase = phase === "puberty" || phase === "family-planning";
+
     onSave(dateISO, entry);
 
-    // Only auto-mark period days when:
-    // 1. Phase is puberty
-    // 2. User explicitly toggled "Period Started" ON in this session
-    // 3. This is a NEW period start (not re-saving an existing one)
-    const isNewPeriodStart = phase === "puberty" 
+    // ── PERIOD TOGGLE OFF → Remove entire period range ──
+    if (isPeriodRelevantPhase && periodToggleChanged && !periodStarted && isExistingPeriodStart) {
+      // Find all auto-marked days that belong to this period start
+      const datesToRemove: string[] = [];
+      for (let dayOffset = 1; dayOffset < 15; dayOffset++) {
+        const checkDate = new Date(dateISO + "T12:00:00");
+        checkDate.setDate(checkDate.getDate() + dayOffset);
+        const checkISO = checkDate.toISOString().slice(0, 10);
+        const checkEntry = allLogs[checkISO];
+        if (checkEntry && checkEntry.phase === "puberty" && (checkEntry as any)._periodAutoMarked) {
+          datesToRemove.push(checkISO);
+        } else {
+          break; // Stop at first non-auto-marked day
+        }
+      }
+
+      // Also remove predicted future cycles that were linked to this start
+      const actualCycleLenForRemoval = cycleLength || 28;
+      for (let cycle = 1; cycle <= 3; cycle++) {
+        const futureStart = new Date(dateISO + "T12:00:00");
+        futureStart.setDate(futureStart.getDate() + cycle * actualCycleLenForRemoval);
+        for (let dayOffset = 0; dayOffset < periodDuration; dayOffset++) {
+          const futureDay = new Date(futureStart);
+          futureDay.setDate(futureDay.getDate() + dayOffset);
+          const futureISO = futureDay.toISOString().slice(0, 10);
+          const futureEntry = allLogs[futureISO];
+          if (futureEntry && futureEntry.phase === "puberty" && (futureEntry as any)._periodAutoMarked) {
+            datesToRemove.push(futureISO);
+          }
+        }
+      }
+
+      // Update the start day itself: remove period flag
+      if (periodEntry?.phase === "puberty") {
+        const updatedStart: any = { ...periodEntry, periodStarted: false };
+        delete updatedStart._periodAutoMarked;
+        onSave(dateISO, updatedStart as HealthLogEntry);
+      }
+
+      if (datesToRemove.length > 0) {
+        onDeleteBulk(datesToRemove);
+      }
+
+      toast.success(`Period range removed`, {
+        description: `Cleared ${datesToRemove.length + 1} marked days including predicted cycles.`,
+      });
+
+      setSaving(false);
+      onClose();
+      return;
+    }
+
+    // ── PERIOD TOGGLE ON → Auto-mark days ──
+    // Only trigger when user explicitly toggled ON and it's a NEW period start
+    const isNewPeriodStart = isPeriodRelevantPhase
       && periodStarted 
       && periodToggleChanged 
       && !isExistingPeriodStart;
 
     if (isNewPeriodStart) {
       // Check for overlapping period ranges — prevent if another period start is too close
-      const existingStarts = Object.entries(logs)
+      const existingStarts = Object.entries(allLogs)
         .filter(([, e]) => e.phase === "puberty" && (e as PubertyEntry).periodStarted)
         .map(([d]) => d)
         .sort();
@@ -835,6 +899,21 @@ function SymptomLogPanel({
           description: "This date is too close to another period start. Adjust the existing cycle or choose a different date.",
         });
       } else {
+        // For family-planning, we also need to save the period start as a puberty entry
+        if (phase === "family-planning") {
+          const periodStartEntry: PubertyEntry = {
+            phase: "puberty",
+            periodStarted: true,
+            periodEnded: false,
+            flowIntensity: null,
+            symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
+            mood: null,
+            sleepHours: null,
+            sleepQuality: null,
+          };
+          onSave(dateISO, periodStartEntry);
+        }
+
         // Mark current cycle and next 3 months (3 future cycles) using settings from profile
         const bulkEntries: Record<string, HealthLogEntry> = {};
         const cyclesToPredict = 3;
@@ -849,10 +928,10 @@ function SymptomLogPanel({
             periodDay.setDate(periodDay.getDate() + dayOffset);
             const periodISO = periodDay.toISOString().slice(0, 10);
 
-            // Skip updating the very first day of the initial cycle as it was already handled by onSave
+            // Skip updating the very first day of the initial cycle as it was already handled
             if (cycle === 0 && dayOffset === 0) continue;
 
-            const existingLog = logs[periodISO];
+            const existingLog = allLogs[periodISO];
             // Don't overwrite manually-set start days from older logs
             if (existingLog && existingLog.phase === "puberty" && (existingLog as PubertyEntry).periodStarted && !(existingLog as any)._periodAutoMarked) {
               continue;
@@ -879,12 +958,11 @@ function SymptomLogPanel({
           onSaveBulk(bulkEntries);
         }
 
-        const totalDaysMarked = Object.keys(bulkEntries).length + 1; // +1 for the start day
         toast.success(`Period marked for ${periodDuration} days/cycle`, {
           description: `Predicted cycles for the next 3 months based on a ${actualCycleLength}-day cycle length.`,
         });
       }
-    } else if (phase === "puberty" && periodStarted && isExistingPeriodStart && !periodToggleChanged) {
+    } else if (isPeriodRelevantPhase && periodStarted && isExistingPeriodStart && !periodToggleChanged) {
       // Re-saving an existing period start without toggling — just save symptoms, no re-projection
       toast.success(`Symptoms updated for ${formatDisplayDate(dateISO)}`, {
         description: "Period start preserved. Symptoms and mood updated.",
@@ -931,8 +1009,8 @@ function SymptomLogPanel({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
-          {/* Period Start Toggle (Puberty only) */}
-          {phase === "puberty" && (
+          {/* Period Start Toggle (Puberty + Family Planning) */}
+          {(phase === "puberty" || phase === "family-planning") && (
             <section className={cn(
               "rounded-xl border-2 p-4",
               isExistingContinuation

@@ -8,6 +8,7 @@ import { WEEK_DATA } from "@/lib/pregnancyData";
 import { DAILY_CHECKLIST } from "@/lib/pregnancyDashboardData";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
+import { TimelineOverview } from "@/components/dashboard/TimelineOverview";
 import {
   Calendar, ChevronRight, CheckCircle2, Circle, Clock,
   Baby, Heart, Apple, Droplets, Activity, AlertTriangle,
@@ -169,10 +170,11 @@ function DashboardView({
   currentWeek: number; daysLeft: number; trimester: number; progress: number;
   profileName: string; simpleMode: boolean;
 }) {
+  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
   const dash = usePregnancyDashboard(currentWeek);
   const { clearProfile } = usePregnancyProfile();
-  const weekData = WEEK_DATA[Math.min(currentWeek, 40) - 1];
-  const babyVisual = getBabyVisual(currentWeek);
+  const weekData = WEEK_DATA[Math.min(selectedWeek, 40) - 1];
+  const babyVisual = getBabyVisual(selectedWeek);
   const trimesterLabel = trimester === 1 ? "1st Trimester" : trimester === 2 ? "2nd Trimester" : "3rd Trimester";
   const trimesterColor = trimester === 1 ? "text-teal-600" : trimester === 2 ? "text-amber-600" : "text-primary";
 
@@ -221,10 +223,12 @@ function DashboardView({
                 </div>
               </div>
             </div>
-            {/* Progress bar */}
-            <div className="mt-4 w-full bg-muted rounded-full h-2">
-              <div className="bg-primary h-2 rounded-full transition-all duration-700" style={{ width: `${progress}%` }} />
-            </div>
+            {/* Timeline Overview Component */}
+            <TimelineOverview 
+              currentWeek={currentWeek} 
+              selectedWeek={selectedWeek} 
+              onSelectWeek={setSelectedWeek} 
+            />
           </ScrollReveal>
         </div>
       </div>
@@ -249,7 +253,7 @@ function DashboardView({
               <div className="w-8 h-8 rounded-lg bg-peach flex items-center justify-center">
                 <Baby className="w-4 h-4 text-peach-foreground" />
               </div>
-              <h2 className="font-bold text-sm">Baby Development — Week {currentWeek}</h2>
+              <h2 className="font-bold text-sm">Baby Development — Week {selectedWeek}</h2>
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
               {/* Baby size visual */}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -34,6 +34,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/weekly-guide", label: "Menstrual Guide", icon: Calendar },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
   { to: "/pregnancy-dashboard", label: "Pregnancy Dashboard", icon: Baby },
+  { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
 ];
 
 export default function HamburgerMenu({

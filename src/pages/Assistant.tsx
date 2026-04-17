@@ -143,7 +143,7 @@ const QUICK_BY_PHASE: Record<Phase, string[]> = {
 export default function Assistant() {
   const { t, language, simpleMode } = useLanguage();
   const { phase, phaseName } = usePhase();
-  const { currentWeek, trimester, profile } = usePregnancyProfile();
+  const { currentWeek, trimester, profile, activeEDD } = usePregnancyProfile();
   const voice = useVoice(language);
 
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -199,7 +199,7 @@ export default function Assistant() {
     const weekContext = [
       `Life stage: ${phaseName}.`,
       profile.isSetup
-        ? `Pregnancy: week ${currentWeek}, trimester ${trimester}, due date ${profile.dueDate}, region ${profile.region}.`
+        ? `Pregnancy: week ${currentWeek}, trimester ${trimester}, due date ${activeEDD}, region ${profile.region}.`
         : null,
       `Respond in ${language}.`,
       "Stay within general wellness education; encourage professional care for symptoms or decisions.",

@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
 import { useProfile } from "@/hooks/useProfile";
+import { usePhase } from "@/hooks/usePhase";
 import { useHealthLog, calcFertileWindow, calcAverageCycleLength } from "@/hooks/useHealthLog";
 import {
   AlertTriangle,
@@ -399,6 +400,11 @@ export default function MenstrualGuide() {
   const [goal, setGoal] = useState<GoalMode>(() => readGoal());
   const { profile } = useProfile();
   const { logs } = useHealthLog();
+  const { phase } = usePhase();
+
+  // Family-planning-only content (goal toggle, fertility stats, daily guidance, do's/don'ts, smart tips)
+  // should only be shown when the user is in the family-planning phase.
+  const isFamilyPlanning = phase === "family-planning";
 
   const handleGoalChange = (g: GoalMode) => {
     setGoal(g);
@@ -459,7 +465,8 @@ export default function MenstrualGuide() {
 
   return (
     <main className="min-h-screen bg-[#fafafa]">
-      {/* ── HERO ──────────────────────────────────────────────────────────── */}
+      {/* ── HERO (Family Planning only) ────────────────────────────────────── */}
+      {isFamilyPlanning && (
       <div className="relative overflow-hidden bg-white border-b border-border/50">
         <div
           className={`absolute top-0 right-0 w-72 h-72 rounded-full blur-[100px] -mr-36 -mt-36 opacity-40 transition-colors duration-700 ${
@@ -499,9 +506,11 @@ export default function MenstrualGuide() {
           </ScrollReveal>
         </div>
       </div>
+      )}
 
       <div className="container py-10 space-y-12">
-        {/* ── CYCLE STATUS HERO ────────────────────────────────────────────── */}
+        {/* ── CYCLE STATUS HERO (Family Planning only) ────────────────────── */}
+        {isFamilyPlanning && (
         <ScrollReveal>
           {hasData ? (
             <div
@@ -616,6 +625,7 @@ export default function MenstrualGuide() {
             </div>
           )}
         </ScrollReveal>
+        )}
 
         {/* ── CYCLE PHASES ─────────────────────────────────────────────────── */}
         <section>
@@ -659,8 +669,8 @@ export default function MenstrualGuide() {
           </ScrollReveal>
         </section>
 
-        {/* ── DAILY GUIDANCE ───────────────────────────────────────────────── */}
-        {hasData && (
+        {/* ── DAILY GUIDANCE (Family Planning only) ───────────────────────── */}
+        {isFamilyPlanning && hasData && (
           <section>
             <ScrollReveal>
               <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2.5">
@@ -737,7 +747,8 @@ export default function MenstrualGuide() {
           </section>
         )}
 
-        {/* ── DO'S & DON'TS ────────────────────────────────────────────────── */}
+        {/* ── DO'S & DON'TS (Family Planning only) ──────────────────────── */}
+        {isFamilyPlanning && (
         <section>
           <ScrollReveal>
             <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2.5">
@@ -793,8 +804,10 @@ export default function MenstrualGuide() {
             </div>
           </ScrollReveal>
         </section>
+        )}
 
-        {/* ── SMART TIPS / ALERTS ──────────────────────────────────────────── */}
+        {/* ── SMART TIPS / ALERTS (Family Planning only) ──────────────────── */}
+        {isFamilyPlanning && (
         <section>
           <ScrollReveal>
             <div
@@ -848,6 +861,7 @@ export default function MenstrualGuide() {
             </div>
           </ScrollReveal>
         </section>
+        )}
       </div>
       <SafetyDisclaimer />
     </main>

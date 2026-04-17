@@ -182,7 +182,7 @@ export default function OnboardingFlow() {
 
   // Maternity setup form state
   const [maternityName, setMaternityName] = useState("");
-  const [maternityDueDate, setMaternityDueDate] = useState("");
+  const [maternityLmp, setMaternityLmp] = useState("");
   const [maternityRegion, setMaternityRegion] = useState<"north" | "south" | "east" | "west">("north");
 
   // Pre-fill when re-opening
@@ -282,10 +282,10 @@ export default function OnboardingFlow() {
 
   // ─── Maternity setup submit ────────────────────────────────────────────────
   const handleMaternitySetupSubmit = () => {
-    if (!maternityDueDate) return;
+    if (!maternityLmp) return;
 
     // Save pregnancy profile data
-    saveProfile({ name: maternityName, dueDate: maternityDueDate, region: maternityRegion });
+    saveProfile({ name: maternityName, lmp: maternityLmp, region: maternityRegion });
 
     // Save onboarding config
     const cfg: Partial<OnboardingConfig> = {
@@ -382,7 +382,7 @@ export default function OnboardingFlow() {
                   <span className="text-3xl">🤰</span>
                 </div>
                 <h2 className="text-2xl font-bold text-slate-800">Set Up Your Dashboard</h2>
-                <p className="mt-2 text-sm text-slate-500">Enter your expected due date to personalize your pregnancy tracker.</p>
+                <p className="mt-2 text-sm text-slate-500">Enter your Last Menstrual Period (LMP) date to personalize your pregnancy tracker.</p>
               </div>
 
               <div className="space-y-4 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm max-w-lg mx-auto">
@@ -397,11 +397,12 @@ export default function OnboardingFlow() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Expected Due Date</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Last Menstrual Period (LMP)</label>
                   <input
                     type="date"
-                    value={maternityDueDate}
-                    onChange={(e) => setMaternityDueDate(e.target.value)}
+                    value={maternityLmp}
+                    onChange={(e) => setMaternityLmp(e.target.value)}
+                    max={new Date().toISOString().slice(0, 10)}
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
@@ -420,7 +421,7 @@ export default function OnboardingFlow() {
                 </div>
                 <button
                   onClick={handleMaternitySetupSubmit}
-                  disabled={!maternityDueDate}
+                  disabled={!maternityLmp}
                   className="w-full rounded-xl bg-primary text-white py-3 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Start Tracking →

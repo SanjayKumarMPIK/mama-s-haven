@@ -62,26 +62,28 @@ function formatDisplayDate(iso: string): string {
   return d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
-/** Check if a date is a period day (puberty phase with periodStarted or auto-marked) */
+/** Check if a date is a period day (puberty or family-planning phase with periodStarted or auto-marked) */
 function isPeriodDay(entry: HealthLogEntry | undefined): boolean {
   if (!entry) return false;
-  if (entry.phase !== "puberty") return false;
-  const e = entry as PubertyEntry;
-  return e.periodStarted || !!(e as any)._periodAutoMarked;
+  if (entry.phase === "puberty") return (entry as PubertyEntry).periodStarted || !!(entry as any)._periodAutoMarked;
+  if (entry.phase === "family-planning") return !!(entry as any).periodStarted || !!(entry as any)._periodAutoMarked;
+  return false;
 }
 
 /** Check if a date is a period START day (not a continuation day) */
 function isPeriodStartDay(entry: HealthLogEntry | undefined): boolean {
   if (!entry) return false;
-  if (entry.phase !== "puberty") return false;
-  return (entry as PubertyEntry).periodStarted === true;
+  if (entry.phase === "puberty") return (entry as PubertyEntry).periodStarted === true;
+  if (entry.phase === "family-planning") return (entry as any).periodStarted === true;
+  return false;
 }
 
 /** Check if a date is an auto-marked continuation day (not a manual start) */
 function isAutoMarkedContinuation(entry: HealthLogEntry | undefined): boolean {
   if (!entry) return false;
-  if (entry.phase !== "puberty") return false;
-  return !!(entry as any)._periodAutoMarked && !(entry as PubertyEntry).periodStarted;
+  if (entry.phase === "puberty") return !!(entry as any)._periodAutoMarked && !(entry as PubertyEntry).periodStarted;
+  if (entry.phase === "family-planning") return !!(entry as any)._periodAutoMarked && !(entry as any).periodStarted;
+  return false;
 }
 
 /**
@@ -91,7 +93,7 @@ function isAutoMarkedContinuation(entry: HealthLogEntry | undefined): boolean {
 function findPeriodRangeForDate(dateISO: string, logs: HealthLogs): string | null {
   // Find all period start dates
   const periodStarts = Object.entries(logs)
-    .filter(([, e]) => e.phase === "puberty" && (e as PubertyEntry).periodStarted)
+    .filter(([, e]) => (e.phase === "puberty" || e.phase === "family-planning") && (e as any).periodStarted)
     .map(([d]) => d)
     .sort();
 
@@ -675,6 +677,9 @@ function SymptomLogPanel({
       // Only show as "started" if this is an actual period start date
       return (periodEntry as PubertyEntry).periodStarted === true;
     }
+    if (periodEntry?.phase === "family-planning") {
+      return (periodEntry as any).periodStarted === true;
+    }
     return false;
   });
 
@@ -773,6 +778,7 @@ function SymptomLogPanel({
         phase: "family-planning",
         lastPeriodDate: existingFP?.lastPeriodDate ?? "",
         cycleLength: existingFP?.cycleLength ?? null,
+        periodStarted: periodStarted,
         symptoms: {
           irregularCycle: !!selectedSymptoms.irregularCycle,
           ovulationPain: !!selectedSymptoms.ovulationPain,
@@ -807,9 +813,9 @@ function SymptomLogPanel({
 
     // If this date is within an existing period range and user didn't explicitly toggle period,
     // preserve the period markers from the existing entry
-    if (phase === "puberty" && isWithinExistingRange && !periodToggleChanged) {
-      if (periodEntry?.phase === "puberty") {
-        (entry as any).periodStarted = (periodEntry as PubertyEntry).periodStarted;
+    if ((phase === "puberty" || phase === "family-planning") && isWithinExistingRange && !periodToggleChanged) {
+      if (periodEntry?.phase === "puberty" || periodEntry?.phase === "family-planning") {
+        (entry as any).periodStarted = (periodEntry as any).periodStarted;
         if ((periodEntry as any)._periodAutoMarked) {
           (entry as any)._periodAutoMarked = true;
         }
@@ -830,7 +836,7 @@ function SymptomLogPanel({
         checkDate.setDate(checkDate.getDate() + dayOffset);
         const checkISO = checkDate.toISOString().slice(0, 10);
         const checkEntry = allLogs[checkISO];
-        if (checkEntry && checkEntry.phase === "puberty" && (checkEntry as any)._periodAutoMarked) {
+        if (checkEntry && (checkEntry.phase === "puberty" || checkEntry.phase === "family-planning") && (checkEntry as any)._periodAutoMarked) {
           datesToRemove.push(checkISO);
         } else {
           break; // Stop at first non-auto-marked day
@@ -847,14 +853,14 @@ function SymptomLogPanel({
           futureDay.setDate(futureDay.getDate() + dayOffset);
           const futureISO = futureDay.toISOString().slice(0, 10);
           const futureEntry = allLogs[futureISO];
-          if (futureEntry && futureEntry.phase === "puberty" && (futureEntry as any)._periodAutoMarked) {
+          if (futureEntry && (futureEntry.phase === "puberty" || futureEntry.phase === "family-planning") && (futureEntry as any)._periodAutoMarked) {
             datesToRemove.push(futureISO);
           }
         }
       }
 
       // Update the start day itself: remove period flag
-      if (periodEntry?.phase === "puberty") {
+      if (periodEntry?.phase === "puberty" || periodEntry?.phase === "family-planning") {
         const updatedStart: any = { ...periodEntry, periodStarted: false };
         delete updatedStart._periodAutoMarked;
         onSave(dateISO, updatedStart as HealthLogEntry);
@@ -883,7 +889,7 @@ function SymptomLogPanel({
     if (isNewPeriodStart) {
       // Check for overlapping period ranges — prevent if another period start is too close
       const existingStarts = Object.entries(allLogs)
-        .filter(([, e]) => e.phase === "puberty" && (e as PubertyEntry).periodStarted)
+        .filter(([, e]) => (e.phase === "puberty" || e.phase === "family-planning") && (e as any).periodStarted)
         .map(([d]) => d)
         .sort();
 
@@ -899,22 +905,7 @@ function SymptomLogPanel({
           description: "This date is too close to another period start. Adjust the existing cycle or choose a different date.",
         });
       } else {
-        // For family-planning, we also need to save the period start as a puberty entry
-        if (phase === "family-planning") {
-          const periodStartEntry: PubertyEntry = {
-            phase: "puberty",
-            periodStarted: true,
-            periodEnded: false,
-            flowIntensity: null,
-            symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
-            mood: null,
-            sleepHours: null,
-            sleepQuality: null,
-          };
-          onSave(dateISO, periodStartEntry);
-        }
-
-        // Mark current cycle and next 3 months (3 future cycles) using settings from profile
+        // Auto-generation logic applies to all relevant phases uniformly        // Mark current cycle and next 3 months (3 future cycles) using settings from profile
         const bulkEntries: Record<string, HealthLogEntry> = {};
         const cyclesToPredict = 3;
         const actualCycleLength = cycleLength || 28;
@@ -933,7 +924,7 @@ function SymptomLogPanel({
 
             const existingLog = allLogs[periodISO];
             // Don't overwrite manually-set start days from older logs
-            if (existingLog && existingLog.phase === "puberty" && (existingLog as PubertyEntry).periodStarted && !(existingLog as any)._periodAutoMarked) {
+            if (existingLog && (existingLog.phase === "puberty" || existingLog.phase === "family-planning") && (existingLog as any).periodStarted && !(existingLog as any)._periodAutoMarked) {
               continue;
             }
 

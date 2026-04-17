@@ -57,6 +57,8 @@ export interface FamilyPlanningEntry {
     stress: boolean;
     sleepIssues: boolean;
   };
+  periodStarted?: boolean;
+  periodEnded?: boolean;
   mood: MoodType | null;
   sleepHours: number | null;
   sleepQuality: SleepQuality | null;

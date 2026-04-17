@@ -115,14 +115,13 @@ function PubertyInsights() {
 
 function MaternityInsights() {
   const { logs } = useHealthLog();
-  const { profile } = usePregnancyProfile();
+  const { activeEDD } = usePregnancyProfile();
   const alerts = useMemo(() => detectMaternityAlerts(logs), [logs]);
-  const dueDate = profile.dueDate;
   const todayISO = new Date().toISOString().slice(0, 10);
-  const currentWeek = dueDate ? getMaternityWeekForDate(dueDate, todayISO) : null;
+  const currentWeek = activeEDD ? getMaternityWeekForDate(activeEDD, todayISO) : null;
   const weeklySummaries = useMemo(
-    () => (dueDate ? summarizeMaternityByWeek(logs, dueDate, 4) : []),
-    [logs, dueDate]
+    () => (activeEDD ? summarizeMaternityByWeek(logs, activeEDD, 4) : []),
+    [logs, activeEDD]
   );
   const totalLogged = Object.values(logs).filter((e) => e.phase === "maternity").length;
 
@@ -164,7 +163,7 @@ function MaternityInsights() {
 
       <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
         <p className="text-xs font-semibold text-purple-800 mb-2">
-          Weekly Pregnancy Tracking{dueDate ? "" : " (set due date in pregnancy dashboard)"}
+          Weekly Pregnancy Tracking{activeEDD ? "" : " (set LMP in pregnancy dashboard)"}
         </p>
         <div className="flex items-center justify-between text-[11px] text-purple-800">
           <span>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { usePregnancyProfile, isValidLMP, isValidUserEDD, getEDDRange } from "@/hooks/usePregnancyProfile";
 import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyDashboard } from "@/hooks/usePregnancyDashboard";
 import { WEEK_DATA } from "@/lib/pregnancyData";
@@ -13,7 +13,8 @@ import {
   Calendar, ChevronRight, CheckCircle2, Circle, Clock,
   Baby, Heart, Apple, Droplets, Activity, AlertTriangle,
   Syringe, ClipboardList, Milestone as MilestoneIcon, Shield,
-  Flame, ArrowLeft, Sparkles, Phone, FileText, RotateCcw
+  Flame, ArrowLeft, Sparkles, Phone, FileText, RotateCcw,
+  Edit3, X, CalendarDays, Info
 } from "lucide-react";
 
 // ─── Baby size visuals per trimester range ───────────────────────────────────
@@ -71,13 +72,52 @@ function getMilestoneTypeColor(type: string) {
   }
 }
 
+// ─── Format a YYYY-MM-DD string for display ──────────────────────────────────
+function formatDate(isoDate: string): string {
+  if (!isoDate) return "";
+  return new Date(isoDate + "T00:00:00").toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 // ─── Setup Screen ────────────────────────────────────────────────────────────
 function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
   const { saveProfile, profile } = usePregnancyProfile();
   const navigate = useNavigate();
   const [name, setName] = useState(profile.name);
-  const [dueDate, setDueDate] = useState(profile.dueDate);
+  const [lmp, setLmp] = useState(profile.lmp || "");
   const [region, setRegion] = useState(profile.region);
+  const [lmpError, setLmpError] = useState("");
+
+  // Auto-calculate EDD preview whenever LMP changes
+  const previewEDD = lmp
+    ? (() => {
+        const d = new Date(lmp + "T00:00:00");
+        d.setDate(d.getDate() + 280);
+        return d.toISOString().slice(0, 10);
+      })()
+    : "";
+
+  const handleLmpChange = (val: string) => {
+    setLmp(val);
+    setLmpError("");
+    if (val && !isValidLMP(val)) {
+      setLmpError("LMP cannot be a future date.");
+    }
+  };
+
+  const canSubmit = !!lmp && !lmpError && isValidLMP(lmp);
+
+  const handleSubmit = () => {
+    if (!canSubmit) return;
+    saveProfile({ name, lmp, region });
+    navigate("/", { replace: true });
+  };
+
+  // Max date for LMP input = today
+  const todayISO = new Date().toISOString().slice(0, 10);
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
@@ -88,10 +128,13 @@ function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
               <Baby className="w-8 h-8 text-primary" />
             </div>
             <h1 className="text-2xl font-bold">Set Up Your Dashboard</h1>
-            <p className="mt-2 text-muted-foreground text-sm">Enter your expected due date to personalize your pregnancy tracker.</p>
+            <p className="mt-2 text-muted-foreground text-sm">
+              Enter your Last Menstrual Period (LMP) date to personalise your pregnancy tracker.
+            </p>
           </div>
         </ScrollReveal>
         <div className="space-y-4 bg-card rounded-2xl border border-border p-6 shadow-sm">
+          {/* Name */}
           <div>
             <label className="block text-sm font-medium mb-1.5">Your Name</label>
             <input
@@ -102,15 +145,48 @@ function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
               placeholder="Your name"
             />
           </div>
+
+          {/* LMP */}
           <div>
-            <label className="block text-sm font-medium mb-1.5">Expected Due Date</label>
+            <label className="block text-sm font-medium mb-1.5">
+              Last Menstrual Period (LMP)
+            </label>
             <input
               type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              value={lmp}
+              max={todayISO}
+              onChange={(e) => handleLmpChange(e.target.value)}
+              className={`w-full rounded-xl border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all ${
+                lmpError
+                  ? "border-red-400 focus:ring-red-300"
+                  : "border-border focus:ring-primary/30"
+              }`}
             />
+            {lmpError && (
+              <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" /> {lmpError}
+              </p>
+            )}
           </div>
+
+          {/* Auto-calculated EDD Preview */}
+          {previewEDD && !lmpError && (
+            <div className="rounded-xl bg-gradient-to-r from-primary/5 to-violet-50 border border-primary/20 p-4 flex items-center gap-3 animate-fadeIn">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                <CalendarDays className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground font-medium">
+                  Your estimated due date
+                </p>
+                <p className="text-sm font-bold text-primary">
+                  {formatDate(previewEDD)}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Region */}
           <div>
             <label className="block text-sm font-medium mb-1.5">Region</label>
             <select
@@ -124,9 +200,19 @@ function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
               <option value="west">West India</option>
             </select>
           </div>
+
+          {/* Info note */}
+          <div className="flex items-start gap-2 bg-blue-50 rounded-lg p-3 border border-blue-100">
+            <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+            <p className="text-[11px] text-blue-700 leading-relaxed">
+              Your due date is auto-calculated from LMP (LMP&nbsp;+&nbsp;280&nbsp;days). You can adjust it later from the dashboard if your doctor gives a different date.
+            </p>
+          </div>
+
+          {/* Submit */}
           <button
-            onClick={() => { if (dueDate) { saveProfile({ name, dueDate, region }); navigate("/", { replace: true }); } }}
-            disabled={!dueDate}
+            onClick={handleSubmit}
+            disabled={!canSubmit}
             className="w-full rounded-xl bg-primary text-primary-foreground py-3 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-40"
           >
             Start Tracking →
@@ -137,12 +223,143 @@ function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
   );
 }
 
+// ─── EDD Override Card (inside dashboard) ────────────────────────────────────
+function EDDOverrideCard() {
+  const { profile, activeEDD, setUserEDD } = usePregnancyProfile();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(activeEDD);
+  const [eddError, setEddError] = useState("");
+
+  const hasOverride = !!profile.userEDD;
+  const eddRange = profile.lmp ? getEDDRange(profile.lmp) : null;
+
+  const startEdit = () => {
+    setEditValue(activeEDD);
+    setEddError("");
+    setIsEditing(true);
+  };
+
+  const handleChange = (val: string) => {
+    setEditValue(val);
+    setEddError("");
+    if (val && profile.lmp && !isValidUserEDD(val, profile.lmp)) {
+      const range = getEDDRange(profile.lmp);
+      setEddError(
+        `Please enter a medically valid due date (between ${formatDate(range.min)} and ${formatDate(range.max)}).`
+      );
+    }
+  };
+
+  const handleSave = () => {
+    if (!editValue || eddError) return;
+    if (editValue === profile.calculatedEDD) {
+      // User set it back to calculated — clear override
+      setUserEDD(null);
+    } else {
+      setUserEDD(editValue);
+    }
+    setIsEditing(false);
+  };
+
+  const handleReset = () => {
+    setUserEDD(null);
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="rounded-xl border border-border/60 bg-card/80 backdrop-blur-sm p-4 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+            <CalendarDays className="w-4 h-4 text-primary" />
+          </div>
+          <div>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Expected Due Date</p>
+            {!isEditing && (
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold">{formatDate(activeEDD)}</p>
+                {hasOverride && (
+                  <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 border border-amber-200">
+                    custom
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {!isEditing && (
+          <button
+            onClick={startEdit}
+            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            title="Edit due date"
+          >
+            <Edit3 className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Inline editor */}
+      {isEditing && (
+        <div className="mt-3 space-y-2 animate-fadeIn">
+          <input
+            type="date"
+            value={editValue}
+            min={eddRange?.min}
+            max={eddRange?.max}
+            onChange={(e) => handleChange(e.target.value)}
+            className={`w-full rounded-xl border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 transition-all ${
+              eddError
+                ? "border-red-400 focus:ring-red-300"
+                : "border-border focus:ring-primary/30"
+            }`}
+          />
+          {eddError && (
+            <p className="text-xs text-red-600 flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3" /> {eddError}
+            </p>
+          )}
+
+          {/* Calculated EDD info */}
+          <p className="text-[10px] text-muted-foreground">
+            Auto-calculated: <strong>{formatDate(profile.calculatedEDD)}</strong> (from LMP: {formatDate(profile.lmp)})
+          </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSave}
+              disabled={!!eddError || !editValue}
+              className="flex-1 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold shadow-sm hover:shadow-md transition-all active:scale-[0.97] disabled:opacity-40"
+            >
+              Save
+            </button>
+            {hasOverride && (
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-1 px-3 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+              >
+                <RotateCcw className="w-3 h-3" /> Reset
+              </button>
+            )}
+            <button
+              onClick={() => setIsEditing(false)}
+              className="p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // Main Dashboard
 // ═════════════════════════════════════════════════════════════════════════════
 export default function PregnancyDashboard() {
   const { simpleMode } = useLanguage();
-  const { profile, currentWeek, daysLeft, trimester, progress } = usePregnancyProfile();
+  const { profile, activeEDD, currentWeek, daysLeft, trimester, progress } = usePregnancyProfile();
   const { phase } = usePhase();
 
   // Route guard: only maternity users can access this page
@@ -223,6 +440,12 @@ function DashboardView({
                 </div>
               </div>
             </div>
+
+            {/* EDD Override Card */}
+            <div className="mt-4">
+              <EDDOverrideCard />
+            </div>
+
             {/* Timeline Overview Component */}
             <TimelineOverview 
               currentWeek={currentWeek} 

@@ -39,7 +39,9 @@ import HealthLog from "./pages/HealthLog";
 import Calendar from "./pages/Calendar";
 import WeeklyBodyReport from "./pages/WeeklyBodyReport";
 import Profile from "./pages/Profile";
+import MedicineReminder from "./pages/MedicineReminder";
 import MissedLogReminder from "@/components/MissedLogReminder";
+import MedicineAlertPopup from "@/components/MedicineAlertPopup";
 
 
 const queryClient = new QueryClient();
@@ -83,12 +85,14 @@ const App = () => (
                         <Route path="/calendar" element={<Calendar />} />
                         <Route path="/weekly-report" element={<WeeklyBodyReport />} />
                         <Route path="/profile" element={<Profile />} />
+                        <Route path="/medicine-reminder" element={<MedicineReminder />} />
 
                         <Route path="/about" element={<About />} />
                         <Route path="/contact" element={<Contact />} />
                         <Route path="*" element={<NotFound />} />
                       </Routes>
                       <MissedLogReminder />
+                      <MedicineAlertPopup />
                       <Footer />
                     </AuthGate>
                   </BrowserRouter>

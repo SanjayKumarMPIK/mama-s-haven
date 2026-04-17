@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { usePhase } from "@/hooks/usePhase";
-import { ArrowLeft, Layers, ShieldAlert, Droplets, Sun } from "lucide-react";
+import { useMedicineReminder } from "@/hooks/useMedicineReminder";
+import { ArrowLeft, Layers, ShieldAlert, Droplets, Sun, Pill, ChevronRight, CheckCircle2, Clock, AlertTriangle, Hourglass, Timer } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 
 // ─── Trimester content lookup ─────────────────────────────────────────────────
@@ -351,6 +352,114 @@ function DailyCare() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+function MedicineReminderCard() {
+  const { getTodayStats, getNextDose, medicines } = useMedicineReminder();
+  const stats = getTodayStats();
+  const nextDose = getNextDose();
+  const pct = stats.total > 0 ? Math.round((stats.taken / stats.total) * 100) : 0;
+
+  return (
+    <Link
+      to="/medicine-reminder"
+      className="block rounded-2xl border border-purple-200 bg-gradient-to-br from-purple-50/80 via-violet-50/60 to-fuchsia-50/40 p-6 md:p-8 shadow-sm hover:shadow-md hover:border-purple-300 transition-all duration-200 group"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-md shadow-purple-200/50">
+            <Pill className="w-5 h-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold">Medicine Reminder</h2>
+            <p className="text-xs text-muted-foreground">Track your prescribed medicines</p>
+          </div>
+        </div>
+        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+      </div>
+
+      {medicines.length === 0 ? (
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-white/60 border border-purple-100">
+          <Pill className="w-5 h-5 text-purple-400" />
+          <div>
+            <p className="text-sm font-medium">No medicines added yet</p>
+            <p className="text-xs text-muted-foreground">Tap to add your prescribed medicines</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Next dose indicator */}
+          {nextDose && (
+            <div className={`flex items-center gap-2.5 p-3 rounded-xl mb-3 ${
+              nextDose.minutesUntil === 0
+                ? "bg-purple-100/80 border border-purple-200"
+                : "bg-white/60 border border-purple-100"
+            }`}>
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                nextDose.minutesUntil === 0
+                  ? "bg-purple-200"
+                  : "bg-blue-100"
+              }`}>
+                {nextDose.minutesUntil === 0 ? (
+                  <Pill className="w-4 h-4 text-purple-600 animate-bounce" />
+                ) : (
+                  <Timer className="w-4 h-4 text-blue-600" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold truncate">
+                  {nextDose.minutesUntil === 0 ? "Take now:" : "Next:"} {nextDose.medicineName}
+                </p>
+                <p className="text-[10px] text-muted-foreground">{nextDose.dosage} at {nextDose.scheduledTime}</p>
+              </div>
+              <span className={`text-xs font-bold ${
+                nextDose.minutesUntil === 0 ? "text-purple-700" : "text-blue-700"
+              }`}>
+                {nextDose.minutesUntil === 0 ? "Due Now" : `${Math.floor(nextDose.minutesUntil / 60) > 0 ? Math.floor(nextDose.minutesUntil / 60) + "h " : ""}${nextDose.minutesUntil % 60}m`}
+              </span>
+            </div>
+          )}
+
+          {/* Progress bar */}
+          <div className="h-2.5 rounded-full bg-white/60 overflow-hidden mb-3">
+            <div
+              className="h-full rounded-full transition-all duration-700"
+              style={{
+                width: `${pct}%`,
+                background: pct === 100
+                  ? "linear-gradient(135deg, #10b981, #34d399)"
+                  : "linear-gradient(135deg, #8b5cf6, #a78bfa)",
+              }}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700">
+                <CheckCircle2 className="w-3.5 h-3.5" /> {stats.taken} taken
+              </span>
+              {stats.pending > 0 && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700">
+                  <Clock className="w-3.5 h-3.5" /> {stats.pending} pending
+                </span>
+              )}
+              {stats.scheduled > 0 && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600">
+                  <Hourglass className="w-3.5 h-3.5" /> {stats.scheduled} upcoming
+                </span>
+              )}
+              {stats.missed > 0 && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-red-600">
+                  <AlertTriangle className="w-3.5 h-3.5" /> {stats.missed} missed
+                </span>
+              )}
+            </div>
+            <span className="text-sm font-bold text-purple-700">{pct}%</span>
+          </div>
+        </>
+      )}
+    </Link>
+  );
+}
+
 export default function Maternity() {
   const { setPhase } = usePhase();
   const [trimester, setTrimester] = useState<Trimester>("first");
@@ -395,8 +504,13 @@ export default function Maternity() {
             <TrimesterGuidancePanel trimester={trimester} />
           </ScrollReveal>
 
+          {/* Medicine Reminder card */}
+          <ScrollReveal delay={140}>
+            <MedicineReminderCard />
+          </ScrollReveal>
+
           {/* Warning signs — always visible */}
-          <ScrollReveal delay={160}>
+          <ScrollReveal delay={200}>
             <WarningSigns />
           </ScrollReveal>
 

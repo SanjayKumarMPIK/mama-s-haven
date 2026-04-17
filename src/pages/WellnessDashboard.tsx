@@ -4,7 +4,7 @@ import { useWellnessRecommendation } from "@/hooks/useWellnessRecommendation";
 import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
-import { useHealthLog, PubertyEntry } from "@/hooks/useHealthLog";
+import { useHealthLog, PubertyEntry, FamilyPlanningEntry } from "@/hooks/useHealthLog";
 import { computeDailyRecommendations } from "@/lib/dailyStateEngine";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
@@ -71,6 +71,31 @@ function getTimeOfDay(): "morning" | "afternoon" | "evening" {
 }
 
 // ─── Dashboard Helpers (from old Dashboard.tsx) ───────────────────────────────
+
+/**
+ * Normalize a FamilyPlanningEntry into PubertyEntry shape so analytics
+ * (charts, health score, predictions) work for both phases.
+ */
+function normalizeFPtoPuberty(fp: FamilyPlanningEntry): PubertyEntry {
+  return {
+    phase: "puberty", // analytics format
+    periodStarted: false,
+    periodEnded: false,
+    flowIntensity: null,
+    symptoms: {
+      cramps: fp.symptoms.ovulationPain,
+      fatigue: fp.symptoms.fatigue,
+      moodSwings: fp.symptoms.moodChanges,
+      headache: fp.symptoms.stress,
+      acne: false,
+      breastTenderness: fp.symptoms.sleepIssues,
+    },
+    mood: fp.mood,
+    sleepHours: fp.sleepHours ?? null,
+    sleepQuality: fp.sleepQuality ?? null,
+    notes: fp.notes,
+  };
+}
 
 /** Compute a health score 0‒100 from the latest puberty log.
  *  Higher = healthier (fewer symptoms, better mood). */
@@ -411,21 +436,39 @@ export default function WellnessDashboard() {
     return Object.keys(logs).filter((d) => d >= sevenDaysAgo && d <= todayISO).length;
   }, [logs]);
 
-  // ── Puberty Logs (from old Dashboard) ──────────────────────
+  // ── Normalized Logs (puberty + family-planning, unified for analytics) ──
   const pubertyLogs = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
     return Object.entries(logs)
       .filter(([date, entry]) => {
-        if (entry.phase !== "puberty") return false;
+        // Include both puberty and family-planning entries
+        if (entry.phase !== "puberty" && entry.phase !== "family-planning") return false;
         if (date > today) return false;
         if ((entry as any)._periodAutoMarked) return false;
-        const e = entry as PubertyEntry;
-        const hasSymptom = Object.values(e.symptoms).some(Boolean);
-        const hasMood = !!e.mood;
-        const hasNotes = !!(e as any).notes;
-        return hasSymptom || hasMood || hasNotes || e.periodStarted;
+
+        if (entry.phase === "puberty") {
+          const e = entry as PubertyEntry;
+          const hasSymptom = Object.values(e.symptoms).some(Boolean);
+          const hasMood = !!e.mood;
+          const hasNotes = !!(e as any).notes;
+          return hasSymptom || hasMood || hasNotes || e.periodStarted;
+        }
+        if (entry.phase === "family-planning") {
+          const e = entry as FamilyPlanningEntry;
+          const hasSymptom = Object.values(e.symptoms).some(Boolean);
+          const hasMood = !!e.mood;
+          const hasNotes = !!(e as any).notes;
+          return hasSymptom || hasMood || hasNotes;
+        }
+        return false;
       })
-      .map(([date, entry]) => ({ date, entry: entry as PubertyEntry }))
+      .map(([date, entry]) => {
+        // Normalize FP entries to PubertyEntry shape for analytics
+        if (entry.phase === "family-planning") {
+          return { date, entry: normalizeFPtoPuberty(entry as FamilyPlanningEntry) };
+        }
+        return { date, entry: entry as PubertyEntry };
+      })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [logs]);
 

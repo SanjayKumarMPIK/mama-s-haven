@@ -48,6 +48,56 @@ export function getEDDRange(lmpISO: string): { min: string; max: string } {
   };
 }
 
+// ─── Delivery types ──────────────────────────────────────────────────────────
+
+export interface DeliveryData {
+  isDelivered: boolean;
+  birthDate: string;         // YYYY-MM-DD
+  weeksAtBirth: number;      // auto-calculated or manual
+  birthWeight: number | null; // grams, optional
+}
+
+export type MaternityMode = "pregnancy" | "premature" | "postpartum";
+export type RiskLevel = "high" | "moderate" | "low" | null;
+
+const EMPTY_DELIVERY: DeliveryData = {
+  isDelivered: false,
+  birthDate: "",
+  weeksAtBirth: 0,
+  birthWeight: null,
+};
+
+/** Risk level based on gestational age at birth */
+export function getRiskLevel(weeksAtBirth: number): RiskLevel {
+  if (weeksAtBirth <= 0) return null;
+  if (weeksAtBirth < 32) return "high";
+  if (weeksAtBirth < 35) return "moderate";
+  if (weeksAtBirth < 37) return "low";
+  return null; // full-term
+}
+
+/** Corrected age = actual age minus weeks born early */
+export function getCorrectedAge(
+  birthDate: string,
+  weeksAtBirth: number,
+): { actualWeeks: number; correctedWeeks: number; weeksBornEarly: number } | null {
+  if (!birthDate || weeksAtBirth <= 0 || weeksAtBirth >= 40) return null;
+  const birth = new Date(birthDate + "T00:00:00").getTime();
+  const now = Date.now();
+  const actualWeeks = Math.floor((now - birth) / (7 * 86_400_000));
+  const weeksBornEarly = 40 - weeksAtBirth;
+  const correctedWeeks = Math.max(0, actualWeeks - weeksBornEarly);
+  return { actualWeeks, correctedWeeks, weeksBornEarly };
+}
+
+/** Calculate weeks at birth from LMP + birth date */
+export function calcWeeksAtBirth(lmp: string, birthDate: string): number {
+  if (!lmp || !birthDate) return 0;
+  const lmpMs = new Date(lmp + "T00:00:00").getTime();
+  const birthMs = new Date(birthDate + "T00:00:00").getTime();
+  return Math.max(0, Math.floor((birthMs - lmpMs) / (7 * 86_400_000)));
+}
+
 // ─── Profile type ────────────────────────────────────────────────────────────
 
 export interface PregnancyProfile {
@@ -57,6 +107,7 @@ export interface PregnancyProfile {
   userEDD: string;        // optional manual override (set from dashboard)
   region: Region;
   isSetup: boolean;
+  delivery: DeliveryData;
 
   /* ── legacy compat — kept so old code referencing `dueDate` doesn't crash
        during migration; equals activeEDD ─────────────────────────────────── */
@@ -84,6 +135,7 @@ function loadProfile(): PregnancyProfile {
           userEDD: "",
           region: raw.region || "north",
           isSetup: true,
+          delivery: raw.delivery || { ...EMPTY_DELIVERY },
           dueDate: legacyDueDate,
         };
       }
@@ -101,6 +153,7 @@ function loadProfile(): PregnancyProfile {
         userEDD,
         region: raw.region || "north",
         isSetup: !!lmp,
+        delivery: raw.delivery || { ...EMPTY_DELIVERY },
         dueDate: activeEDD, // legacy compat
       };
     }
@@ -113,6 +166,7 @@ function loadProfile(): PregnancyProfile {
     userEDD: "",
     region: "north",
     isSetup: false,
+    delivery: { ...EMPTY_DELIVERY },
     dueDate: "",
   };
 }
@@ -125,6 +179,8 @@ interface PregnancyProfileContextType {
   saveProfile: (data: { name: string; lmp: string; region: Region }) => void;
   /** Set or clear a manual EDD override (used from dashboard). */
   setUserEDD: (edd: string | null) => void;
+  /** Save delivery details. */
+  saveDelivery: (data: DeliveryData) => void;
   clearProfile: () => void;
   /** The effective EDD used for all calculations. */
   activeEDD: string;
@@ -132,24 +188,28 @@ interface PregnancyProfileContextType {
   daysLeft: number;
   trimester: number;
   progress: number;
+  /** Current maternity mode based on delivery state. */
+  mode: MaternityMode;
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
 const EMPTY: PregnancyProfile = {
-  name: "", lmp: "", calculatedEDD: "", userEDD: "", region: "north", isSetup: false, dueDate: "",
+  name: "", lmp: "", calculatedEDD: "", userEDD: "", region: "north", isSetup: false, delivery: { ...EMPTY_DELIVERY }, dueDate: "",
 };
 
 const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
   profile: EMPTY,
   saveProfile: () => {},
   setUserEDD: () => {},
+  saveDelivery: () => {},
   clearProfile: () => {},
   activeEDD: "",
   currentWeek: 1,
   daysLeft: 280,
   trimester: 1,
   progress: 0,
+  mode: "pregnancy",
 });
 
 // ─── Provider ────────────────────────────────────────────────────────────────
@@ -167,6 +227,7 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
           lmp: profile.lmp,
           userEDD: profile.userEDD,
           region: profile.region,
+          delivery: profile.delivery,
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
       } catch { /* ignore */ }
@@ -182,15 +243,16 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
   // Save from setup screen
   const saveProfile = useCallback((data: { name: string; lmp: string; region: Region }) => {
     const calculatedEDD = calculateEDD(data.lmp);
-    setProfile({
+    setProfile((prev) => ({
       name: data.name,
       lmp: data.lmp,
       calculatedEDD,
       userEDD: "",
       region: data.region,
       isSetup: true,
+      delivery: prev.delivery, // preserve delivery if exists
       dueDate: calculatedEDD, // legacy compat
-    });
+    }));
   }, []);
 
   // Set or clear user EDD override
@@ -200,6 +262,14 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
       const active = userEDD || prev.calculatedEDD;
       return { ...prev, userEDD, dueDate: active };
     });
+  }, []);
+
+  // Save delivery details
+  const saveDelivery = useCallback((data: DeliveryData) => {
+    setProfile((prev) => ({
+      ...prev,
+      delivery: data,
+    }));
   }, []);
 
   // Clear everything
@@ -214,16 +284,25 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
   const trimester = getTrimester(currentWeek);
   const progress = getProgressPercentage(currentWeek);
 
+  // Derived mode
+  const mode: MaternityMode = useMemo(() => {
+    if (!profile.delivery.isDelivered) return "pregnancy";
+    if (profile.delivery.weeksAtBirth > 0 && profile.delivery.weeksAtBirth < 37) return "premature";
+    return "postpartum";
+  }, [profile.delivery]);
+
   const value: PregnancyProfileContextType = {
     profile,
     saveProfile,
     setUserEDD,
+    saveDelivery,
     clearProfile,
     activeEDD,
     currentWeek,
     daysLeft,
     trimester,
     progress,
+    mode,
   };
 
   return createElement(PregnancyProfileContext.Provider, { value }, children);

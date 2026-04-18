@@ -1,19 +1,24 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useProfile } from "@/hooks/useProfile";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
 import { Link } from "react-router-dom";
 import {
   Apple, Calendar, ChevronRight, ArrowRight, Activity,
-  Zap, Sparkles, ShieldCheck, Leaf,
+  Zap, Sparkles, ShieldCheck, Leaf, ChevronDown, ChevronUp,
+  AlertTriangle, Info, Heart, Sun, Droplets, Brain,
+  Bone, Battery, Pill,
 } from "lucide-react";
 import {
   computeNutritionInsights,
   type NutrientNeed,
 } from "@/lib/nutritionInsightsEngine";
 import { predictMaternityDeficiencies, type MaternityPredictionResult, type MaternityFallbackRecommendation } from "@/lib/maternityNutritionEngine";
+import { predictPubertyDeficiencies, type PubertyNutritionResult, type PubertyDeficiencyPrediction, type Confidence } from "@/lib/pubertyNutritionEngine";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 
 // ─── Phase accent map ─────────────────────────────────────────────────────────
@@ -61,6 +66,8 @@ export default function NutritionGuide() {
   const { phase, phaseName } = usePhase();
   const { logs } = useHealthLog();
   const { trimester } = usePregnancyProfile();
+  const { profile } = useProfile();
+  const { config: onboardingConfig } = useOnboarding();
 
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
 
@@ -72,6 +79,12 @@ export default function NutritionGuide() {
     if (phase === "maternity") return predictMaternityDeficiencies(logs, trimester);
     return null;
   }, [logs, phase, trimester]);
+
+  // ── Compute puberty specific insights (memoized) ──
+  const pubertyData = useMemo(() => {
+    if (phase === "puberty") return predictPubertyDeficiencies(logs, profile, onboardingConfig);
+    return null;
+  }, [logs, phase, profile, onboardingConfig]);
 
   // ═══ Render ═════════════════════════════════════════════════════════════════
 
@@ -97,7 +110,10 @@ export default function NutritionGuide() {
       </div>
 
       <div className="container py-6 space-y-6">
-        {phase === "maternity" && maternityData ? (
+        {/* ─── PUBERTY PHASE ─────────────────────────────────────────────── */}
+        {phase === "puberty" && pubertyData ? (
+          <PubertyNutritionView data={pubertyData} accent={accent} />
+        ) : phase === "maternity" && maternityData ? (
           <MaternityNutritionView data={maternityData} accent={accent} />
         ) : !data.hasData ? (
           /* ─── Empty State ──────────────────────────────────────────────── */
@@ -313,6 +329,367 @@ function SectionHeader({ title, emoji }: { title: string; emoji: string }) {
   );
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── PUBERTY NUTRITION VIEW ───────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const NUTRIENT_ICON: Record<string, typeof Sun> = {
+  iron: Heart,
+  vitamin_d: Sun,
+  calcium: Bone,
+  energy: Battery,
+  electrolyte: Droplets,
+  omega3: Brain,
+  b12: Pill,
+};
+
+const CONFIDENCE_STYLE: Record<Confidence, { bg: string; text: string; ringColor: string; label: string }> = {
+  High: {
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    ringColor: "border-amber-300",
+    label: "High likelihood",
+  },
+  Medium: {
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    ringColor: "border-blue-300",
+    label: "Medium likelihood",
+  },
+  Low: {
+    bg: "bg-slate-50",
+    text: "text-slate-600",
+    ringColor: "border-slate-300",
+    label: "Low likelihood",
+  },
+};
+
+function DeficiencyCard({
+  prediction,
+  accent,
+  index,
+}: {
+  prediction: PubertyDeficiencyPrediction;
+  accent: any;
+  index: number;
+}) {
+  const [showWhy, setShowWhy] = useState(false);
+  const [showRecommendations, setShowRecommendations] = useState(index === 0);
+  const confStyle = CONFIDENCE_STYLE[prediction.confidence];
+  const Icon = NUTRIENT_ICON[prediction.id] ?? Leaf;
+
+  return (
+    <div
+      className={`rounded-2xl border-2 ${confStyle.ringColor} bg-card overflow-hidden transition-all duration-300 hover:shadow-lg`}
+    >
+      {/* ── Card Header ── */}
+      <div className={`px-5 py-4 ${confStyle.bg}`}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${confStyle.bg} border ${confStyle.ringColor}`}>
+              <span className="text-xl">{prediction.emoji}</span>
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-foreground">{prediction.nutrient}</h3>
+              <p className={`text-[11px] font-semibold ${confStyle.text} mt-0.5`}>
+                {confStyle.label}
+              </p>
+            </div>
+          </div>
+          <span
+            className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${confStyle.ringColor} ${confStyle.bg} ${confStyle.text}`}
+          >
+            {prediction.confidence}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Explanation ── */}
+      <div className="px-5 py-4 border-t border-border/30">
+        <p className="text-sm text-foreground/85 leading-relaxed">
+          {prediction.explanation}
+        </p>
+
+        {/* Trigger symptoms */}
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {prediction.triggers.map((trigger) => (
+            <span
+              key={trigger}
+              className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/50 text-[11px] font-medium text-muted-foreground border border-border/30"
+            >
+              {trigger}
+            </span>
+          ))}
+        </div>
+
+        {/* ── Why this suggestion (expandable) ── */}
+        <button
+          type="button"
+          onClick={() => setShowWhy(!showWhy)}
+          className="flex items-center gap-1.5 mt-3 text-[12px] font-semibold text-primary hover:text-primary/80 transition-colors"
+        >
+          <Info className="w-3.5 h-3.5" />
+          Why this suggestion?
+          {showWhy ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+        </button>
+        <div
+          className="transition-all duration-300 ease-in-out overflow-hidden"
+          style={{ maxHeight: showWhy ? "200px" : "0px", opacity: showWhy ? 1 : 0 }}
+        >
+          <p className="text-xs text-muted-foreground leading-relaxed mt-2 bg-muted/20 rounded-lg p-3 border border-border/20">
+            {prediction.whyThisSuggestion}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Recommendations (expandable) ── */}
+      <div className="border-t border-border/30">
+        <button
+          type="button"
+          onClick={() => setShowRecommendations(!showRecommendations)}
+          className="w-full flex items-center justify-between px-5 py-3 hover:bg-muted/20 transition-colors"
+        >
+          <span className="text-sm font-semibold text-foreground flex items-center gap-2">
+            🍽️ Recommended Support
+          </span>
+          {showRecommendations ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
+        </button>
+        <div
+          className="transition-all duration-300 ease-in-out overflow-hidden"
+          style={{ maxHeight: showRecommendations ? "600px" : "0px", opacity: showRecommendations ? 1 : 0 }}
+        >
+          <div className="px-5 pb-5 space-y-4">
+            {/* Food suggestions */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                Foods to include
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {prediction.foods.map((food) => (
+                  <span
+                    key={food}
+                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border bg-gradient-to-r ${accent.gradient} text-white shadow-sm`}
+                  >
+                    {food}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Habit suggestions */}
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
+                Healthy habits
+              </p>
+              <ul className="space-y-1.5 ml-4">
+                {prediction.habits.map((habit, i) => (
+                  <li key={i} className="text-sm text-foreground/85 list-disc leading-relaxed">
+                    {habit}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Daily tip */}
+            <div className={`rounded-xl ${accent.bg} border ${accent.border} p-3 flex items-start gap-2.5`}>
+              <Zap className={`w-4 h-4 ${accent.text} shrink-0 mt-0.5`} />
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
+                  Daily Tip
+                </p>
+                <p className="text-sm font-medium text-foreground/90">{prediction.dailyTip}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PubertyNutritionView({
+  data,
+  accent,
+}: {
+  data: PubertyNutritionResult;
+  accent: any;
+}) {
+  return (
+    <>
+      {/* ── Safety Banner ──────────────────────────────────────────────── */}
+      <ScrollReveal>
+        <div className="rounded-xl border border-rose-200/60 bg-gradient-to-r from-rose-50/50 to-pink-50/30 p-4">
+          <p className="text-xs text-rose-800 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+            <span>
+              <strong>Important:</strong> This is not a diagnostic tool. The insights below are
+              based on your logged symptoms and profile data. They use probability-based language
+              and are meant for general awareness only. Always consult a healthcare professional for
+              medical advice.
+            </span>
+          </p>
+        </div>
+      </ScrollReveal>
+
+      {/* ── Age Group Badge ──────────────────────────────────────────── */}
+      <ScrollReveal delay={50}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full border ${accent.border} ${accent.bg} ${accent.text} px-3 py-1`}>
+            🌸 {data.ageGroup.label}
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            Recommendations tuned for your age group
+          </span>
+        </div>
+      </ScrollReveal>
+
+      {data.hasData && data.deficiencies.length > 0 ? (
+        <div className="space-y-6">
+          {/* ── Section 1: Deficiency Cards ─────────────────────────────── */}
+          <ScrollReveal delay={100}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-lg">🔍</span>
+              <h2 className="text-lg font-bold tracking-tight">Your Nutritional Insights</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Based on your recent symptoms and health data, here are areas where your body may need extra support:
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              {data.deficiencies.map((pred, i) => (
+                <DeficiencyCard key={pred.id} prediction={pred} accent={accent} index={i} />
+              ))}
+            </div>
+          </ScrollReveal>
+
+          {/* ── Section 2: General Tips ─────────────────────────────────── */}
+          <ScrollReveal delay={150}>
+            <SectionHeader title="General Daily Tips" emoji="⚡" />
+            <div className="rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
+              {data.generalTips.map((tip, i) => (
+                <div key={i} className="flex items-start gap-3 px-5 py-3.5">
+                  <span className="text-base mt-0.5 shrink-0">✅</span>
+                  <p className="text-sm leading-relaxed text-foreground/85">{tip}</p>
+                </div>
+              ))}
+            </div>
+          </ScrollReveal>
+
+          {/* ── Log More CTA ─────────────────────────────────────────────── */}
+          <ScrollReveal delay={200}>
+            <div className="flex justify-center">
+              <Link
+                to="/calendar"
+                className="inline-flex items-center gap-2 text-sm text-primary font-medium hover:underline"
+              >
+                <Calendar className="w-4 h-4" /> Log more symptoms for better accuracy
+              </Link>
+            </div>
+          </ScrollReveal>
+
+          {/* ── Integration Links ─────────────────────────────────────── */}
+          <ScrollReveal delay={250}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Link
+                to="/symptom-checker"
+                className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
+              >
+                <Activity className={`w-5 h-5 ${accent.text}`} />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">Symptom Insights</p>
+                  <p className="text-[11px] text-muted-foreground">See your patterns</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                to="/wellness"
+                className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
+              >
+                <Sparkles className={`w-5 h-5 ${accent.text}`} />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">Wellness Dashboard</p>
+                  <p className="text-[11px] text-muted-foreground">Full health overview</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                to="/calendar"
+                className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
+              >
+                <Calendar className={`w-5 h-5 ${accent.text}`} />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">Log Symptoms</p>
+                  <p className="text-[11px] text-muted-foreground">Keep data fresh</p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+            </div>
+          </ScrollReveal>
+        </div>
+      ) : (
+        /* ─── No Deficiencies / Empty State ──────────────────────────── */
+        <ScrollReveal delay={100}>
+          <div className="flex flex-col items-center justify-center text-center py-12 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
+            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center mb-5 shadow-lg`}>
+              <Apple className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground mb-1">
+              {data.hasData ? "Looking Good! 🌟" : "Log Your Symptoms to Get Started"}
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mb-4">
+              {data.hasData
+                ? "Based on your current data, no significant nutritional gaps were detected. Keep maintaining your healthy habits!"
+                : "Log your daily symptoms in the Calendar to get personalized nutritional insights tailored to your body's needs."}
+            </p>
+
+            {/* General tips always shown */}
+            <div className="w-full max-w-lg text-left mb-6">
+              <SectionHeader title="General Daily Tips" emoji="⚡" />
+              <div className="rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
+                {data.generalTips.map((tip, i) => (
+                  <div key={i} className="flex items-start gap-3 px-5 py-3.5">
+                    <span className="text-base mt-0.5 shrink-0">✅</span>
+                    <p className="text-sm leading-relaxed text-foreground/85">{tip}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Link
+              to="/calendar"
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r ${accent.gradient} text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all active:scale-[0.97]`}
+            >
+              <Calendar className="w-4 h-4" />
+              {data.hasData ? "Log More Symptoms" : "Go to Calendar"}
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </ScrollReveal>
+      )}
+
+      {/* ── Extended Disclaimer ──────────────────────────────────────── */}
+      <ScrollReveal delay={300}>
+        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4 mt-2">
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-amber-800 leading-relaxed">
+              <strong>Disclaimer:</strong> {data.disclaimer} Do not start any supplements without
+              consulting a doctor. These suggestions focus on food-based nutrition and healthy habits only.
+            </p>
+          </div>
+        </div>
+      </ScrollReveal>
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── MATERNITY NUTRITION VIEW (unchanged) ─────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function MaternityNutritionView({
   data,
   accent,
@@ -465,4 +842,3 @@ function MaternityNutritionView({
     </>
   );
 }
-

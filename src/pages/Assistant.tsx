@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Stethoscope, Heart, Dumbbell, Sparkles, AlertTriangle, Bot, Volume2 } from "lucide-react";
+import { Send, Stethoscope, Heart, Dumbbell, AlertTriangle, Bot, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -9,6 +9,15 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase, type Phase } from "@/hooks/usePhase";
 import { useVoice } from "@/hooks/useVoice";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useHealthLog } from "@/hooks/useHealthLog";
+import { useProfile } from "@/hooks/useProfile";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import VoiceButton from "@/components/VoiceButton";
+import EmergencyCard from "@/components/EmergencyCard";
+import SafetyDisclaimer from "@/components/SafetyDisclaimer";
+
+// ─── Emergency keyword detection ─────────────────────────────────────────────
+
 const EMERGENCY_KEYWORDS = [
   "hemorrhage", "bleeding heavily", "heavy bleeding", "blood clot",
   "no fetal movement", "baby not moving", "baby stopped moving",
@@ -21,16 +30,18 @@ const EMERGENCY_KEYWORDS = [
   "swelling face", "swollen face", "sudden swelling",
   "preeclampsia", "eclampsia",
 ];
+
 function checkEmergencyKeywords(text: string): boolean {
   const lower = text.toLowerCase();
   return EMERGENCY_KEYWORDS.some((kw) => lower.includes(kw));
 }
-import VoiceButton from "@/components/VoiceButton";
-import EmergencyCard from "@/components/EmergencyCard";
-import SafetyDisclaimer from "@/components/SafetyDisclaimer";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 type Tone = "doctor" | "mom" | "coach";
 type Msg = { role: "user" | "assistant"; content: string };
+
+// ─── Config ───────────────────────────────────────────────────────────────────
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pregnancy-assistant`;
 
@@ -39,6 +50,74 @@ const tones: { id: Tone; label: string; icon: React.ReactNode; desc: string }[] 
   { id: "mom", label: "Friendly Mom", icon: <Heart className="w-4 h-4" />, desc: "Warm & relatable" },
   { id: "coach", label: "Coach", icon: <Dumbbell className="w-4 h-4" />, desc: "Motivating & action-oriented" },
 ];
+
+// ─── Quick prompts per phase ──────────────────────────────────────────────────
+
+const QUICK_BY_PHASE: Record<Phase, string[]> = {
+  puberty: [
+    "Quick tips for period cramps?",
+    "Iron-rich foods I can eat daily?",
+    "How to sleep better during periods?",
+    "Why do I feel so tired?",
+  ],
+  maternity: [],
+  "family-planning": [
+    "How do I track fertile days?",
+    "Foods to boost fertility?",
+    "Stress affecting my cycle?",
+    "When should I see a doctor?",
+  ],
+  menopause: [
+    "Quick relief for hot flashes?",
+    "Foods that help in menopause?",
+    "How to sleep better at night?",
+    "Why am I gaining weight?",
+  ],
+};
+
+// ─── Build symptom context from recent health logs ────────────────────────────
+
+function buildSymptomContext(logs: Record<string, any>, phase: Phase): string {
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const d7 = new Date();
+  d7.setDate(d7.getDate() - 7);
+  const d7ISO = d7.toISOString().slice(0, 10);
+
+  const symptomCounts: Record<string, number> = {};
+  let sleepSum = 0;
+  let sleepN = 0;
+  let moodLow = 0;
+  let loggedDays = 0;
+
+  for (const [dateISO, entry] of Object.entries(logs)) {
+    if ((entry as any).phase !== phase || dateISO > todayISO || dateISO < d7ISO) continue;
+    loggedDays++;
+    const e = entry as any;
+    if (e.symptoms) {
+      for (const [k, v] of Object.entries(e.symptoms)) {
+        if (v) symptomCounts[k] = (symptomCounts[k] || 0) + 1;
+      }
+    }
+    if (e.sleepHours != null) { sleepSum += Number(e.sleepHours); sleepN++; }
+    if (e.mood === "Low") moodLow++;
+  }
+
+  if (loggedDays === 0) return "No recent health logs available.";
+
+  const topSymptoms = Object.entries(symptomCounts)
+    .sort(([, a], [, b]) => b - a)
+    .slice(0, 4)
+    .map(([k, c]) => `${k}(${c}d)`);
+
+  const parts = [`Logged ${loggedDays} days in last 7 days.`];
+  if (topSymptoms.length > 0) parts.push(`Recent symptoms: ${topSymptoms.join(", ")}.`);
+  if (sleepN > 0) parts.push(`Avg sleep: ${(sleepSum / sleepN).toFixed(1)}h.`);
+  if (moodLow >= 2) parts.push("Multiple low-mood days this week.");
+
+  return parts.join(" ");
+}
+
+// ─── Stream chat ──────────────────────────────────────────────────────────────
 
 async function streamChat({
   messages, tone, language, weekContext, onDelta, onDone, onError,
@@ -92,6 +171,8 @@ async function streamChat({
   onDone();
 }
 
+// ─── Message bubble component ─────────────────────────────────────────────────
+
 function MessageBubble({ msg, onSpeak }: { msg: Msg; onSpeak?: (text: string) => void }) {
   const isUser = msg.role === "user";
   const hasWarning = /consult (your |a )?doctor|seek (medical |immediate )?help|emergency|call your (healthcare|midwife)/i.test(msg.content);
@@ -133,18 +214,38 @@ function MessageBubble({ msg, onSpeak }: { msg: Msg; onSpeak?: (text: string) =>
   );
 }
 
-const QUICK_BY_PHASE: Record<Phase, string[]> = {
-  puberty: ["What’s a normal cycle length?", "How can I ease period pain at school?", "Iron foods that are easy to pack?"],
-  maternity: [],
-  "family-planning": ["How do I track fertile days simply?", "When should we see a doctor before conceiving?", "Stress making planning hard — ideas?"],
-  menopause: ["What are common menopause symptoms?", "How can I manage hot flashes?", "What foods help during menopause?"],
-};
+// ─── Main component ───────────────────────────────────────────────────────────
 
 export default function Assistant() {
   const { t, language, simpleMode } = useLanguage();
   const { phase, phaseName } = usePhase();
-  const { currentWeek, trimester, profile, activeEDD } = usePregnancyProfile();
+  const { currentWeek, trimester, profile: maternityProfile, activeEDD } = usePregnancyProfile();
   const voice = useVoice(language);
+  const { logs } = useHealthLog();
+  const { profile: userProfile } = useProfile();
+  const { config: onboardingConfig } = useOnboarding();
+
+  const isMaternity = phase === "maternity";
+
+  // Phase-aware greeting, description, and placeholder text
+  const phaseGreeting: Record<Phase, string> = {
+    puberty: "Namaste! \ud83c\udf3c",
+    maternity: t("greeting"),
+    "family-planning": "Namaste! \ud83c\udf3f",
+    menopause: "Namaste! \ud83c\udf3a",
+  };
+  const phaseDesc: Record<Phase, string> = {
+    puberty: "I'm your health companion. Ask me about periods, nutrition, symptoms, or anything about your body.",
+    maternity: t("greetingDesc"),
+    "family-planning": "I'm your wellness companion. Ask about cycle tracking, fertility, nutrition, or lifestyle.",
+    menopause: "I'm your wellness companion. Ask about symptoms, nutrition, sleep, or managing changes.",
+  };
+  const phasePlaceholder: Record<Phase, string> = {
+    puberty: "Ask about your health...",
+    maternity: t("askAnything"),
+    "family-planning": "Ask about your health...",
+    menopause: "Ask about your health...",
+  };
 
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -175,7 +276,6 @@ export default function Assistant() {
     setInput("");
     setError(null);
 
-    // Check if user input contains emergency keywords
     if (checkEmergencyKeywords(msg)) {
       setShowEmergencyBanner(true);
     }
@@ -196,13 +296,40 @@ export default function Assistant() {
       });
     };
 
+    // Build rich context: phase-specific data + recent symptom summary
+    const symptomContext = buildSymptomContext(logs, phase);
+
+    // Phase-specific context — only send relevant data
+    let phaseContext = "";
+    if (isMaternity && maternityProfile.isSetup) {
+      phaseContext = `Pregnancy: week ${currentWeek}, trimester ${trimester}, due date ${activeEDD}, region ${maternityProfile.region}.`;
+    } else if (phase === "puberty") {
+      const parts: string[] = [];
+      if (userProfile.age) parts.push(`Age: ${userProfile.age}`);
+      if (userProfile.cycleLength) parts.push(`Cycle length: ${userProfile.cycleLength} days`);
+      if (userProfile.haemoglobin) parts.push(`Haemoglobin: ${userProfile.haemoglobin}`);
+      if (onboardingConfig.goals?.length) parts.push(`Goals: ${onboardingConfig.goals.join(", ")}`);
+      phaseContext = parts.join(". ") + ".";
+    } else if (phase === "family-planning") {
+      const parts: string[] = [];
+      if (userProfile.age) parts.push(`Age: ${userProfile.age}`);
+      if (userProfile.cycleLength) parts.push(`Cycle length: ${userProfile.cycleLength} days`);
+      if (userProfile.lastPeriodDate) parts.push(`Last period: ${userProfile.lastPeriodDate}`);
+      if (onboardingConfig.goals?.length) parts.push(`Goals: ${onboardingConfig.goals.join(", ")}`);
+      phaseContext = parts.join(". ") + ".";
+    } else if (phase === "menopause") {
+      const parts: string[] = [];
+      if (userProfile.age) parts.push(`Age: ${userProfile.age}`);
+      if (onboardingConfig.goals?.length) parts.push(`Goals: ${onboardingConfig.goals.join(", ")}`);
+      phaseContext = parts.join(". ") + ".";
+    }
+
     const weekContext = [
       `Life stage: ${phaseName}.`,
-      profile.isSetup
-        ? `Pregnancy: week ${currentWeek}, trimester ${trimester}, due date ${activeEDD}, region ${profile.region}.`
-        : null,
+      phaseContext || null,
+      symptomContext,
       `Respond in ${language}.`,
-      "Stay within general wellness education; encourage professional care for symptoms or decisions.",
+      "Keep responses SHORT: 2-4 lines, max 4 bullet points. Personalize based on user context and symptoms above.",
     ]
       .filter(Boolean)
       .join(" ");
@@ -250,13 +377,13 @@ export default function Assistant() {
                 </h1>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Phase: <strong>{phaseName}</strong>
-                  {profile.isSetup && (
+                  {isMaternity && maternityProfile.isSetup && (
                     <>
                       {" "}
                       · {t("yourWeek")} {currentWeek}/40 · {t("trimester")} {trimester}
-                      {profile.name && ` · 👋 ${profile.name}`}
                     </>
                   )}
+                  {userProfile.name && ` · 👋 ${userProfile.name}`}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -294,8 +421,8 @@ export default function Assistant() {
               <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
                 <Bot className="w-8 h-8 text-primary" />
               </div>
-              <h2 className="text-lg font-semibold text-foreground mb-2">{t("greeting")}</h2>
-              <p className="text-sm text-muted-foreground max-w-md mb-6">{t("greetingDesc")}</p>
+              <h2 className="text-lg font-semibold text-foreground mb-2">{phaseGreeting[phase]}</h2>
+              <p className="text-sm text-muted-foreground max-w-md mb-6">{phaseDesc[phase]}</p>
               <div className="flex flex-wrap justify-center gap-2 max-w-lg">
                 {quickPrompts.map((q) => (
                   <button
@@ -353,7 +480,7 @@ export default function Assistant() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKey}
-              placeholder={t("askAnything")}
+              placeholder={phasePlaceholder[phase]}
               className="min-h-[44px] max-h-[120px] resize-none rounded-xl border-border bg-card text-sm"
               rows={1}
             />

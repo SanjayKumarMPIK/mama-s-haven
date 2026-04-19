@@ -43,6 +43,7 @@ export interface ProfileData {
   // Meta
   registeredAt: string;
   isProfileAvailable: boolean;
+  lastWeightUpdate: number | null; // epoch ms of last weight save
 }
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
@@ -70,7 +71,7 @@ function writeExtras(extras: ProfileExtras) {
   } catch {}
 }
 
-function readWellnessProfile(): { weight: number; height: number; region: string } | null {
+function readWellnessProfile(): { weight: number; height: number; region: string; lastWeightUpdate?: number } | null {
   try {
     const raw = localStorage.getItem(WELLNESS_KEY);
     if (raw) {
@@ -81,9 +82,9 @@ function readWellnessProfile(): { weight: number; height: number; region: string
   return null;
 }
 
-function writeWellnessProfile(data: { weight: number; height: number; region: string }) {
+function writeWellnessProfile(data: { weight: number; height: number; region: string; lastWeightUpdate?: number }) {
   try {
-    localStorage.setItem(WELLNESS_KEY, JSON.stringify(data));
+    localStorage.setItem(WELLNESS_KEY, JSON.stringify({ ...data, lastWeightUpdate: Date.now() }));
   } catch {}
 }
 
@@ -180,6 +181,7 @@ export function useProfile() {
       lifeStage,
       registeredAt,
       isProfileAvailable: !!name,
+      lastWeightUpdate: wellnessProfile?.lastWeightUpdate ?? null,
     };
   }, [fullProfile, wellnessProfile, extras, phase, config]);
 

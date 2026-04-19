@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { usePhase } from "@/hooks/usePhase";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useMedicineReminder } from "@/hooks/useMedicineReminder";
 import { ArrowLeft, Layers, ShieldAlert, Droplets, Sun, Pill, ChevronRight, CheckCircle2, Clock, AlertTriangle, Hourglass, Timer } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -122,6 +123,58 @@ const DAILY_CARE = [
   { icon: "🥗", tip: "Eat small, balanced meals every 3–4 hours throughout the day." },
   { icon: "📅", tip: "Keep all your antenatal appointment dates noted and never skip them." },
 ];
+
+// ─── Optional diabetes-aware layer (local only, backward compatible) ─────────
+
+const MATERNITY_DIABETES_HEALTH_KEY = "maternity-module-diabetes-health";
+
+type DiabetesStage = "pre" | "gestational" | "unknown" | "none";
+
+type MaternityHealthState = {
+  diabetesStage: DiabetesStage;
+  diabetesPromptShown: boolean;
+  recheckPromptShown: boolean;
+  symptoms: string[];
+  riskScore: number;
+};
+
+const DEFAULT_MATERNITY_HEALTH: MaternityHealthState = {
+  diabetesStage: "none",
+  diabetesPromptShown: false,
+  recheckPromptShown: false,
+  symptoms: [],
+  riskScore: 0,
+};
+
+const DIABETES_STAGES: DiabetesStage[] = ["pre", "gestational", "unknown", "none"];
+
+function loadMaternityHealthMerged(): MaternityHealthState {
+  try {
+    const raw = localStorage.getItem(MATERNITY_DIABETES_HEALTH_KEY);
+    if (!raw) return { ...DEFAULT_MATERNITY_HEALTH };
+    const parsed = JSON.parse(raw) as Partial<MaternityHealthState>;
+    const stage =
+      parsed.diabetesStage && DIABETES_STAGES.includes(parsed.diabetesStage as DiabetesStage)
+        ? (parsed.diabetesStage as DiabetesStage)
+        : DEFAULT_MATERNITY_HEALTH.diabetesStage;
+    return {
+      ...DEFAULT_MATERNITY_HEALTH,
+      ...parsed,
+      diabetesStage: stage,
+      diabetesPromptShown: !!parsed.diabetesPromptShown,
+      recheckPromptShown: !!parsed.recheckPromptShown,
+      symptoms: Array.isArray(parsed.symptoms)
+        ? parsed.symptoms.filter((s): s is string => typeof s === "string")
+        : DEFAULT_MATERNITY_HEALTH.symptoms,
+      riskScore:
+        typeof parsed.riskScore === "number" && !Number.isNaN(parsed.riskScore)
+          ? Math.min(100, Math.max(0, parsed.riskScore))
+          : DEFAULT_MATERNITY_HEALTH.riskScore,
+    };
+  } catch {
+    return { ...DEFAULT_MATERNITY_HEALTH };
+  }
+}
 
 // ─── Subcomponents ────────────────────────────────────────────────────────────
 
@@ -462,11 +515,85 @@ function MedicineReminderCard() {
 
 export default function Maternity() {
   const { setPhase } = usePhase();
+  const { profile, currentWeek: profileCurrentWeek } = usePregnancyProfile();
   const [trimester, setTrimester] = useState<Trimester>("first");
+  const [health, setHealth] = useState<MaternityHealthState>(() => loadMaternityHealthMerged());
+
+  const maternityState = useMemo(
+    () => ({
+      week:
+        typeof profileCurrentWeek === "number" && !Number.isNaN(profileCurrentWeek)
+          ? profileCurrentWeek
+          : 0,
+      delivery: profile?.delivery,
+    }),
+    [profile?.delivery, profileCurrentWeek],
+  );
+
+  const currentWeek = maternityState?.week ?? 0;
+
+  const updateStage = useCallback((stage: DiabetesStage) => {
+    setHealth((prev) => ({
+      ...(prev ?? DEFAULT_MATERNITY_HEALTH),
+      diabetesStage: stage,
+      diabetesPromptShown: true,
+    }));
+  }, []);
+
+  const handleRecheck = useCallback((value: "yes" | "no" | "unknown") => {
+    setHealth((prev) => ({
+      ...(prev ?? DEFAULT_MATERNITY_HEALTH),
+      diabetesStage:
+        value === "yes" ? "gestational" : prev?.diabetesStage ?? DEFAULT_MATERNITY_HEALTH.diabetesStage,
+      recheckPromptShown: true,
+    }));
+  }, []);
+
+  const toggleDiabetesSymptom = useCallback((id: string) => {
+    setHealth((prev) => {
+      const base = prev ?? DEFAULT_MATERNITY_HEALTH;
+      const symptoms = base.symptoms ?? [];
+      const has = symptoms.includes(id);
+      return {
+        ...base,
+        symptoms: has ? symptoms.filter((s) => s !== id) : [...symptoms, id],
+      };
+    });
+  }, []);
 
   useEffect(() => {
     setPhase("maternity");
   }, [setPhase]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(MATERNITY_DIABETES_HEALTH_KEY, JSON.stringify(health));
+    } catch {
+      /* ignore */
+    }
+  }, [health]);
+
+  useEffect(() => {
+    const symptoms = health?.symptoms ?? [];
+    let score = 0;
+    if (symptoms.includes("frequent_thirst")) score += 30;
+    if (symptoms.includes("frequent_urination")) score += 30;
+    if (symptoms.includes("fatigue")) score += 10;
+    if (currentWeek >= 20) score += 20;
+    const next = Math.min(score, 100);
+    setHealth((prev) => {
+      const p = prev ?? DEFAULT_MATERNITY_HEALTH;
+      return p.riskScore === next ? p : { ...p, riskScore: next };
+    });
+  }, [health?.symptoms, currentWeek]);
+
+  const showBloodSugarCare =
+    health?.diabetesStage === "pre" ||
+    health?.diabetesStage === "gestational" ||
+    (health?.riskScore ?? 0) >= 40;
+
+  const btnRow =
+    "block w-full sm:w-auto text-left text-sm px-3 py-2 rounded-lg border border-border/60 bg-background hover:bg-muted/50 transition-colors";
 
   return (
     <div className="min-h-screen py-12 bg-background">
@@ -494,14 +621,68 @@ export default function Maternity() {
         </ScrollReveal>
 
         <div className="space-y-6">
+          {!health?.diabetesPromptShown && (
+            <ScrollReveal>
+              <div className="card rounded-2xl border border-border/60 bg-card shadow-sm text-left">
+                <h4 className="font-bold mb-1">Health Info</h4>
+                <p className="text-sm text-muted-foreground mb-3">Do any of these apply?</p>
+                <div className="flex flex-col gap-2">
+                  <button type="button" className={btnRow} onClick={() => updateStage("pre")}>
+                    Had diabetes before pregnancy
+                  </button>
+                  <button type="button" className={btnRow} onClick={() => updateStage("gestational")}>
+                    Diagnosed during pregnancy
+                  </button>
+                  <button type="button" className={btnRow} onClick={() => updateStage("unknown")}>
+                    Not sure
+                  </button>
+                  <button type="button" className={btnRow} onClick={() => updateStage("none")}>
+                    None
+                  </button>
+                </div>
+              </div>
+            </ScrollReveal>
+          )}
+
+          {currentWeek >= 20 && !health?.recheckPromptShown && (
+            <ScrollReveal>
+              <div className="card rounded-2xl border border-border/60 bg-card shadow-sm text-left">
+                <p className="text-sm mb-3">Have you been diagnosed with diabetes during this pregnancy?</p>
+                <div className="flex flex-col sm:flex-row flex-wrap gap-2">
+                  <button type="button" className={btnRow} onClick={() => handleRecheck("yes")}>
+                    Yes
+                  </button>
+                  <button type="button" className={btnRow} onClick={() => handleRecheck("no")}>
+                    No
+                  </button>
+                  <button type="button" className={btnRow} onClick={() => handleRecheck("unknown")}>
+                    Not sure
+                  </button>
+                </div>
+              </div>
+            </ScrollReveal>
+          )}
+
           {/* Trimester selector */}
           <ScrollReveal>
             <TrimesterSelector value={trimester} onChange={setTrimester} />
           </ScrollReveal>
 
-          {/* Trimester-specific guidance */}
+          {/* Trimester-specific guidance + optional blood sugar nutrition */}
           <ScrollReveal delay={80}>
-            <TrimesterGuidancePanel trimester={trimester} />
+            <>
+              <TrimesterGuidancePanel trimester={trimester} />
+              {showBloodSugarCare && (
+                <div className="card mt-4 rounded-2xl border border-border/60 bg-card shadow-sm text-left">
+                  <h4 className="font-bold mb-2">Blood Sugar Care</h4>
+                  <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                    <li>Prefer complex carbohydrates</li>
+                    <li>Avoid high-sugar foods</li>
+                    <li>Eat smaller frequent meals</li>
+                  </ul>
+                </div>
+              )}
+            </>
           </ScrollReveal>
 
           {/* Medicine Reminder card */}
@@ -517,6 +698,56 @@ export default function Maternity() {
           <ScrollReveal delay={200}>
             <SymptomCheckIn trimester={trimester} />
           </ScrollReveal>
+
+          <ScrollReveal delay={200}>
+            <div className="card rounded-2xl border border-border/60 bg-card shadow-sm text-left">
+              <h4 className="font-bold mb-1">Blood sugar–related symptoms (optional)</h4>
+              <p className="text-xs text-muted-foreground mb-3">
+                Tick any that apply — used only for a simple on-device insight score.
+              </p>
+              <div className="flex flex-col gap-2 text-sm">
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-input"
+                    checked={!!health?.symptoms?.includes("frequent_thirst")}
+                    onChange={() => toggleDiabetesSymptom("frequent_thirst")}
+                  />
+                  Frequent thirst
+                </label>
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-input"
+                    checked={!!health?.symptoms?.includes("frequent_urination")}
+                    onChange={() => toggleDiabetesSymptom("frequent_urination")}
+                  />
+                  Frequent urination
+                </label>
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="rounded border-input"
+                    checked={!!health?.symptoms?.includes("fatigue")}
+                    onChange={() => toggleDiabetesSymptom("fatigue")}
+                  />
+                  Fatigue
+                </label>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {(health?.riskScore ?? 0) >= 40 && (
+            <ScrollReveal delay={210}>
+              <div className="card warning rounded-2xl border border-amber-200 bg-amber-50/80 shadow-sm text-left">
+                <h4 className="font-bold text-amber-900 mb-1">Blood Sugar Insight</h4>
+                <p className="text-sm text-amber-900/90">Risk: {health?.riskScore ?? 0}%</p>
+                <p className="text-sm text-amber-900/80 mt-2">
+                  Based on your symptoms and stage, this may indicate blood sugar changes.
+                </p>
+              </div>
+            </ScrollReveal>
+          )}
 
           <ScrollReveal delay={220}>
             <EmotionalReassurance trimester={trimester} />

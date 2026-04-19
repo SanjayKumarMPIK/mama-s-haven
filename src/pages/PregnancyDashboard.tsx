@@ -10,6 +10,7 @@ import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import { TimelineOverview } from "@/components/dashboard/TimelineOverview";
 import PrematureCareView from "@/components/dashboard/PrematureCareView";
+import { DiabetesDashboardWidget } from "@/components/dashboard/DiabetesDashboardWidget";
 import {
   Calendar, ChevronRight, CheckCircle2, Circle, Clock,
   Baby, Heart, Apple, Droplets, Activity, AlertTriangle,
@@ -791,6 +792,11 @@ function DashboardView({
             <p className="mt-3 text-[10px] text-teal-600 text-center">Contact your nearest PHC or ASHA worker to avail these benefits</p>
           </div>
         </ScrollReveal>
+
+        {/* ─── Section 6: Diabetes Awareness & Care ─────────────────── */}
+        <div className="bg-transparent">
+           <DiabetesDashboardWidget currentWeek={currentWeek} />
+        </div>
 
         {/* ─── Quick navigation ────────────────────────────────────── */}
         <ScrollReveal delay={300}>

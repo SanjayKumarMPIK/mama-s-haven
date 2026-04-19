@@ -862,6 +862,173 @@ export default function MenstrualGuide() {
           </ScrollReveal>
         </section>
         )}
+
+        {/* ── IRREGULAR PERIOD ANALYTICS (Puberty + Family Planning) ────────── */}
+        {(() => {
+          const isPeriodPhase = phase === "puberty" || phase === "family-planning";
+          if (!isPeriodPhase) return null;
+
+          // Count irregular entries in the last 90 days
+          const now = new Date();
+          now.setHours(12, 0, 0, 0);
+          const cutoffMs = now.getTime() - 90 * 24 * 60 * 60 * 1000;
+
+          const irregularEntries = Object.entries(logs)
+            .filter(([date, e]) => {
+              if (e.phase !== "puberty" && e.phase !== "family-planning") return false;
+              if (!(e as any)._irregular) return false;
+              const dateMs = new Date(date + "T12:00:00").getTime();
+              return dateMs >= cutoffMs && dateMs <= now.getTime();
+            })
+            .map(([d]) => d)
+            .sort()
+            .reverse();
+
+          const count = irregularEntries.length;
+          if (count < 3) return null;
+
+          const frequency = count >= 6 ? "Very Frequent" : count >= 3 ? "Frequent" : "Occasional";
+          const frequencyColor = count >= 6 ? "text-red-600" : count >= 3 ? "text-orange-600" : "text-amber-600";
+          const frequencyBg = count >= 6 ? "bg-red-50 border-red-200" : count >= 3 ? "bg-orange-50 border-orange-200" : "bg-amber-50 border-amber-200";
+
+          return (
+            <>
+              {/* Analytics Card */}
+              <section>
+                <ScrollReveal>
+                  <div className={`rounded-3xl p-6 md:p-8 border-2 ${frequencyBg}`}>
+                    <div className="flex items-start gap-4 mb-6">
+                      <div className="w-14 h-14 rounded-2xl bg-orange-100 border border-orange-200 flex items-center justify-center text-2xl shadow-sm">
+                        ⚠️
+                      </div>
+                      <div className="flex-1">
+                        <h2 className="text-xl font-bold text-slate-900 mb-1">
+                          Irregular Period Patterns Detected
+                        </h2>
+                        <p className="text-sm text-slate-600 font-medium">
+                          {count} irregular entries in the last 90 days
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
+                      <div className="bg-white/80 rounded-2xl p-4 border border-black/[0.04] shadow-sm">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Count</p>
+                        <p className="text-2xl font-bold text-slate-900 mt-0.5">{count}</p>
+                      </div>
+                      <div className="bg-white/80 rounded-2xl p-4 border border-black/[0.04] shadow-sm">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Frequency</p>
+                        <p className={`text-lg font-bold mt-0.5 ${frequencyColor}`}>{frequency}</p>
+                      </div>
+                      <div className="bg-white/80 rounded-2xl p-4 border border-black/[0.04] shadow-sm col-span-2 md:col-span-1">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Period</p>
+                        <p className="text-sm font-bold text-slate-900 mt-0.5">Last 90 days</p>
+                      </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="bg-white/60 rounded-xl p-4 border border-black/[0.04]">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Irregular Dates</p>
+                      <div className="flex flex-wrap gap-2">
+                        {irregularEntries.slice(0, 10).map((d) => (
+                          <span key={d} className="px-2.5 py-1 rounded-lg bg-orange-100 text-orange-800 text-xs font-semibold border border-orange-200">
+                            {new Date(d + "T12:00:00").toLocaleDateString("en-IN", { day: "numeric", month: "short" })}
+                          </span>
+                        ))}
+                        {irregularEntries.length > 10 && (
+                          <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 text-xs font-semibold">
+                            +{irregularEntries.length - 10} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </ScrollReveal>
+              </section>
+
+              {/* Remedies Section */}
+              <section>
+                <ScrollReveal>
+                  <h2 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2.5">
+                    <Heart className="w-5 h-5 text-orange-500" />
+                    Managing Irregular Periods
+                  </h2>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {/* Lifestyle */}
+                    <div className="bg-purple-50 rounded-2xl p-5 border border-purple-100">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center text-lg shadow-sm">🧘</div>
+                        <h3 className="font-bold text-sm text-purple-700">Lifestyle Changes</h3>
+                      </div>
+                      <ul className="space-y-2.5">
+                        {[
+                          "Aim for 7–8 hours of consistent sleep",
+                          "Practice stress-relief: yoga, deep breathing",
+                          "Exercise moderately — avoid overtraining",
+                          "Maintain a consistent daily routine",
+                        ].map((tip, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm font-medium text-purple-800/80">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600" />
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* Nutrition */}
+                    <div className="bg-green-50 rounded-2xl p-5 border border-green-100">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center text-lg shadow-sm">🥗</div>
+                        <h3 className="font-bold text-sm text-green-700">Nutrition Tips</h3>
+                      </div>
+                      <ul className="space-y-2.5">
+                        {[
+                          "Iron-rich foods: spinach, lentils, dates",
+                          "Omega-3: flaxseed, walnuts, fish",
+                          "Whole grains for stable blood sugar",
+                          "Reduce processed foods and excess sugar",
+                        ].map((tip, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm font-medium text-green-800/80">
+                            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-green-600" />
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    {/* When to See a Doctor */}
+                    <div className="bg-rose-50 rounded-2xl p-5 border border-rose-100">
+                      <div className="flex items-center gap-2.5 mb-4">
+                        <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center text-lg shadow-sm">🏥</div>
+                        <h3 className="font-bold text-sm text-rose-700">When to See a Doctor</h3>
+                      </div>
+                      <ul className="space-y-2.5">
+                        {[
+                          "Periods consistently closer than 21 days",
+                          "Cycles longer than 35 days regularly",
+                          "Heavy bleeding or spotting between periods",
+                          "Irregular periods lasting over 3 months",
+                        ].map((tip, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm font-medium text-rose-800/80">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-600" />
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 rounded-xl bg-amber-50 border border-amber-200 p-4">
+                    <p className="text-xs text-amber-800 font-medium leading-relaxed">
+                      <strong>Note:</strong> Irregular periods can be caused by stress, weight changes, hormonal fluctuations, or lifestyle factors.
+                      This is general wellness guidance — please consult a healthcare professional for persistent irregularity.
+                    </p>
+                  </div>
+                </ScrollReveal>
+              </section>
+            </>
+          );
+        })()}
       </div>
       <SafetyDisclaimer />
     </main>

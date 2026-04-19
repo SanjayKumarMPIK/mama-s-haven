@@ -26,6 +26,12 @@ export interface PubertyEntry {
   sleepHours: number | null;
   sleepQuality: SleepQuality | null;
   notes?: string;
+  /** Single-day irregular entry — does NOT trigger multi-day expansion or predictions */
+  _irregular?: boolean;
+  /** Links regular period blocks together, e.g. "cycle_2026-04-05" */
+  _periodGroupId?: string;
+  /** True for auto-generated continuation/prediction days */
+  _periodAutoMarked?: boolean;
 }
 
 export interface MaternityEntry {
@@ -63,6 +69,12 @@ export interface FamilyPlanningEntry {
   sleepHours: number | null;
   sleepQuality: SleepQuality | null;
   notes?: string;
+  /** Single-day irregular entry — does NOT trigger multi-day expansion or predictions */
+  _irregular?: boolean;
+  /** Links regular period blocks together, e.g. "cycle_2026-04-05" */
+  _periodGroupId?: string;
+  /** True for auto-generated continuation/prediction days */
+  _periodAutoMarked?: boolean;
 }
 
 export interface MenopauseEntry {

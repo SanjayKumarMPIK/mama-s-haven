@@ -4,6 +4,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { usePregnancyProfile, isValidLMP, isValidUserEDD, getEDDRange, calcWeeksAtBirth, type DeliveryData } from "@/hooks/usePregnancyProfile";
 import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyDashboard } from "@/hooks/usePregnancyDashboard";
+import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
 import { WEEK_DATA } from "@/lib/pregnancyData";
 import { DAILY_CHECKLIST } from "@/lib/pregnancyDashboardData";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -85,12 +87,42 @@ function formatDate(isoDate: string): string {
 
 // ─── Setup Screen ────────────────────────────────────────────────────────────
 function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
-  const { saveProfile, profile } = usePregnancyProfile();
+  const { saveProfile, profile: pregnancyProfile } = usePregnancyProfile();
+  const { profile: userProfile } = useProfile();
+  const { isLoading } = useAuth();
   const navigate = useNavigate();
-  const [name, setName] = useState(profile.name);
-  const [lmp, setLmp] = useState(profile.lmp || "");
-  const [region, setRegion] = useState(profile.region);
+  const [lmp, setLmp] = useState(pregnancyProfile.lmp || "");
   const [lmpError, setLmpError] = useState("");
+
+  if (isLoading) {
+    return (
+      <main className={`min-h-screen bg-background flex flex-col items-center justify-center p-4 ${simpleMode ? "simple-mode" : ""}`}>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+          <p className="text-sm font-medium text-muted-foreground">Loading profile...</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (!userProfile?.isProfileAvailable) {
+    return (
+      <main className={`min-h-screen bg-background flex flex-col items-center justify-center p-4 ${simpleMode ? "simple-mode" : ""}`}>
+        <div className="text-center p-6 bg-card rounded-2xl border border-border shadow-sm max-w-sm w-full mx-4">
+          <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
+          <h2 className="text-lg font-bold">Profile Unavailable</h2>
+          <p className="text-sm text-muted-foreground mt-2">Please complete your user profile first.</p>
+          <Link to="/register" className="mt-5 block w-full bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-semibold hover:opacity-90 transition-opacity">
+            Go to Profile
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const name = userProfile?.name || "User";
+  const age = userProfile?.age || null;
+  const region = (pregnancyProfile.region || "north") as any;
 
   // Auto-calculate EDD preview whenever LMP changes
   const previewEDD = lmp
@@ -112,6 +144,10 @@ function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
   const canSubmit = !!lmp && !lmpError && isValidLMP(lmp);
 
   const handleSubmit = () => {
+    if (!lmp || !userProfile?.isProfileAvailable) {
+      alert("Missing required data");
+      return;
+    }
     if (!canSubmit) return;
     saveProfile({ name, lmp, region });
     navigate("/", { replace: true });
@@ -135,16 +171,15 @@ function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
           </div>
         </ScrollReveal>
         <div className="space-y-4 bg-card rounded-2xl border border-border p-6 shadow-sm">
-          {/* Name */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Your Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-              placeholder="Your name"
-            />
+          {/* Welcome User Enhancement */}
+          <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex items-center gap-3">
+             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+               {name.charAt(0).toUpperCase()}
+             </div>
+             <div>
+               <p className="text-sm font-semibold">Welcome, {name}</p>
+               <p className="text-[10px] text-muted-foreground">Using your profile information</p>
+             </div>
           </div>
 
           {/* LMP */}
@@ -186,21 +221,6 @@ function SetupScreen({ simpleMode }: { simpleMode: boolean }) {
               </div>
             </div>
           )}
-
-          {/* Region */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Region</label>
-            <select
-              value={region}
-              onChange={(e) => setRegion(e.target.value as any)}
-              className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <option value="north">North India</option>
-              <option value="south">South India</option>
-              <option value="east">East India</option>
-              <option value="west">West India</option>
-            </select>
-          </div>
 
           {/* Info note */}
           <div className="flex items-start gap-2 bg-blue-50 rounded-lg p-3 border border-blue-100">

@@ -701,6 +701,7 @@ export default function WellnessDashboard() {
             bmi={rec.bmi.value}
             weight={profile!.weight}
             height={profile!.height}
+            lastWeightUpdate={profile!.lastWeightUpdate}
           />
         </ScrollReveal>
 

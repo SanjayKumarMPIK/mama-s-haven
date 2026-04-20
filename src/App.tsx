@@ -42,6 +42,13 @@ import Profile from "./pages/Profile";
 import MedicineReminder from "./pages/MedicineReminder";
 import MissedLogReminder from "@/components/MissedLogReminder";
 import MedicineAlertPopup from "@/components/MedicineAlertPopup";
+import MenopauseOnboarding from "./pages/menopause/MenopauseOnboarding";
+import MenopauseCalendar from "./pages/menopause/MenopauseCalendar";
+import SymptomAnalytics from "./pages/menopause/SymptomAnalytics";
+import WellnessPlan from "./pages/menopause/WellnessPlan";
+import DailyGoals from "./pages/menopause/DailyGoals";
+import MenopauseCareEssentials from "./pages/menopause/MenopauseCareEssentials";
+import FunActivity from "./pages/menopause/FunActivity";
 
 
 const queryClient = new QueryClient();
@@ -86,6 +93,15 @@ const App = () => (
                         <Route path="/weekly-report" element={<WeeklyBodyReport />} />
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/medicine-reminder" element={<MedicineReminder />} />
+
+                        {/* Menopause phase routes */}
+                        <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
+                        <Route path="/menopause/calendar" element={<MenopauseCalendar />} />
+                        <Route path="/menopause/analytics" element={<SymptomAnalytics />} />
+                        <Route path="/menopause/wellness" element={<WellnessPlan />} />
+                        <Route path="/menopause/goals" element={<DailyGoals />} />
+                        <Route path="/menopause/care" element={<MenopauseCareEssentials />} />
+                        <Route path="/menopause/fun" element={<FunActivity />} />
 
                         <Route path="/about" element={<About />} />
                         <Route path="/contact" element={<Contact />} />

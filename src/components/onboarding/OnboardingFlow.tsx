@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useOnboarding, type Goal, type OnboardingConfig } from "@/hooks/useOnboarding";
 import { useAuth } from "@/hooks/useAuth";
@@ -172,6 +173,7 @@ export default function OnboardingFlow() {
   const { config, showOnboarding, setShowOnboarding, saveConfig } = useOnboarding();
   const { fullProfile } = useAuth();
   const { saveProfile } = usePregnancyProfile();
+  const navigate = useNavigate();
 
   // Local state for form
   const [step, setStep] = useState(1); // 1 = purpose, 2 = goals (or maternity setup), 3 = puberty questions
@@ -267,6 +269,33 @@ export default function OnboardingFlow() {
     
     if (selectedPhase === "puberty") {
       setStep(3); // Progress to the Puberty specific questionnaire
+      return;
+    }
+
+    // Menopause: save config and navigate to menopause onboarding or calendar
+    if (selectedPhase === "menopause") {
+      const cfg: Partial<OnboardingConfig> = {
+        phase: selectedPhase,
+        goals: Array.from(selectedGoals),
+        age: userAge,
+        onboardingCompleted: true,
+      };
+      saveConfig(cfg);
+      setShowOnboarding(false);
+
+      // Check if menopause profile already exists
+      try {
+        const session = localStorage.getItem("swasthyasakhi_session");
+        const userId = session ? JSON.parse(session)?.id : "anonymous";
+        const existing = localStorage.getItem(`ss-menopause-profile-${userId}`);
+        if (existing) {
+          navigate("/menopause/calendar");
+        } else {
+          navigate("/menopause/onboarding");
+        }
+      } catch {
+        navigate("/menopause/onboarding");
+      }
       return;
     }
 

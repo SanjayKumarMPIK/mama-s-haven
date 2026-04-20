@@ -417,14 +417,21 @@ export default function MenstrualGuide() {
   const cycleLen = profile.cycleLength ?? 28;
   const lastPeriodDate = useMemo(() => {
     // Try to find last period from health logs first (most recent periodStarted entry)
-    // IMPORTANT: Exclude future auto-marked predictions and only consider dates up to today
+    // IMPORTANT: Exclude auto-marked predictions, irregular entries, and orphaned
+    // auto-predicted starts that lost their _periodAutoMarked flag.
     const todayISO = new Date().toISOString().slice(0, 10);
     const starts = Object.entries(logs)
       .filter(([date, e]) => {
         // Skip future dates
         if (date > todayISO) return false;
-        // Skip auto-marked prediction entries (only use manual period starts)
+        // Skip auto-marked prediction entries
         if ((e as any)._periodAutoMarked) return false;
+        // Skip irregular entries (single-day anomalies)
+        if ((e as any)._irregular) return false;
+        // Skip entries whose _periodGroupId doesn't match their own date
+        // (these are future-cycle predictions that lost the auto-marked flag)
+        const groupId = (e as any)._periodGroupId;
+        if (groupId && typeof groupId === "string" && groupId !== `cycle_${date}`) return false;
         // Accept period starts from puberty or family-planning
         if (e.phase === "puberty" && (e as any).periodStarted === true) return true;
         if (e.phase === "family-planning" && (e as any).periodStarted === true) return true;

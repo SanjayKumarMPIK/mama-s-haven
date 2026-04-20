@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import {
   Activity, TrendingUp, TrendingDown, Minus, Brain, Lightbulb, Heart,
   ChevronRight, Calendar, Moon, Smile, Sparkles, X, ArrowRight, BarChart3,
-  Shield,
+  Shield, Zap, Eye,
 } from "lucide-react";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -19,6 +19,10 @@ import {
   type SymptomFrequency,
   type SymptomDetailData,
 } from "@/lib/symptomInsightsEngine";
+import {
+  computeSymptomPredictions,
+  type SymptomPrediction,
+} from "@/lib/symptomPredictionEngine";
 
 // ─── Chart palette ────────────────────────────────────────────────────────────
 
@@ -143,6 +147,12 @@ export default function SymptomChecker() {
   // ── Compute analytics (memoized) ──
   const data = useMemo(() => computeSymptomInsights(logs, phase), [logs, phase]);
 
+  // ── Compute predictions (memoized) ──
+  const predictionResult = useMemo(
+    () => computeSymptomPredictions(logs, phase),
+    [logs, phase],
+  );
+
   // ── Compute symptom detail (memoized) ──
   const detail = useMemo<SymptomDetailData | null>(() => {
     if (!selectedSymptomId) return null;
@@ -243,6 +253,31 @@ export default function SymptomChecker() {
                 />
               </div>
             </ScrollReveal>
+
+            {/* ─── Section 1.5: Predictive Symptom Insights ────────────── */}
+            {predictionResult.predictions.length > 0 && (
+              <ScrollReveal>
+                <SectionHeader title="Upcoming Symptom Insights" emoji="🔮" />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {predictionResult.predictions.map((pred) => (
+                    <PredictionCard
+                      key={pred.symptom}
+                      prediction={pred}
+                      accent={accent}
+                    />
+                  ))}
+                </div>
+
+                {/* Disclaimer */}
+                <div className="mt-3 flex items-start gap-2 rounded-xl bg-slate-50 border border-slate-200/60 px-4 py-2.5">
+                  <Eye className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
+                  <p className="text-[11px] text-slate-500 leading-relaxed">
+                    {predictionResult.disclaimer}
+                  </p>
+                </div>
+              </ScrollReveal>
+            )}
 
             {/* ─── Section 2: Top Symptoms ────────────────────────────────── */}
             <ScrollReveal>
@@ -537,6 +572,57 @@ function SectionHeader({ title, emoji }: { title: string; emoji: string }) {
     <div className="flex items-center gap-2 mb-3 mt-1">
       <span className="text-base">{emoji}</span>
       <h2 className="text-base font-bold tracking-tight">{title}</h2>
+    </div>
+  );
+}
+
+// ─── Prediction Card ──────────────────────────────────────────────────────────
+
+const CONFIDENCE_COLORS: Record<string, { bg: string; border: string; badge: string }> = {
+  high:   { bg: "bg-gradient-to-br from-violet-50/80 to-purple-50/60", border: "border-violet-200/60", badge: "bg-violet-100 text-violet-700" },
+  medium: { bg: "bg-gradient-to-br from-slate-50/80 to-gray-50/60",   border: "border-slate-200/60",  badge: "bg-slate-100 text-slate-600" },
+};
+
+function PredictionCard({
+  prediction,
+  accent,
+}: {
+  prediction: SymptomPrediction;
+  accent: typeof phaseAccent[string];
+}) {
+  const colors = CONFIDENCE_COLORS[prediction.confidence] ?? CONFIDENCE_COLORS.medium;
+
+  return (
+    <div
+      className={`relative rounded-2xl border-2 ${colors.border} ${colors.bg} p-4 transition-all hover:shadow-md group overflow-hidden`}
+    >
+      {/* Decorative shimmer */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 -translate-x-full group-hover:translate-x-full" style={{ transition: 'transform 0.7s ease, opacity 0.3s ease' }} />
+
+      <div className="relative z-10">
+        {/* Top row: emoji + confidence */}
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="text-2xl">{prediction.emoji}</span>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${colors.badge}`}>
+            {prediction.confidence === "high" ? (
+              <Zap className="w-2.5 h-2.5" />
+            ) : (
+              <Sparkles className="w-2.5 h-2.5" />
+            )}
+            {prediction.confidence}
+          </span>
+        </div>
+
+        {/* Prediction message */}
+        <p className="text-sm font-semibold leading-snug mb-1.5">
+          {prediction.message}
+        </p>
+
+        {/* Confidence label */}
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          {prediction.confidenceLabel}
+        </p>
+      </div>
     </div>
   );
 }

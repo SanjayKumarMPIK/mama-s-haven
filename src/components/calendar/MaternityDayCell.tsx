@@ -34,6 +34,13 @@ function getSeverityColor(entry: HealthLogEntry | undefined): string {
   if (!entry || entry.phase !== "maternity") return "";
   const count = getMaternitySymptomCount(entry);
   const e = entry as MaternityEntry;
+  
+  if (e.symptomSeverities) {
+    const severities = Object.values(e.symptomSeverities);
+    if (severities.includes("severe")) return "bg-rose-500";
+    if (severities.includes("moderate")) return "bg-amber-400";
+  }
+
   if (e.fatigueLevel === "High" || count >= 4) return "bg-rose-500";
   if (count >= 2) return "bg-amber-400";
   if (count >= 1) return "bg-purple-400";

@@ -22,6 +22,8 @@ export interface PubertyEntry {
     acne: boolean;
     breastTenderness: boolean;
   };
+  /** Intensity per symptom (1–10). Required for new logs, optional for legacy data. */
+  symptomIntensities?: Record<string, number>;
   mood: MoodType | null;
   sleepHours: number | null;
   sleepQuality: SleepQuality | null;
@@ -36,17 +38,18 @@ export interface PubertyEntry {
 
 export interface MaternityEntry {
   phase: "maternity";
+  /** Which trimester this log was recorded in */
+  trimester?: "T1" | "T2" | "T3";
   fatigueLevel: FatigueLevel | null;
   hydrationGlasses: number | null;
   sleepHours: number | null;
   sleepQuality: SleepQuality | null;
-  symptoms: {
-    nausea: boolean;
-    dizziness: boolean;
-    swelling: boolean;
-    backPain: boolean;
-    sleepDisturbance: boolean;
-  };
+  /** Dynamic symptom keys (trimester-based). Backward compatible with legacy fixed keys. */
+  symptoms: Record<string, boolean>;
+  /** Severity per symptom: mild | moderate | severe */
+  symptomSeverities?: Record<string, "mild" | "moderate" | "severe">;
+  /** Quick toggle: user explicitly marked "no symptoms today" */
+  noSymptomsToday?: boolean;
   mood: MoodType | null;
   notes?: string;
 }

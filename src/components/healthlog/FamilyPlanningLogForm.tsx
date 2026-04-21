@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react";
 import type { FamilyPlanningEntry, MoodType } from "@/hooks/useHealthLog";
 import { calcFertileWindow } from "@/hooks/useHealthLog";
+import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
+
+const SLEEP_CHECKPOINTS: Checkpoint[] = [
+  { value: 4, label: "4h (Low)", priority: "low" },
+  { value: 6, label: "6h (Min)", priority: "medium" },
+  { value: 8, label: "8h (Optimal)", priority: "high" },
+  { value: 10, label: "10h+ (High)", priority: "medium" },
+];
 
 const MOODS: MoodType[] = ["Good", "Okay", "Low"];
 
@@ -143,24 +151,20 @@ export default function FamilyPlanningLogForm({ initial, onChange }: Props) {
       <div>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Sleep Hours</p>
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => setSleepHours((v) => Math.max(0, (v ?? 0) - 0.5))}
-            className="w-10 h-10 rounded-full border-2 border-border text-lg font-bold bg-muted/40 hover:bg-muted flex items-center justify-center"
-          >
-            −
-          </button>
-          <div className="flex-1 text-center">
-            <span className="text-3xl font-bold text-teal-700">{sleepHours ?? 0}</span>
-            <span className="text-sm text-muted-foreground ml-1">hrs</span>
+          <EnhancedSlider
+            phase="family_planning"
+            checkpoints={SLEEP_CHECKPOINTS}
+            min={0}
+            max={15}
+            step={0.5}
+            value={sleepHours !== null ? sleepHours : 0}
+            onChange={(val) => setSleepHours(val)}
+            className="w-full [&_[role=slider]]:bg-teal-500 [&_[role=slider]]:border-teal-500 [&_.relative.h-full]:bg-teal-500"
+          />
+          <div className="text-right w-12 shrink-0">
+            <span className="text-xl font-bold text-teal-700">{sleepHours !== null ? sleepHours : "–"}</span>
+            <span className="text-xs text-muted-foreground ml-0.5">h</span>
           </div>
-          <button
-            type="button"
-            onClick={() => setSleepHours((v) => Math.min(24, (v ?? 0) + 0.5))}
-            className="w-10 h-10 rounded-full border-2 border-border text-lg font-bold bg-muted/40 hover:bg-muted flex items-center justify-center"
-          >
-            +
-          </button>
         </div>
       </div>
 

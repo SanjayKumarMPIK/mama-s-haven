@@ -10,13 +10,20 @@ import {
   Dumbbell,
   FileText,
   CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
+import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
 import { useHealthLog, type HealthLogEntry, type MaternityEntry } from "@/hooks/useHealthLog";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import {
-  KEY_SYMPTOMS_BY_PHASE,
-  analyzePhaseSymptom,
-  type KeySymptomId,
-} from "@/lib/symptomAnalysis";
+  getSymptomsForTrimester,
+  getNutritionForTrimester,
+  getTrimesterLabel,
+  weekToTrimester,
+  checkConsecutiveSevereSymptoms,
+  type Severity,
+  type Trimester,
+} from "@/lib/maternityTrimesterData";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -30,6 +37,30 @@ function formatDisplayDate(iso: string): string {
   });
 }
 
+function getWeekForDate(dateISO: string, activeEDD: string): number {
+  if (!activeEDD) return 1;
+  const due = new Date(activeEDD + "T12:00:00");
+  const d = new Date(dateISO + "T12:00:00");
+  const totalDays = 280;
+  const daysLeft = Math.ceil((due.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+  const daysPassed = totalDays - daysLeft;
+  return Math.max(1, Math.min(40, Math.ceil(daysPassed / 7)));
+}
+
+const SLEEP_CHECKPOINTS: Checkpoint[] = [
+  { value: 4, label: "4h (Low)", priority: "low" },
+  { value: 6, label: "6h (Min)", priority: "medium" },
+  { value: 8, label: "8h (Optimal)", priority: "high" },
+  { value: 10, label: "10h+ (High)", priority: "medium" },
+];
+
+const HYDRATION_CHECKPOINTS: Checkpoint[] = [
+  { value: 4, label: "4 glasses", priority: "low" },
+  { value: 8, label: "8 (Target)", priority: "high" },
+  { value: 12, label: "12 (High)", priority: "medium" },
+  { value: 15, label: "15 (Max)", priority: "medium" },
+];
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 interface MaternityDayDetailsProps {
@@ -38,86 +69,136 @@ interface MaternityDayDetailsProps {
 }
 
 export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsProps) {
-  const { getLog, saveLog } = useHealthLog();
-  const existingEntry = getLog(dateISO);
+  const { getLog, saveLog, maternityLogs } = useHealthLog();
+  const { activeEDD } = usePregnancyProfile();
+
+  const existingEntry = getLog(dateISO) as MaternityEntry | undefined;
   const isMaternity = existingEntry?.phase === "maternity";
 
-  const symptomOptions = useMemo(() => {
-    const phaseSymptoms = KEY_SYMPTOMS_BY_PHASE["maternity"] ?? [];
-    return phaseSymptoms.map((s) => ({ id: s.id, label: s.label }));
-  }, []);
+  // 1. Determine trimester
+  const trimester = useMemo<Trimester>(() => {
+    if (isMaternity && existingEntry?.trimester) return existingEntry.trimester;
+    const week = getWeekForDate(dateISO, activeEDD);
+    return weekToTrimester(week);
+  }, [dateISO, activeEDD, existingEntry, isMaternity]);
+
+  // 2. Fetch Trimester Data
+  const symptomDef = useMemo(() => getSymptomsForTrimester(trimester), [trimester]);
+  const nutritionDef = useMemo(() => getNutritionForTrimester(trimester), [trimester]);
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
+  const [noSymptomsToday, setNoSymptomsToday] = useState<boolean>(() => {
+    return isMaternity ? !!existingEntry.noSymptomsToday : false;
+  });
+
   const [selectedSymptoms, setSelectedSymptoms] = useState<Record<string, boolean>>(() => {
     if (!isMaternity) return {};
-    return { ...(existingEntry.symptoms as Record<string, boolean>) };
+    return { ...existingEntry.symptoms };
+  });
+
+  const [symptomSeverities, setSymptomSeverities] = useState<Record<string, Severity>>(() => {
+    if (!isMaternity || !existingEntry.symptomSeverities) return {};
+    return { ...existingEntry.symptomSeverities };
   });
 
   const [mood, setMood] = useState<"Good" | "Okay" | "Low" | "">(() => {
-    if (isMaternity && (existingEntry as any).mood) return (existingEntry as any).mood;
-    return "";
+    return isMaternity && existingEntry.mood ? existingEntry.mood : "";
   });
 
   const [sleepHours, setSleepHours] = useState<number | "">(() => {
-    if (isMaternity && (existingEntry as MaternityEntry).sleepHours != null)
-      return (existingEntry as MaternityEntry).sleepHours!;
-    return "";
-  });
-
-  const [sleepQuality, setSleepQuality] = useState<"Good" | "Okay" | "Poor" | "">(() => {
-    if (isMaternity && (existingEntry as MaternityEntry).sleepQuality)
-      return (existingEntry as MaternityEntry).sleepQuality!;
-    return "";
+    return isMaternity && existingEntry.sleepHours != null ? existingEntry.sleepHours : "";
   });
 
   const [notes, setNotes] = useState<string>(() => {
-    if (isMaternity && (existingEntry as MaternityEntry).notes)
-      return (existingEntry as MaternityEntry).notes!;
-    return "";
+    return isMaternity && existingEntry.notes ? existingEntry.notes : "";
   });
 
   const [energyLevel, setEnergyLevel] = useState<"Low" | "Medium" | "High" | "">(() => {
-    if (isMaternity && (existingEntry as MaternityEntry).fatigueLevel)
-      return (existingEntry as MaternityEntry).fatigueLevel!;
-    return "";
+    return isMaternity && existingEntry.fatigueLevel ? existingEntry.fatigueLevel : "";
   });
 
   const [hydration, setHydration] = useState<number | "">(() => {
-    if (isMaternity && (existingEntry as MaternityEntry).hydrationGlasses != null)
-      return (existingEntry as MaternityEntry).hydrationGlasses!;
-    return "";
+    return isMaternity && existingEntry.hydrationGlasses != null ? existingEntry.hydrationGlasses : "";
   });
 
-  // Nutrition checklist state
   const [nutritionChecks, setNutritionChecks] = useState<Record<string, boolean>>(() => {
-    // Load from notes if previously saved (simple approach)
-    return { water: false, iron: false, calcium: false, folicAcid: false };
+    return {}; // Ideally mapped from saved data, but kept minimal for now
   });
 
   const [saving, setSaving] = useState(false);
 
+  // ─── Handlers ───────────────────────────────────────────────────────────────
+
+  const toggleNoSymptoms = useCallback(() => {
+    setNoSymptomsToday((prev) => {
+      const next = !prev;
+      if (next) {
+        setSelectedSymptoms({});
+        setSymptomSeverities({});
+      }
+      return next;
+    });
+  }, []);
+
   const toggleSymptom = useCallback((id: string) => {
-    setSelectedSymptoms((prev) => ({ ...prev, [id]: !prev[id] }));
+    setNoSymptomsToday(false);
+    setSelectedSymptoms((prev) => {
+      const isSelected = !prev[id];
+      const next = { ...prev, [id]: isSelected };
+      return next;
+    });
+    // Set default severity to mild if turning on
+    setSymptomSeverities((prev) => {
+      const isSelected = !selectedSymptoms[id];
+      const next = { ...prev };
+      if (isSelected && !next[id]) next[id] = "mild";
+      else if (!isSelected) delete next[id];
+      return next;
+    });
+  }, [selectedSymptoms]);
+
+  const setSeverity = useCallback((id: string, severity: Severity) => {
+    setSymptomSeverities((prev) => ({ ...prev, [id]: severity }));
   }, []);
 
   const toggleNutrition = useCallback((key: string) => {
     setNutritionChecks((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  // ─── Save Handler ───────────────────────────────────────────────────────────
+  // ─── Smart Warnings ─────────────────────────────────────────────────────────
+
+  const warnings = useMemo(() => {
+    const recentLogs = Object.entries(maternityLogs)
+      .filter(([dt]) => dt < dateISO)
+      .map(([date, entry]) => ({
+        date,
+        symptoms: entry.symptoms || {},
+        symptomSeverities: (entry as MaternityEntry).symptomSeverities || {},
+      }));
+
+    const currentLog = {
+      date: dateISO,
+      symptoms: selectedSymptoms,
+      symptomSeverities,
+    };
+
+    return checkConsecutiveSevereSymptoms([...recentLogs, currentLog]);
+  }, [maternityLogs, dateISO, selectedSymptoms, symptomSeverities]);
+
+  // ─── Save ───────────────────────────────────────────────────────────────────
 
   function handleSave() {
     if (saving) return;
 
     const hasSymptoms = Object.values(selectedSymptoms).some(Boolean);
     const hasMood = mood !== "";
-    const hasSleep = sleepHours !== "" || sleepQuality !== "";
+    const hasSleep = sleepHours !== "";
     const hasNotes = notes.trim().length > 0;
     const hasEnergy = energyLevel !== "";
     const hasHydration = hydration !== "";
 
-    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasEnergy && !hasHydration) {
+    if (!hasSymptoms && !noSymptomsToday && !hasMood && !hasSleep && !hasNotes && !hasEnergy && !hasHydration) {
       toast.error("Please log at least one piece of data before saving.");
       return;
     }
@@ -126,17 +207,14 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
 
     const entry: HealthLogEntry = {
       phase: "maternity",
+      trimester,
+      noSymptomsToday,
       fatigueLevel: energyLevel !== "" ? (energyLevel as "Low" | "Medium" | "High") : null,
       hydrationGlasses: hydration !== "" ? Number(hydration) : null,
       sleepHours: sleepHours !== "" ? Number(sleepHours) : null,
-      sleepQuality: sleepQuality !== "" ? (sleepQuality as "Good" | "Okay" | "Poor") : null,
-      symptoms: {
-        nausea: !!selectedSymptoms.nausea,
-        dizziness: !!selectedSymptoms.dizziness,
-        swelling: !!selectedSymptoms.swelling,
-        backPain: !!selectedSymptoms.backPain,
-        sleepDisturbance: !!selectedSymptoms.sleepDisturbance,
-      },
+      sleepQuality: null, // deprecated in broad usage
+      symptoms: selectedSymptoms,
+      symptomSeverities,
       mood: mood !== "" ? (mood as "Good" | "Okay" | "Low") : null,
       notes: notes || undefined,
     };
@@ -145,9 +223,9 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
 
     toast.success(`Maternity log saved for ${formatDisplayDate(dateISO)}`, {
       description: hasSymptoms
-        ? `${Object.values(selectedSymptoms).filter(Boolean).length} symptom(s)${hasMood ? " + mood" : ""} saved`
-        : hasMood
-        ? "Mood logged"
+        ? `${Object.values(selectedSymptoms).filter(Boolean).length} symptom(s) saved`
+        : noSymptomsToday
+        ? "Marked as no symptoms"
         : "Data saved",
     });
 
@@ -173,12 +251,17 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-border/60">
           <div>
-            <p className="text-xs text-muted-foreground font-medium">
-              {formatDisplayDate(dateISO)}
-            </p>
-            <h2 className="text-lg font-bold mt-0.5">Maternity Daily Log</h2>
-            <p className="text-xs text-muted-foreground mt-1">
-              Track your pregnancy symptoms, nutrition, and wellbeing.
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-muted-foreground font-medium">
+                {formatDisplayDate(dateISO)}
+              </p>
+              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wider">
+                {getTrimesterLabel(trimester)}
+              </span>
+            </div>
+            <h2 className="text-lg font-bold mt-1.5">Maternity Daily Log</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Track your {getTrimesterLabel(trimester).toLowerCase()} pregnancy symptoms.
             </p>
           </div>
           <button
@@ -193,37 +276,104 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
 
         {/* ── Body ───────────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+          
+          {/* Smart Warnings */}
+          {warnings.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+              {warnings.map((w, idx) => (
+                <div key={idx} className="flex gap-2 items-start text-amber-800">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <p className="text-xs font-medium leading-relaxed">
+                    <strong>{w.symptomLabel}</strong> has been logged as <em>Severe</em> for {w.consecutiveDays} consecutive days. Consider consulting your healthcare provider.
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Symptoms */}
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Activity className="w-4 h-4 text-blue-500" />
-              Symptoms
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              {symptomOptions.map((opt) => {
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-500" />
+                Symptoms
+              </h3>
+              <button
+                type="button"
+                onClick={toggleNoSymptoms}
+                className={cn(
+                  "text-[11px] font-semibold px-2 py-1 rounded-md transition-colors",
+                  noSymptomsToday
+                    ? "bg-green-100 text-green-700"
+                    : "bg-muted/50 text-muted-foreground hover:bg-muted text-foreground"
+                )}
+              >
+                No Symptoms Today
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {symptomDef.map((opt) => {
                 const isActive = !!selectedSymptoms[opt.id];
+                const severity = symptomSeverities[opt.id];
+
                 return (
-                  <button
+                  <div
                     key={opt.id}
-                    type="button"
-                    onClick={() => toggleSymptom(opt.id)}
                     className={cn(
-                      "px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
+                      "flex flex-col gap-2 p-3 rounded-xl border transition-all text-left",
                       isActive
-                        ? "bg-blue-100 border-blue-400/50 text-blue-700 shadow-sm"
-                        : "bg-card border-border hover:bg-muted/50 text-foreground"
+                        ? "bg-blue-50/50 border-blue-400 shadow-sm"
+                        : "bg-card border-border hover:bg-muted/50"
                     )}
                   >
-                    <span className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleSymptom(opt.id)}
+                      className="flex items-center gap-2 text-sm font-medium focus:outline-none w-full"
+                    >
                       <span
                         className={cn(
-                          "w-3 h-3 rounded-full border-2 transition-colors",
+                          "w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors shrink-0",
                           isActive ? "bg-blue-500 border-blue-500" : "border-muted-foreground/40"
                         )}
-                      />
-                      {opt.label}
-                    </span>
-                  </button>
+                      >
+                        {isActive && <CheckCircle2 className="w-3 h-3 text-white" />}
+                      </span>
+                      <span className="text-base leading-none">{opt.emoji}</span>
+                      <span className={isActive ? "text-blue-900" : "text-foreground"}>
+                        {opt.label}
+                      </span>
+                    </button>
+
+                    {/* Inline Severity Selector */}
+                    {isActive && (
+                      <div className="flex bg-background border rounded-lg overflow-hidden mt-1 animate-in zoom-in-95 duration-200">
+                        {(["mild", "moderate", "severe"] as const).map((sev) => {
+                          const isSelected = severity === sev;
+                          return (
+                            <button
+                              key={sev}
+                              type="button"
+                              onClick={() => setSeverity(opt.id, sev)}
+                              className={cn(
+                                "flex-1 py-1 px-2 text-[10px] font-bold uppercase tracking-wider border-r last:border-r-0 transition-colors",
+                                isSelected
+                                  ? sev === "mild"
+                                    ? "bg-green-100 text-green-700"
+                                    : sev === "moderate"
+                                    ? "bg-amber-100 text-amber-700"
+                                    : "bg-rose-100 text-rose-700"
+                                  : "text-muted-foreground hover:bg-muted"
+                              )}
+                            >
+                              {sev}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -276,116 +426,101 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
             </div>
           </section>
 
-          {/* Sleep */}
-          <section className="space-y-4 rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Moon className="w-4 h-4 text-indigo-500" />
-              Sleep
-            </h3>
-            <div className="space-y-3">
+          {/* Sleep & Hydration Stack */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Sleep */}
+            <section className="space-y-4 rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Moon className="w-4 h-4 text-indigo-500" />
+                Sleep
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-foreground">Duration (hours)</span>
+                  <span className="text-sm font-bold text-indigo-700">
+                    {sleepHours !== "" ? sleepHours : "–"} h
+                  </span>
+                </div>
+                <EnhancedSlider
+                  phase="maternity"
+                  checkpoints={SLEEP_CHECKPOINTS}
+                  min={0}
+                  max={15}
+                  step={0.5}
+                  value={sleepHours !== "" ? sleepHours : 0}
+                  onChange={(val) => setSleepHours(val)}
+                  className="w-full [&_[role=slider]]:bg-indigo-500 [&_[role=slider]]:border-indigo-500 [&_.relative.h-full]:bg-indigo-500"
+                />
+              </div>
+            </section>
+
+            {/* Hydration */}
+            <section className="space-y-3 rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Droplets className="w-4 h-4 text-sky-500" />
+                Hydration (glasses)
+              </h3>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground">Duration (hours)</span>
-                <span className="text-sm font-bold text-indigo-700">
-                  {sleepHours !== "" ? sleepHours : "–"} h
+                <span className="text-xs font-medium text-foreground">Water intake</span>
+                <span className="text-sm font-bold text-sky-700">
+                  {hydration !== "" ? hydration : "–"} glasses
                 </span>
               </div>
-              <input
-                type="range"
-                min="0"
-                max="15"
-                step="0.5"
-                value={sleepHours !== "" ? sleepHours : 0}
-                onChange={(e) => setSleepHours(Number(e.target.value))}
-                className="w-full accent-indigo-500"
+              <EnhancedSlider
+                phase="maternity"
+                checkpoints={HYDRATION_CHECKPOINTS}
+                min={0}
+                max={15}
+                step={1}
+                value={hydration !== "" ? hydration : 0}
+                onChange={(val) => setHydration(val)}
+                className="w-full [&_[role=slider]]:bg-sky-500 [&_[role=slider]]:border-sky-500 [&_.relative.h-full]:bg-sky-500"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                <span>0h</span>
-                <span>5h</span>
-                <span>10h+</span>
-              </div>
-            </div>
-            <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
-              <span className="text-xs font-medium text-foreground">Quality</span>
-              <div className="flex gap-2">
-                {(["Good", "Okay", "Poor"] as const).map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
-                    className={cn(
-                      "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
-                      sleepQuality === q
-                        ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                        : "bg-background border-border hover:bg-muted/50 text-foreground"
-                    )}
-                  >
-                    {q}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
+            </section>
+          </div>
 
-          {/* Hydration */}
+          {/* Trimester-Aware Nutrition Checklist */}
           <section className="space-y-3 rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Droplets className="w-4 h-4 text-sky-500" />
-              Hydration (glasses)
-            </h3>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-foreground">Water intake</span>
-              <span className="text-sm font-bold text-sky-700">
-                {hydration !== "" ? hydration : "–"} glasses
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Apple className="w-4 h-4 text-emerald-500" />
+                Nutrition Tips
+              </h3>
+              <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
+                {trimester}
               </span>
             </div>
-            <input
-              type="range"
-              min="0"
-              max="15"
-              step="1"
-              value={hydration !== "" ? hydration : 0}
-              onChange={(e) => setHydration(Number(e.target.value))}
-              className="w-full accent-sky-500"
-            />
-            <div className="flex justify-between text-[10px] text-muted-foreground">
-              <span>0</span>
-              <span>8 (recommended)</span>
-              <span>15</span>
-            </div>
-          </section>
-
-          {/* Nutrition Checklist */}
-          <section className="space-y-3 rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Apple className="w-4 h-4 text-emerald-500" />
-              Nutrition Check
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { key: "water", label: "Water (8+ cups)", emoji: "💧" },
-                { key: "iron", label: "Iron-rich food", emoji: "🥩" },
-                { key: "calcium", label: "Calcium source", emoji: "🥛" },
-                { key: "folicAcid", label: "Folic Acid", emoji: "💊" },
-              ].map((item) => (
+            <p className="text-xs text-muted-foreground pb-1">
+              Check off your {getTrimesterLabel(trimester).toLowerCase()} specific goals:
+            </p>
+            <div className="grid grid-cols-1 gap-2">
+              {nutritionDef.map((item) => (
                 <button
-                  key={item.key}
+                  key={item.id}
                   type="button"
-                  onClick={() => toggleNutrition(item.key)}
+                  onClick={() => toggleNutrition(item.id)}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
-                    nutritionChecks[item.key]
-                      ? "bg-emerald-50 border-emerald-300 text-emerald-700"
-                      : "bg-background border-border hover:bg-muted/50 text-foreground"
+                    "flex items-start gap-3 px-3 py-2.5 rounded-xl border transition-all text-left group",
+                    nutritionChecks[item.id]
+                      ? "bg-emerald-50 border-emerald-300 shadow-sm"
+                      : "bg-background border-border hover:bg-muted/50"
                   )}
                 >
-                  {nutritionChecks[item.key] ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                  ) : (
-                    <span className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0" />
-                  )}
-                  <span>
-                    {item.emoji} {item.label}
-                  </span>
+                  <div className="mt-0.5">
+                    {nutritionChecks[item.id] ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                    ) : (
+                      <span className="w-4 h-4 rounded-full border-2 border-muted-foreground/30 shrink-0 block group-hover:border-emerald-300 transition-colors" />
+                    )}
+                  </div>
+                  <div>
+                    <p className={cn("text-sm font-medium", nutritionChecks[item.id] ? "text-emerald-800" : "text-foreground")}>
+                      {item.emoji} {item.label}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                      {item.description}
+                    </p>
+                  </div>
                 </button>
               ))}
             </div>

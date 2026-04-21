@@ -2,6 +2,7 @@ import { useMemo, useState, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
 import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
@@ -19,6 +20,13 @@ import MaternityCalendar from "@/components/calendar/MaternityCalendar";
 
 type CalendarMode = "year" | "month";
 type SymptomTime = "morning" | "afternoon" | "evening";
+
+const SLEEP_CHECKPOINTS: Checkpoint[] = [
+  { value: 4, label: "4h (Low)", priority: "low" },
+  { value: 6, label: "6h (Min)", priority: "medium" },
+  { value: 8, label: "8h (Optimal)", priority: "high" },
+  { value: 10, label: "10h+ (High)", priority: "medium" },
+];
 
 interface CalendarSymptomEntry {
   id: string;        // symptom key id
@@ -1267,38 +1275,40 @@ function SymptomLogPanel({
                 <span className="text-xs font-medium text-foreground">Duration (hours)</span>
                 <span className="text-sm font-bold text-indigo-700">{sleepHours !== "" ? sleepHours : "–"} h</span>
               </div>
-              <input 
-                type="range" 
-                min="0" max="15" step="0.5" 
-                value={sleepHours !== "" ? sleepHours : 0} 
-                onChange={(e) => setSleepHours(Number(e.target.value))} 
-                className="w-full accent-indigo-500"
+              <EnhancedSlider
+                phase={phase as any}
+                checkpoints={SLEEP_CHECKPOINTS}
+                min={0}
+                max={15}
+                step={0.5}
+                value={sleepHours !== "" ? sleepHours : 0}
+                onChange={(val) => setSleepHours(val)}
+                className="w-full [&_[role=slider]]:bg-indigo-500 [&_[role=slider]]:border-indigo-500 [&_.relative.h-full]:bg-indigo-500"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                <span>0h</span><span>5h</span><span>10h+</span>
-              </div>
             </div>
 
-            <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
-              <span className="text-xs font-medium text-foreground">Quality</span>
-              <div className="flex gap-2">
-                {(["Good", "Okay", "Poor"] as const).map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
-                    className={cn(
-                      "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
-                      sleepQuality === q
-                        ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                        : "bg-background border-border hover:bg-muted/50 text-foreground"
-                    )}
-                  >
-                    {q}
-                  </button>
-                ))}
+            {phase === "menopause" && (
+              <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
+                <span className="text-xs font-medium text-foreground">Quality</span>
+                <div className="flex gap-2">
+                  {(["Good", "Okay", "Poor"] as const).map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
+                      className={cn(
+                        "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
+                        sleepQuality === q
+                          ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                          : "bg-background border-border hover:bg-muted/50 text-foreground"
+                      )}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </section>
 
           {/* Notes */}

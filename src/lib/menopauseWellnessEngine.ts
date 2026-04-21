@@ -192,7 +192,7 @@ export function generateSleepTips(profile: MenopauseProfile): SleepTip[] {
 
 // ─── Daily Goals Generator ───────────────────────────────────────────────────
 
-export function generateDailyGoals(profile: MenopauseProfile): DailyGoalItem[] {
+export function generateDailyGoals(profile: MenopauseProfile, recentLogs: MenopauseLogEntry[] = []): DailyGoalItem[] {
   const foodPlan = generateFoodPlan(profile);
   const exercisePlan = generateExercisePlan(profile);
   const dayIndex = new Date().getDay(); // 0=Sun, 1=Mon...
@@ -203,20 +203,49 @@ export function generateDailyGoals(profile: MenopauseProfile): DailyGoalItem[] {
   const lunchItem = foodPlan.find((f) => f.meal === "lunch")?.items[0] ?? "Balanced lunch";
   const dinnerItem = foodPlan.find((f) => f.meal === "dinner")?.items[0] ?? "Light dinner";
 
+  // Calculate recent trends from logs
+  const now = new Date();
+  const last7 = recentLogs.filter((l) => {
+    const diff = (now.getTime() - new Date(l.date).getTime()) / (1000 * 60 * 60 * 24);
+    return diff <= 7;
+  });
+
+  const avgSleep = last7.length > 0 ? last7.reduce((s, l) => s + l.sleepHrs, 0) / last7.length : 7;
+  const avgMood = last7.length > 0 ? last7.reduce((s, l) => s + l.mood, 0) / last7.length : 4;
+  const avgPain = last7.length > 0 ? last7.reduce((s, l) => s + l.painLevel, 0) / last7.length : 1;
+  const avgHotFlashes = last7.length > 0 ? last7.reduce((s, l) => s + l.hotFlashCount, 0) / last7.length : 0;
+
+  let eveningActivity = profile.symptoms.anxiety >= 3 ? "4-7-8 breathing exercise" : "Journaling or light reading";
+  if (avgSleep < 6) {
+    eveningActivity = "No screens 1 hour before bed (improve sleep)";
+  } else if (avgMood <= 2) {
+    eveningActivity = "Do something that brings you joy for 15 mins";
+  }
+
+  let afternoonActivity = "10-minute walk after lunch";
+  if (avgPain >= 3) {
+    afternoonActivity = "Gentle stretching or heat/cold on painful joints";
+  }
+
+  let morningWater = "Drink 2 glasses of water";
+  if (avgHotFlashes >= 3) {
+    morningWater = "Drink 2 glasses of cold water to help stay cool";
+  }
+
   const goals: DailyGoalItem[] = [
     // Morning
     { id: "m-wake", block: "morning", emoji: "🌅", label: "Wake up at your target time", type: "activity" },
     { id: "m-breakfast", block: "morning", emoji: "🥣", label: breakfastItem, type: "food" },
-    { id: "m-water-1", block: "morning", emoji: "💧", label: "Drink 2 glasses of water", type: "water" },
+    { id: "m-water-1", block: "morning", emoji: "💧", label: morningWater, type: "water" },
 
     // Afternoon
     { id: "a-lunch", block: "afternoon", emoji: "🍱", label: lunchItem, type: "food" },
-    { id: "a-walk", block: "afternoon", emoji: "🚶", label: "10-minute walk after lunch", type: "exercise" },
+    { id: "a-walk", block: "afternoon", emoji: "🚶", label: afternoonActivity, type: "exercise" },
     { id: "a-water-2", block: "afternoon", emoji: "💧", label: "Hydration check — 4 more glasses", type: "water" },
 
     // Evening
     { id: "e-dinner", block: "evening", emoji: "🍽️", label: dinnerItem, type: "food" },
-    { id: "e-winddown", block: "evening", emoji: "🫁", label: profile.symptoms.anxiety >= 3 ? "4-7-8 breathing exercise" : "Journaling or light reading", type: "activity" },
+    { id: "e-winddown", block: "evening", emoji: "🫁", label: eveningActivity, type: "activity" },
     { id: "e-sleep", block: "evening", emoji: "😴", label: "In bed by your target sleep time", type: "sleep" },
   ];
 
@@ -229,6 +258,14 @@ export function generateDailyGoals(profile: MenopauseProfile): DailyGoalItem[] {
       label: `${todayExercise.activity} (${todayExercise.duration})`,
       type: "exercise",
     });
+  }
+
+  // Adjust for high hot flashes during the day
+  if (avgHotFlashes >= 3 && avgPain < 3) {
+     const aWalkIndex = goals.findIndex(g => g.id === "a-walk");
+     if (aWalkIndex !== -1 && goals[aWalkIndex].label === "10-minute walk after lunch") {
+        goals[aWalkIndex].label = "Rest in a cool room for 10 minutes";
+     }
   }
 
   return goals;

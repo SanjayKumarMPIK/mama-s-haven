@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Target, Bell, Flame, Clock, CheckCircle2 } from "lucide-react";
+import { Target, Bell, Flame, Clock, CheckCircle2, Pencil, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMenopause } from "@/hooks/useMenopause";
-import { generateDailyGoals, type DailyGoalItem } from "@/lib/menopauseWellnessEngine";
+import { buildMenopauseUserContext } from "@/lib/menopausePersonalization";
 
 // ─── Progress Ring ───────────────────────────────────────────────────────────
 
@@ -82,12 +82,43 @@ function MonthlyHeatmap({ completionMap, year, month }: { completionMap: Record<
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function DailyGoals() {
-  const { profile, todayGoals, toggleGoal, getWeekStreak, getMonthCompletionMap, reminderSettings, saveReminderSettings } = useMenopause();
+  const { profile, todayGoals, toggleGoal, getWeekStreak, getMonthCompletionMap, reminderSettings, saveReminderSettings, logs } = useMenopause();
+  const ctx = useMemo(() => (profile ? buildMenopauseUserContext(profile, logs) : null), [profile, logs]);
   const [showReminders, setShowReminders] = useState(false);
   const [localReminders, setLocalReminders] = useState(reminderSettings);
   const [reminderBanner, setReminderBanner] = useState<string | null>(null);
+  const [customGoals, setCustomGoals] = useState<any[]>(() => {
+    try { return JSON.parse(localStorage.getItem("ss-menopause-custom-goals") ?? "[]"); } catch { return []; }
+  });
 
-  const goals = useMemo(() => (profile ? generateDailyGoals(profile) : []), [profile]);
+  const goals = useMemo(() => {
+    if (!ctx) return [];
+    const auto: any[] = [
+      { id: "m-water", block: "morning", emoji: "💧", label: "Drink 2 glasses of water on waking" },
+      { id: "m-calcium", block: "morning", emoji: "🥣", label: "Eat a calcium-rich breakfast (ragi / fortified milk / sesame)" },
+      { id: "m-exercise", block: "morning", emoji: "🚶", label: ctx.avgFatigue > 3 ? "Gentle 10-min stretch instead of full workout" : "Morning exercise (20-30 min low/moderate)" },
+      { id: "a-lunch", block: "afternoon", emoji: "🍱", label: "Protein-rich lunch" },
+      { id: "a-water", block: "afternoon", emoji: "💧", label: "Drink 3 glasses of water by 3pm" },
+      { id: "a-walk", block: "afternoon", emoji: "🚶", label: "10-min post-lunch walk" },
+      { id: "e-dinner", block: "evening", emoji: "🍽️", label: "Light dinner before 7:30pm" },
+      { id: "e-wind", block: "evening", emoji: "🫁", label: ctx.avgAnxiety > 3 ? "4-7-8 breathing before bed" : "Wind-down journaling activity" },
+      { id: "e-screen", block: "evening", emoji: "📵", label: "Screen-off time 60 min before sleep" },
+    ];
+    if (ctx.avgHotFlash > 3) auto.push({ id: "m-caffeine", block: "morning", emoji: "🍵", label: "Skip caffeine this morning; choose herbal/green tea" });
+    if (ctx.avgHeadache > 3) auto.push({ id: "m-headache-hydrate", block: "morning", emoji: "💧", label: "Drink water before anything else to prevent headaches" });
+    if (ctx.avgJointPain > 3) auto.push({ id: "m-joint-warm", block: "morning", emoji: "🦴", label: "Do 5-min joint mobility warm-up" });
+    if (ctx.avgAnxiety > 3) auto.push({ id: "m-anx", block: "morning", emoji: "🧠", label: "5-min breathing before checking your phone" });
+    if (ctx.avgVaginalDryness > 2) auto.push({ id: "m-kegel", block: "morning", emoji: "🌸", label: "Kegel exercises: 3 sets of 10" });
+    if (ctx.conditions.includes("diabetes")) auto.push({ id: "a-diabetes-walk", block: "afternoon", emoji: "🚶", label: "15-min walk right after lunch (priority)" });
+    if (ctx.avgMood < 3) auto.push({ id: "a-mood", block: "afternoon", emoji: "🙂", label: "Do one small thing that makes you smile" });
+    if (ctx.avgNightSweats > 3) auto.push({ id: "e-night-cool", block: "evening", emoji: "🧊", label: "Set room temperature to 18-20 C and wear cotton sleepwear" });
+    if (ctx.avgSleep < 6) auto.push({ id: "e-sleep-target", block: "evening", emoji: "⏰", label: "Go to bed at target time even if not sleepy yet" });
+    if (ctx.avgMood < 3) auto.push({ id: "e-grat", block: "evening", emoji: "📝", label: "Write 3 things that went well today" });
+    if (ctx.avgFatigue > 3) auto.push({ id: "e-fatigue-prep", block: "evening", emoji: "🎒", label: "Prepare tomorrow's clothes and breakfast tonight" });
+
+    const mappedCustom = customGoals.filter((g) => g.isActive).map((g) => ({ ...g, id: g.id, emoji: "⭐", label: g.title, custom: true }));
+    return [...auto, ...mappedCustom];
+  }, [ctx, customGoals]);
   const totalGoals = goals.length;
 
   const completedSet = new Set(todayGoals.completed);
@@ -118,10 +149,11 @@ export default function DailyGoals() {
     const interval = setInterval(() => {
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      const blockReminders = reminderSettings.blockReminders ?? { morning: reminderSettings.morningTime, afternoon: reminderSettings.afternoonTime, evening: reminderSettings.eveningTime };
       const blocks: { time: string; label: string }[] = [
-        { time: reminderSettings.morningTime, label: "🌅 Morning goals are waiting for you!" },
-        { time: reminderSettings.afternoonTime, label: "☀️ Time for your afternoon check-in!" },
-        { time: reminderSettings.eveningTime, label: "🌙 Wind down — complete your evening goals!" },
+        { time: blockReminders.morning, label: "🌅 Morning goals are waiting for you!" },
+        { time: blockReminders.afternoon, label: "☀️ Time for your afternoon check-in!" },
+        { time: blockReminders.evening, label: "🌙 Wind down — complete your evening goals!" },
       ];
       for (const block of blocks) {
         if (timeStr === block.time) {
@@ -133,6 +165,16 @@ export default function DailyGoals() {
           }
         }
       }
+      const goalReminders = reminderSettings.goalReminders ?? {};
+      Object.entries(goalReminders).forEach(([goalId, t]) => {
+        if (timeStr === t) {
+          const goal = goals.find((g: any) => g.id === goalId);
+          if (!goal) return;
+          const msg = `Reminder: ${goal.label}`;
+          if ("Notification" in window && Notification.permission === "granted") new Notification("SwasthyaSakhi", { body: msg });
+          else setReminderBanner(msg);
+        }
+      });
     }, 60000);
     return () => clearInterval(interval);
   }, [reminderSettings]);
@@ -152,7 +194,7 @@ export default function DailyGoals() {
     setShowReminders(false);
   };
 
-  if (!profile) {
+  if (!profile || !ctx) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50/80 via-white to-orange-50/60 flex items-center justify-center">
         <div className="text-center px-4">
@@ -164,11 +206,20 @@ export default function DailyGoals() {
     );
   }
 
-  const GoalBlock = ({ title, emoji, items, color }: { title: string; emoji: string; items: DailyGoalItem[]; color: string }) => (
+  const addCustomGoal = (block: "morning" | "afternoon" | "evening") => {
+    const title = prompt("Goal title (max 60 chars)");
+    if (!title) return;
+    const goal = { id: `cg-${Date.now()}`, title: title.slice(0, 60), category: "Other", timeBlock: block, reminderTime: null, createdAt: new Date().toISOString(), isActive: true };
+    const next = [...customGoals, goal];
+    setCustomGoals(next);
+    localStorage.setItem("ss-menopause-custom-goals", JSON.stringify(next));
+  };
+  const GoalBlock = ({ title, emoji, items, color, block }: { title: string; emoji: string; items: any[]; color: string; block: "morning" | "afternoon" | "evening" }) => (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
       <div className={cn("px-4 py-2.5 flex items-center gap-2 border-b", color)}>
         <span className="text-lg">{emoji}</span>
         <h3 className="text-sm font-bold text-slate-800">{title}</h3>
+        <button onClick={() => addCustomGoal(block)} className="ml-auto text-[11px] px-2 py-1 rounded-md bg-white border border-slate-200">+ Add your own goal</button>
       </div>
       <div className="p-3 space-y-1">
         {items.map((goal) => {
@@ -195,6 +246,14 @@ export default function DailyGoals() {
               )}>
                 {goal.label}
               </span>
+              {goal.custom ? <span className="text-[10px] ml-auto px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">my goal</span> : null}
+              {goal.custom ? (
+                <>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); const title = prompt("Edit goal", goal.label); if (!title) return; const next = customGoals.map((g) => g.id === goal.id ? { ...g, title } : g); setCustomGoals(next); localStorage.setItem("ss-menopause-custom-goals", JSON.stringify(next)); }}><Pencil className="w-3.5 h-3.5 text-slate-500" /></button>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); if (!confirm("Remove this goal?")) return; const next = customGoals.filter((g) => g.id !== goal.id); setCustomGoals(next); localStorage.setItem("ss-menopause-custom-goals", JSON.stringify(next)); }}><Trash2 className="w-3.5 h-3.5 text-rose-500" /></button>
+                </>
+              ) : null}
+              <button type="button" onClick={(e) => { e.stopPropagation(); const time = prompt("Reminder time HH:MM", localReminders.goalReminders?.[goal.id] ?? ""); if (!time) return; setLocalReminders((prev: any) => ({ ...prev, goalReminders: { ...(prev.goalReminders ?? {}), [goal.id]: time } })); }}><Bell className="w-3.5 h-3.5 text-amber-600" /></button>
             </button>
           );
         })}
@@ -222,6 +281,7 @@ export default function DailyGoals() {
             <div>
               <h1 className="text-xl font-bold text-slate-800">Daily Goals</h1>
               <p className="text-xs text-slate-500">{completedCount}/{totalGoals} completed</p>
+              <p className="text-[10px] text-amber-700">Goals personalised based on your recent logs</p>
             </div>
           </div>
           <ProgressRing percentage={percentage} />
@@ -262,15 +322,14 @@ export default function DailyGoals() {
             </h3>
             <div className="space-y-3">
               {(["morning", "afternoon", "evening"] as const).map((block) => {
-                const key = `${block}Time` as keyof typeof localReminders;
                 const labels = { morning: "🌅 Morning", afternoon: "☀️ Afternoon", evening: "🌙 Evening" };
                 return (
                   <div key={block} className="flex items-center justify-between">
                     <span className="text-sm text-slate-700">{labels[block]}</span>
                     <input
                       type="time"
-                      value={localReminders[key] as string}
-                      onChange={(e) => setLocalReminders((prev) => ({ ...prev, [key]: e.target.value }))}
+                      value={(localReminders.blockReminders?.[block] ?? localReminders[`${block}Time` as keyof typeof localReminders]) as string}
+                      onChange={(e) => setLocalReminders((prev: any) => ({ ...prev, blockReminders: { ...(prev.blockReminders ?? {}), [block]: e.target.value } }))}
                       className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300/50"
                     />
                   </div>
@@ -302,9 +361,9 @@ export default function DailyGoals() {
 
         {/* Goal blocks */}
         <div className="space-y-4 mb-6">
-          <GoalBlock title="Morning" emoji="🌅" items={morningGoals} color="bg-orange-50 border-orange-100" />
-          <GoalBlock title="Afternoon" emoji="☀️" items={afternoonGoals} color="bg-amber-50 border-amber-100" />
-          <GoalBlock title="Evening" emoji="🌙" items={eveningGoals} color="bg-indigo-50 border-indigo-100" />
+          <GoalBlock title="Morning" emoji="🌅" block="morning" items={morningGoals} color="bg-orange-50 border-orange-100" />
+          <GoalBlock title="Afternoon" emoji="☀️" block="afternoon" items={afternoonGoals} color="bg-amber-50 border-amber-100" />
+          <GoalBlock title="Evening" emoji="🌙" block="evening" items={eveningGoals} color="bg-indigo-50 border-indigo-100" />
         </div>
 
         {/* Monthly heatmap */}

@@ -5,6 +5,26 @@ import { useAuth } from "@/hooks/useAuth";
 
 export type MenopauseStage = "perimenopause" | "menopause" | "postmenopause";
 
+export type SymptomId =
+  | 'hot_flashes' | 'night_sweats' | 'mood_swings' | 'anxiety'
+  | 'sleep_issues' | 'fatigue' | 'brain_fog' | 'headache' | 'joint_pain' | 'vaginal_dryness';
+
+export type Severity = 'mild' | 'moderate' | 'severe';
+export type SleepQuality = 'good' | 'average' | 'poor';
+
+export const SYMPTOM_OPTIONS: { id: SymptomId; label: string; emoji: string }[] = [
+  { id: 'hot_flashes', label: 'Hot flashes', emoji: '🔥' },
+  { id: 'night_sweats', label: 'Night sweats', emoji: '🌙' },
+  { id: 'mood_swings', label: 'Mood swings', emoji: '🎭' },
+  { id: 'anxiety', label: 'Anxiety', emoji: '😰' },
+  { id: 'sleep_issues', label: 'Sleep issues', emoji: '😴' },
+  { id: 'fatigue', label: 'Fatigue', emoji: '🪫' },
+  { id: 'brain_fog', label: 'Brain fog', emoji: '🌫️' },
+  { id: 'headache', label: 'Headache', emoji: '🤕' },
+  { id: 'joint_pain', label: 'Joint pain', emoji: '🦴' },
+  { id: 'vaginal_dryness', label: 'Vaginal dryness', emoji: '💧' },
+];
+
 export interface MenopauseSymptoms {
   hotFlashes: number;   // 0–5
   nightSweats: number;
@@ -33,18 +53,34 @@ export interface MenopauseProfile {
 
 export interface MenopauseLogEntry {
   date: string;                   // ISO date (YYYY-MM-DD)
-  hotFlashCount: number;
-  mood: number;                   // 1–5
-  sleepHrs: number;
-  painLevel: number;              // 1–5
-  periodOccurred: boolean;
+  // Calendar symptom fields (0-5 unless specified)
+  hotFlashCount: number;          // 0-20
+  nightSweats: number;            // 0-5
+  jointPain: number;              // 0-5
+  headache: number;               // 0-5
+  anxiety: number;                // 0-5
+  vaginalDryness: number;         // 0-5
+  fatigue: number;                // 0-5
+  mood: number;                   // 1-5
+  sleepHrs: number;               // hours
+  // Guided logging fields
+  symptoms: SymptomId[];          // multi-select symptoms
+  severity: Severity;             // overall severity for the day
+  energyLevel: number;            // 1–5
+  sleepQuality: SleepQuality;     // good / average / poor
   notes: string;
+  painLevel: number;              // legacy alias for jointPain
+  periodOccurred: boolean;
+  goalsCompleted?: number;
+  goalsTotal?: number;
 }
 
 export interface ReminderSettings {
-  morningTime: string;            // HH:MM
-  afternoonTime: string;
-  eveningTime: string;
+  morningTime: string;            // legacy HH:MM
+  afternoonTime: string;          // legacy
+  eveningTime: string;            // legacy
+  blockReminders?: { morning: string; afternoon: string; evening: string };
+  goalReminders?: Record<string, string>;
   notificationsEnabled: boolean;
 }
 
@@ -83,6 +119,62 @@ function writeJSON<T>(key: string, data: T) {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch {}
+}
+
+/** Migrate an old-format log entry to the new format */
+function migrateLogEntry(entry: any): MenopauseLogEntry {
+  // Already has new fields → return as-is
+  if (Array.isArray(entry.symptoms)) return entry as MenopauseLogEntry;
+
+  // Build symptom array from old fields
+  const symptoms: SymptomId[] = [];
+  if (entry.hotFlashCount > 0) symptoms.push('hot_flashes');
+  if (entry.painLevel >= 3) symptoms.push('joint_pain');
+  if (entry.mood <= 2) symptoms.push('mood_swings');
+  if (entry.sleepHrs < 6) symptoms.push('sleep_issues');
+
+  const severity: Severity =
+    entry.painLevel >= 4 || entry.hotFlashCount >= 4 ? 'severe' :
+    entry.painLevel >= 2 || entry.hotFlashCount >= 2 ? 'moderate' : 'mild';
+
+  const energyLevel = entry.mood ?? 3;
+  const sleepQuality: SleepQuality =
+    entry.sleepHrs >= 7 ? 'good' : entry.sleepHrs >= 5 ? 'average' : 'poor';
+
+  const jointPain = entry.jointPain ?? entry.painLevel ?? (symptoms.includes("joint_pain") ? 3 : 0);
+  const headache = entry.headache ?? (symptoms.includes("headache") ? 3 : 0);
+  const anxiety = entry.anxiety ?? (symptoms.includes("anxiety") ? 3 : 0);
+  const nightSweats = entry.nightSweats ?? (symptoms.includes("night_sweats") ? 2 : 0);
+  const vaginalDryness = entry.vaginalDryness ?? (symptoms.includes("vaginal_dryness") ? 2 : 0);
+  const fatigue = entry.fatigue ?? (symptoms.includes("fatigue") ? 3 : 0);
+
+  return {
+    ...entry,
+    date: entry.date,
+    hotFlashCount: entry.hotFlashCount ?? (symptoms.includes("hot_flashes") ? 2 : 0),
+    nightSweats,
+    jointPain,
+    headache,
+    anxiety,
+    vaginalDryness,
+    fatigue,
+    mood: entry.mood ?? 3,
+    sleepHrs: entry.sleepHrs ?? 7,
+    symptoms,
+    severity,
+    energyLevel,
+    sleepQuality,
+    notes: entry.notes ?? '',
+    painLevel: entry.painLevel ?? jointPain ?? 1,
+    periodOccurred: entry.periodOccurred ?? false,
+    goalsCompleted: entry.goalsCompleted,
+    goalsTotal: entry.goalsTotal,
+  };
+}
+
+function readAndMigrateLogs(key: string): MenopauseLogEntry[] {
+  const raw = readJSON<any[]>(key, []);
+  return raw.map(migrateLogEntry);
 }
 
 export function classifyStage(lastPeriodDate: string): MenopauseStage {
@@ -129,12 +221,14 @@ export function useMenopause() {
   const gk = `${GOALS_KEY}-${userId}`;
 
   const [profile, setProfile] = useState<MenopauseProfile | null>(() => readJSON(pk, null));
-  const [logs, setLogs] = useState<MenopauseLogEntry[]>(() => readJSON(lk, []));
+  const [logs, setLogs] = useState<MenopauseLogEntry[]>(() => readAndMigrateLogs(lk));
   const [reminderSettings, setReminderSettingsState] = useState<ReminderSettings>(() =>
     readJSON(rk, {
       morningTime: "07:00",
       afternoonTime: "13:00",
       eveningTime: "20:00",
+      blockReminders: { morning: "07:00", afternoon: "13:00", evening: "20:00" },
+      goalReminders: {},
       notificationsEnabled: false,
     })
   );
@@ -166,6 +260,17 @@ export function useMenopause() {
     [lk]
   );
 
+  const deleteLog = useCallback(
+    (date: string) => {
+      setLogs((prev) => {
+        const next = prev.filter((l) => l.date !== date);
+        writeJSON(lk, next);
+        return next;
+      });
+    },
+    [lk]
+  );
+
   const getLogForDate = useCallback(
     (date: string): MenopauseLogEntry | undefined => {
       return logs.find((l) => l.date === date);
@@ -184,6 +289,17 @@ export function useMenopause() {
   const getLogsForRange = useCallback(
     (startDate: string, endDate: string): MenopauseLogEntry[] => {
       return logs.filter((l) => l.date >= startDate && l.date <= endDate);
+    },
+    [logs]
+  );
+
+  const getLogsForDays = useCallback(
+    (days: number): MenopauseLogEntry[] => {
+      const now = new Date();
+      return logs.filter((l) => {
+        const diff = (now.getTime() - new Date(l.date).getTime()) / (1000 * 60 * 60 * 24);
+        return diff <= days;
+      });
     },
     [logs]
   );
@@ -288,9 +404,11 @@ export function useMenopause() {
     saveMenopauseProfile,
     logs,
     addLog,
+    deleteLog,
     getLogForDate,
     getLogsForMonth,
     getLogsForRange,
+    getLogsForDays,
     reminderSettings,
     saveReminderSettings,
     wins,

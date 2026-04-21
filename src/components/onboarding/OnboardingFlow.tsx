@@ -4,8 +4,9 @@ import { createPortal } from "react-dom";
 import { useOnboarding, type Goal, type OnboardingConfig } from "@/hooks/useOnboarding";
 import { useAuth } from "@/hooks/useAuth";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useProfile } from "@/hooks/useProfile";
 import type { Phase } from "@/hooks/usePhase";
-import { X, ChevronRight, ChevronLeft, AlertTriangle, Check } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, AlertTriangle, Check, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PubertyQuestions from "./PubertyQuestions";
 
@@ -173,6 +174,7 @@ export default function OnboardingFlow() {
   const { config, showOnboarding, setShowOnboarding, saveConfig } = useOnboarding();
   const { fullProfile } = useAuth();
   const { saveProfile } = usePregnancyProfile();
+  const { profile: userProfile } = useProfile();
   const navigate = useNavigate();
 
   // Local state for form
@@ -183,9 +185,8 @@ export default function OnboardingFlow() {
   const [phaseToConfirm, setPhaseToConfirm] = useState<Phase | null>(null);
 
   // Maternity setup form state
-  const [maternityName, setMaternityName] = useState("");
   const [maternityLmp, setMaternityLmp] = useState("");
-  const [maternityRegion, setMaternityRegion] = useState<"north" | "south" | "east" | "west">("north");
+  const name = userProfile?.name || "User";
 
   // Pre-fill when re-opening
   useEffect(() => {
@@ -314,7 +315,7 @@ export default function OnboardingFlow() {
     if (!maternityLmp) return;
 
     // Save pregnancy profile data
-    saveProfile({ name: maternityName, lmp: maternityLmp, region: maternityRegion });
+    saveProfile({ name, lmp: maternityLmp, region: "north" });
 
     // Save onboarding config
     const cfg: Partial<OnboardingConfig> = {
@@ -415,17 +416,18 @@ export default function OnboardingFlow() {
               </div>
 
               <div className="space-y-4 bg-white rounded-2xl border border-slate-200 p-6 shadow-sm max-w-lg mx-auto">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Your Name</label>
-                  <input
-                    type="text"
-                    value={maternityName}
-                    onChange={(e) => setMaternityName(e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    placeholder="Your name"
-                  />
+                {/* Welcome User Banner */}
+                <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                    {name.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-semibold text-slate-800">Welcome, {name}</p>
+                    <p className="text-[10px] text-slate-500">Using your profile information</p>
+                  </div>
                 </div>
-                <div>
+
+                <div className="text-left">
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Last Menstrual Period (LMP)</label>
                   <input
                     type="date"
@@ -435,18 +437,13 @@ export default function OnboardingFlow() {
                     className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Region</label>
-                  <select
-                    value={maternityRegion}
-                    onChange={(e) => setMaternityRegion(e.target.value as any)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  >
-                    <option value="north">North India</option>
-                    <option value="south">South India</option>
-                    <option value="east">East India</option>
-                    <option value="west">West India</option>
-                  </select>
+
+                {/* Info Note */}
+                <div className="flex items-start gap-2 bg-blue-50 rounded-lg p-3 border border-blue-100 text-left mb-2">
+                  <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
+                  <p className="text-[11px] text-blue-700 leading-relaxed">
+                    Your due date is auto-calculated from LMP (LMP&nbsp;+&nbsp;280&nbsp;days). You can adjust it later from the dashboard if your doctor gives a different date.
+                  </p>
                 </div>
                 <button
                   onClick={handleMaternitySetupSubmit}

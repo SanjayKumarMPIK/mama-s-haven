@@ -19,6 +19,7 @@ import {
 } from "@/lib/nutritionInsightsEngine";
 import { predictMaternityDeficiencies, type MaternityPredictionResult, type MaternityFallbackRecommendation } from "@/lib/maternityNutritionEngine";
 import { predictPubertyDeficiencies, type PubertyNutritionResult, type PubertyDeficiencyPrediction, type Confidence } from "@/lib/pubertyNutritionEngine";
+import { predictFamilyPlanningDeficiencies, type FamilyPlanningPredictionResult } from "@/lib/familyPlanningNutritionEngine";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 
 // ─── Phase accent map ─────────────────────────────────────────────────────────
@@ -86,6 +87,12 @@ export default function NutritionGuide() {
     return null;
   }, [logs, phase, profile, onboardingConfig]);
 
+  // ── Compute family planning specific insights (memoized) ──
+  const familyPlanningData = useMemo(() => {
+    if (phase === "family-planning") return predictFamilyPlanningDeficiencies(logs);
+    return null;
+  }, [logs, phase]);
+
   // ═══ Render ═════════════════════════════════════════════════════════════════
 
   return (
@@ -113,6 +120,8 @@ export default function NutritionGuide() {
         {/* ─── PUBERTY PHASE ─────────────────────────────────────────────── */}
         {phase === "puberty" && pubertyData ? (
           <PubertyNutritionView data={pubertyData} accent={accent} />
+        ) : phase === "family-planning" && familyPlanningData ? (
+          <FamilyPlanningNutritionView data={familyPlanningData} accent={accent} />
         ) : phase === "maternity" && maternityData ? (
           <MaternityNutritionView data={maternityData} accent={accent} />
         ) : !data.hasData ? (
@@ -807,7 +816,7 @@ function MaternityNutritionView({
               <div className="bg-card border border-border p-4 rounded-xl">
                 <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">Focus Foods</p>
                 <div className="flex flex-wrap gap-2">
-                  {data.fallback.foods.map((f) => (
+                  {data.fallback.foods.map((f: string) => (
                     <span key={f} className="px-2 py-1 text-[11px] font-semibold bg-primary/10 text-primary rounded-lg border border-primary/20">
                       {f}
                     </span>
@@ -817,7 +826,7 @@ function MaternityNutritionView({
               <div className="bg-card border border-border p-4 rounded-xl">
                 <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">Key Habits</p>
                 <ul className="text-sm space-y-1.5 list-disc ml-4 text-foreground/90">
-                  {data.fallback.habits.map((h, i) => (
+                  {data.fallback.habits.map((h: string, i: number) => (
                     <li key={i}>{h}</li>
                   ))}
                 </ul>
@@ -836,6 +845,158 @@ function MaternityNutritionView({
                 Log your symptoms now
               </Link>
             </div>
+          </div>
+        </ScrollReveal>
+      ) : null}
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── FAMILY PLANNING NUTRITION VIEW ────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+function FamilyPlanningNutritionView({
+  data,
+  accent,
+}: {
+  data: FamilyPlanningPredictionResult;
+  accent: any;
+}) {
+  return (
+    <>
+      <ScrollReveal>
+        <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 mb-2">
+          <p className="text-xs text-teal-800 flex items-start gap-2">
+            <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              <strong>Note:</strong> These suggestions aim to align your dietary habits optimally for fertility and preconception health.
+            </span>
+          </p>
+        </div>
+      </ScrollReveal>
+
+      {data.hasData && data.predictions.length > 0 ? (
+        <div className="space-y-6">
+          <ScrollReveal>
+            <SectionHeader title="Your Preconception Nutrient Gaps" emoji="🔍" />
+            <div className="grid gap-4 md:grid-cols-2">
+              {data.predictions.map((pred) => (
+                <div
+                  key={pred.id}
+                  className={`rounded-2xl border-2 p-5 bg-card hover:shadow-md transition-all ${
+                    pred.confidence === "High" ? "border-amber-200" : "border-border/60"
+                  }`}
+                >
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h3 className="text-lg font-bold text-foreground">{pred.title}</h3>
+                      <p className="text-sm text-primary font-semibold mt-0.5">{pred.nutrient}</p>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
+                        pred.confidence === "High"
+                          ? "bg-amber-100 text-amber-800"
+                          : pred.confidence === "Medium"
+                          ? "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {pred.confidence} Confidence
+                    </span>
+                  </div>
+
+                  <div className="mt-4 space-y-4">
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Why we predict this</p>
+                      <p className="text-sm bg-muted/30 p-2.5 rounded-lg border border-border/50 text-foreground/90">
+                        {pred.whyPredicted}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Why it matters for preconception</p>
+                      <p className="text-sm text-foreground/90 leading-relaxed">{pred.whyItMatters}</p>
+                    </div>
+
+                    <div className="pt-2 border-t border-border/40">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Recommended Sources</p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {pred.foods.map((food) => (
+                          <span
+                            key={food}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r ${accent.gradient} text-white shadow-sm`}
+                          >
+                            {food}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Healthy Habits</p>
+                      <ul className="space-y-1.5 ml-4">
+                        {pred.habits.map((habit, i) => (
+                          <li key={i} className="text-sm text-foreground/85 list-disc">
+                            {habit}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollReveal>
+
+          <ScrollReveal delay={100}>
+            <div className="flex justify-center mt-4">
+              <Link
+                to="/calendar"
+                className="inline-flex items-center gap-2 text-sm text-primary font-medium hover:underline"
+              >
+                <Calendar className="w-4 h-4" /> Log more symptoms for better accuracy
+              </Link>
+            </div>
+          </ScrollReveal>
+        </div>
+      ) : data.fallback ? (
+        <ScrollReveal>
+          <div className="flex flex-col items-center justify-center text-center py-12 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
+            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center mb-5 shadow-lg`}>
+              <Apple className="w-8 h-8 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground mb-1">{data.fallback.focusTitle}</h3>
+            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mb-4">
+              {data.fallback.whyItMatters}
+            </p>
+
+            <div className="w-full max-w-lg text-left mb-6">
+               <SectionHeader title="Preconception Focus" emoji="📌" />
+               <div className="rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
+                  <div className="px-5 py-3.5 border-b border-border/30">
+                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Base Foods</p>
+                     <div className="flex flex-wrap gap-2">
+                        {data.fallback.foods.map((food) => (
+                           <span key={food} className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r ${accent.gradient} text-white shadow-sm`}>{food}</span>
+                        ))}
+                     </div>
+                  </div>
+                  <div className="px-5 py-3.5">
+                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Base Habits</p>
+                     <ul className="space-y-1.5 ml-4">
+                        {data.fallback.habits.map((habit, i) => (
+                           <li key={i} className="text-sm text-foreground/85 list-disc">{habit}</li>
+                        ))}
+                     </ul>
+                  </div>
+               </div>
+            </div>
+
+            <Link
+              to="/calendar"
+              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r ${accent.gradient} text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all active:scale-[0.97]`}
+            >
+              <Calendar className="w-4 h-4" />
+              Go to Calendar
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </div>
         </ScrollReveal>
       ) : null}

@@ -47,7 +47,8 @@ const PHASE_HEADER: Record<string, { title: string; desc: string; accent: string
 // ─── Derived Insights Panels ──────────────────────────────────────────────────
 
 function PubertyInsights() {
-  const { logs } = useHealthLog();
+  const { getPhaseLogs } = useHealthLog();
+  const logs = getPhaseLogs("puberty");
 
   const avgCycle = useMemo(() => calcAverageCycleLength(logs), [logs]);
 
@@ -114,7 +115,8 @@ function PubertyInsights() {
 }
 
 function MaternityInsights() {
-  const { logs } = useHealthLog();
+  const { getPhaseLogs } = useHealthLog();
+  const logs = getPhaseLogs("maternity");
   const { activeEDD } = usePregnancyProfile();
   const alerts = useMemo(() => detectMaternityAlerts(logs), [logs]);
   const todayISO = new Date().toISOString().slice(0, 10);
@@ -203,7 +205,8 @@ function MaternityInsights() {
 }
 
 function FamilyPlanningInsights() {
-  const { logs } = useHealthLog();
+  const { getPhaseLogs } = useHealthLog();
+  const logs = getPhaseLogs("family-planning");
 
   const latestFP = useMemo(() => {
     const entries = Object.entries(logs)
@@ -267,7 +270,8 @@ function FamilyPlanningInsights() {
 }
 
 function MenopauseInsights() {
-  const { logs } = useHealthLog();
+  const { getPhaseLogs } = useHealthLog();
+  const logs = getPhaseLogs("menopause");
   const freqSymptoms = useMemo(() => detectFrequentSymptoms(logs), [logs]);
   const weeklySummaries = useMemo(() => summarizeMenopauseByWeek(logs, 4), [logs]);
   const totalLogged = Object.values(logs).filter((e) => e.phase === "menopause").length;
@@ -352,7 +356,8 @@ function MenopauseInsights() {
 
 export default function HealthLog() {
   const { phase, phaseName, phaseEmoji } = usePhase();
-  const { logs } = useHealthLog();
+  const { getPhaseLogs } = useHealthLog();
+  const logs = getPhaseLogs(phase);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());

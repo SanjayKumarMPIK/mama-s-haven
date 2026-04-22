@@ -103,6 +103,7 @@ export type HealthLogEntry =
   | MenopauseEntry;
 
 export type HealthLogs = Record<string, HealthLogEntry>; // key = "YYYY-MM-DD"
+type CalendarStore = Record<string, Partial<Record<Phase, HealthLogEntry>>>;
 
 // ─── Derived helpers ──────────────────────────────────────────────────────────
 
@@ -477,15 +478,62 @@ function writeLS(logs: HealthLogs) {
   } catch {}
 }
 
+const STORE_LS_KEY = "ss-health-logs-v2";
+const FLATTEN_PRIORITY: Phase[] = ["puberty", "family-planning", "maternity", "menopause"];
+
+function flattenStore(store: CalendarStore): HealthLogs {
+  const flattened: HealthLogs = {};
+  for (const [date, phaseMap] of Object.entries(store)) {
+    for (const phase of FLATTEN_PRIORITY) {
+      const entry = phaseMap[phase];
+      if (entry) {
+        flattened[date] = entry;
+        break;
+      }
+    }
+  }
+  return flattened;
+}
+
+function readStoreLS(): CalendarStore {
+  try {
+    const raw = localStorage.getItem(STORE_LS_KEY);
+    if (raw) {
+      return JSON.parse(raw) as CalendarStore;
+    }
+  } catch {
+    // fall through to legacy migration
+  }
+
+  // Backward compatibility: migrate v1 flat logs to v2 store.
+  const legacy = readLS();
+  const migrated: CalendarStore = {};
+  for (const [date, entry] of Object.entries(legacy)) {
+    const phase = entry.phase;
+    if (!migrated[date]) migrated[date] = {};
+    migrated[date][phase] = entry;
+  }
+  return migrated;
+}
+
+function writeStoreLS(store: CalendarStore) {
+  try {
+    localStorage.setItem(STORE_LS_KEY, JSON.stringify(store));
+    // Keep legacy key in sync for compatibility with older code paths.
+    writeLS(flattenStore(store));
+  } catch {}
+}
+
 interface HealthLogContextType {
   logs: HealthLogs; // Kept for backwards compatibility
   maternityLogs: HealthLogs; // Strictly maternity logs
   pubertyLogs: HealthLogs; // Strictly puberty logs
-  getLog: (dateISO: string) => HealthLogEntry | undefined;
+  getPhaseLogs: (phase: Phase) => HealthLogs;
+  getLog: (dateISO: string, phase?: Phase) => HealthLogEntry | undefined;
   saveLog: (dateISO: string, entry: HealthLogEntry) => void;
   saveBulkLogs: (entries: Record<string, HealthLogEntry>) => void;
-  deleteLog: (dateISO: string) => void;
-  deleteBulkLogs: (dateISOs: string[]) => void;
+  deleteLog: (dateISO: string, phase?: Phase) => void;
+  deleteBulkLogs: (dateISOs: string[], phase?: Phase) => void;
   clearAllLogs: () => void;
   logKeySymptom: (dateISO: string, phase: Phase, symptomId: KeySymptomId) => void;
 }
@@ -494,6 +542,7 @@ const HealthLogContext = createContext<HealthLogContextType>({
   logs: {},
   maternityLogs: {},
   pubertyLogs: {},
+  getPhaseLogs: () => ({}),
   getLog: () => undefined,
   saveLog: () => {},
   saveBulkLogs: () => {},
@@ -504,7 +553,8 @@ const HealthLogContext = createContext<HealthLogContextType>({
 });
 
 export function HealthLogProvider({ children }: { children: ReactNode }) {
-  const [logs, setLogs] = useState<HealthLogs>(() => readLS());
+  const [store, setStore] = useState<CalendarStore>(() => readStoreLS());
+  const logs = useMemo(() => flattenStore(store), [store]);
 
   // Strictly separated state references (Option B style structure)
   const separatedLogs = useMemo(() => {
@@ -514,64 +564,108 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
       "family-planning": {} as HealthLogs,
       menopause: {} as HealthLogs,
     };
-    for (const [date, entry] of Object.entries(logs)) {
-      if (entry.phase in state) {
-        state[entry.phase as keyof typeof state][date] = entry;
+    for (const [date, perPhaseEntries] of Object.entries(store)) {
+      for (const phase of Object.keys(perPhaseEntries) as Phase[]) {
+        const entry = perPhaseEntries[phase];
+        if (entry && phase in state) {
+          state[phase as keyof typeof state][date] = entry;
+        }
       }
     }
     return state;
-  }, [logs]);
+  }, [store]);
+
+  const getPhaseLogs = useCallback(
+    (phase: Phase) => separatedLogs[phase] ?? {},
+    [separatedLogs]
+  );
 
   const getLog = useCallback(
-    (dateISO: string) => logs[dateISO],
-    [logs]
+    (dateISO: string, phase?: Phase) => {
+      if (phase) return store[dateISO]?.[phase];
+      return logs[dateISO];
+    },
+    [logs, store]
   );
 
   const saveLog = useCallback((dateISO: string, entry: HealthLogEntry) => {
-    setLogs((prev) => {
-      const next = { ...prev, [dateISO]: entry };
-      writeLS(next);
+    setStore((prev) => {
+      const next: CalendarStore = {
+        ...prev,
+        [dateISO]: {
+          ...(prev[dateISO] ?? {}),
+          [entry.phase]: entry,
+        },
+      };
+      writeStoreLS(next);
       return next;
     });
   }, []);
 
   const saveBulkLogs = useCallback((entries: Record<string, HealthLogEntry>) => {
-    setLogs((prev) => {
-      const next = { ...prev, ...entries };
-      writeLS(next);
-      return next;
-    });
-  }, []);
-
-  const deleteLog = useCallback((dateISO: string) => {
-    setLogs((prev) => {
-      const next = { ...prev };
-      delete next[dateISO];
-      writeLS(next);
-      return next;
-    });
-  }, []);
-
-  const deleteBulkLogs = useCallback((dateISOs: string[]) => {
-    if (dateISOs.length === 0) return;
-    setLogs((prev) => {
-      const next = { ...prev };
-      for (const d of dateISOs) {
-        delete next[d];
+    setStore((prev) => {
+      const next: CalendarStore = { ...prev };
+      for (const [dateISO, entry] of Object.entries(entries)) {
+        next[dateISO] = {
+          ...(next[dateISO] ?? {}),
+          [entry.phase]: entry,
+        };
       }
-      writeLS(next);
+      writeStoreLS(next);
+      return next;
+    });
+  }, []);
+
+  const deleteLog = useCallback((dateISO: string, phase?: Phase) => {
+    setStore((prev) => {
+      const next: CalendarStore = { ...prev };
+      if (!next[dateISO]) return prev;
+
+      if (!phase) {
+        delete next[dateISO];
+      } else {
+        const updated = { ...next[dateISO] };
+        delete updated[phase];
+        if (Object.keys(updated).length === 0) {
+          delete next[dateISO];
+        } else {
+          next[dateISO] = updated;
+        }
+      }
+
+      writeStoreLS(next);
+      return next;
+    });
+  }, []);
+
+  const deleteBulkLogs = useCallback((dateISOs: string[], phase?: Phase) => {
+    if (dateISOs.length === 0) return;
+    setStore((prev) => {
+      const next: CalendarStore = { ...prev };
+      for (const d of dateISOs) {
+        if (!next[d]) continue;
+        if (!phase) {
+          delete next[d];
+        } else {
+          const updated = { ...next[d] };
+          delete updated[phase];
+          if (Object.keys(updated).length === 0) delete next[d];
+          else next[d] = updated;
+        }
+      }
+      writeStoreLS(next);
       return next;
     });
   }, []);
 
   const clearAllLogs = useCallback(() => {
-    setLogs({});
-    writeLS({});
+    setStore({});
+    writeStoreLS({});
   }, []);
 
   const logKeySymptom = useCallback((dateISO: string, phase: Phase, symptomId: KeySymptomId) => {
-    setLogs((prev) => {
-      const existing = prev[dateISO];
+    setStore((prev) => {
+      const existing = prev[dateISO]?.[phase];
 
       const baseForPhase = (): HealthLogEntry => {
         if (phase === "puberty") {
@@ -661,8 +755,14 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
       }
 
       target.symptoms = s;
-      const next = { ...prev, [dateISO]: target as HealthLogEntry };
-      writeLS(next);
+      const next: CalendarStore = {
+        ...prev,
+        [dateISO]: {
+          ...(prev[dateISO] ?? {}),
+          [phase]: target as HealthLogEntry,
+        },
+      };
+      writeStoreLS(next);
       return next;
     });
   }, []);
@@ -672,6 +772,7 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
       logs,
       maternityLogs: separatedLogs.maternity,
       pubertyLogs: separatedLogs.puberty, 
+      getPhaseLogs,
       getLog, saveLog, saveBulkLogs, deleteLog, deleteBulkLogs, clearAllLogs, logKeySymptom 
     }}>
       {children}

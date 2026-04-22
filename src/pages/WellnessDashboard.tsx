@@ -413,7 +413,8 @@ export default function WellnessDashboard() {
   const { simpleMode } = useLanguage();
   const { phase, phaseEmoji, phaseName, phaseColor } = usePhase();
   const { user, fullProfile } = useAuth();
-  const { logs } = useHealthLog();
+  const { getPhaseLogs } = useHealthLog();
+  const logs = useMemo(() => getPhaseLogs(phase), [getPhaseLogs, phase]);
   const {
     profile,
     recommendation,

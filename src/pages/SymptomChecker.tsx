@@ -138,26 +138,28 @@ const insightBg: Record<string, string> = {
 export default function SymptomChecker() {
   const { simpleMode } = useLanguage();
   const { phase } = usePhase();
-  const { logs } = useHealthLog();
+  const { getPhaseLogs } = useHealthLog();
+
+  const phaseLogs = useMemo(() => getPhaseLogs(phase), [getPhaseLogs, phase]);
 
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
 
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
 
   // ── Compute analytics (memoized) ──
-  const data = useMemo(() => computeSymptomInsights(logs, phase), [logs, phase]);
+  const data = useMemo(() => computeSymptomInsights(phaseLogs, phase), [phaseLogs, phase]);
 
   // ── Compute predictions (memoized) ──
   const predictionResult = useMemo(
-    () => computeSymptomPredictions(logs, phase),
-    [logs, phase],
+    () => computeSymptomPredictions(phaseLogs, phase),
+    [phaseLogs, phase],
   );
 
   // ── Compute symptom detail (memoized) ──
   const detail = useMemo<SymptomDetailData | null>(() => {
     if (!selectedSymptomId) return null;
-    return getSymptomDetail(logs, phase, selectedSymptomId);
-  }, [logs, phase, selectedSymptomId]);
+    return getSymptomDetail(phaseLogs, phase, selectedSymptomId);
+  }, [phaseLogs, phase, selectedSymptomId]);
 
   const handleSymptomClick = useCallback((id: string) => {
     setSelectedSymptomId((prev) => (prev === id ? null : id));

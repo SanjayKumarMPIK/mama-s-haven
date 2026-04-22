@@ -11,15 +11,13 @@ export interface StoredUserData {
     fullName: string;
     age: string;
     dob: string;
-    mobile: string;
+    mobile?: string;
     email?: string;
+    bloodGroup?: string;
     password: string;          // hashed in production; stored as-is for demo
   };
   location: {
-    state: string;
-    district: string;
-    village: string;
-    pincode: string;
+    region: "north" | "south" | "east" | "west";
   };
   health: {
     lifeStage: string;
@@ -28,7 +26,9 @@ export interface StoredUserData {
     lastPeriodDate?: string;
     cycleLength?: string;
     haemoglobin?: string;
+    dietType?: "veg" | "non-veg" | "mixed";
     knownConditions?: string;
+    medicalConditions?: string[];
   };
   registeredAt: string;        // ISO timestamp
 }
@@ -36,7 +36,7 @@ export interface StoredUserData {
 export interface SessionUser {
   id: string;
   name: string;
-  mobile: string;
+  mobile?: string;
   email?: string;
   lifeStage?: string;
   isLoggedIn: boolean;
@@ -49,6 +49,7 @@ interface AuthContextType {
   loginWithOTP: (mobile: string, otp: string) => Promise<boolean>;
   sendOTP: (mobile: string) => Promise<boolean>;
   register: (userData: any) => Promise<boolean>;
+  updateProfile: (updater: (prev: StoredUserData) => StoredUserData) => void;
   logout: () => void;
   isLoading: boolean;
 }
@@ -76,9 +77,9 @@ function getSession(): SessionUser | null {
 
 function createSessionFromStored(stored: StoredUserData): SessionUser {
   return {
-    id: stored.basic.mobile,               // mobile as unique ID for demo
+    id: stored.basic.mobile || stored.basic.email || "anonymous", // unique ID for demo
     name: stored.basic.fullName,
-    mobile: stored.basic.mobile,
+    mobile: stored.basic.mobile || undefined,
     email: stored.basic.email || undefined,
     lifeStage: stored.health.lifeStage,
     isLoggedIn: true,
@@ -116,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const matchesCredentials =
-          (stored.basic.mobile === emailOrMobile || stored.basic.email === emailOrMobile) &&
+          ((stored.basic.mobile && stored.basic.mobile === emailOrMobile) || stored.basic.email === emailOrMobile) &&
           stored.basic.password === password;
 
         if (!matchesCredentials) {
@@ -189,15 +190,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             fullName: userData.basic.fullName,
             age: userData.basic.age,
             dob: userData.basic.dob,
-            mobile: userData.basic.mobile,
+            mobile: userData.basic.mobile || undefined,
             email: userData.basic.email || undefined,
+            bloodGroup: userData.basic.bloodGroup || undefined,
             password: userData.basic.password,
           },
           location: {
-            state: userData.location.state,
-            district: userData.location.district,
-            village: userData.location.village,
-            pincode: userData.location.pincode,
+            region: userData.location.region,
           },
           health: {
             lifeStage: userData.health.lifeStage,
@@ -206,7 +205,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lastPeriodDate: userData.health.lastPeriodDate || undefined,
             cycleLength: userData.health.cycleLength || undefined,
             haemoglobin: userData.health.haemoglobin || undefined,
+            dietType: userData.health.dietType || undefined,
             knownConditions: userData.health.knownConditions || undefined,
+            medicalConditions: userData.health.medicalConditions || [],
           },
           registeredAt: new Date().toISOString(),
         };
@@ -229,6 +230,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  const updateProfile = (updater: (prev: StoredUserData) => StoredUserData) => {
+    const current = getStoredUser();
+    if (!current) return;
+    const next = updater(current);
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(next));
+    setFullProfile(next);
+    if (user) {
+      const refreshedSession = createSessionFromStored(next);
+      localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(refreshedSession));
+      setUser(refreshedSession);
+    }
+  };
+
   // ── Logout ─────────────────────────────────────────────────────────────────
   const logout = () => {
     setUser(null);
@@ -239,7 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, fullProfile, loginWithPassword, loginWithOTP, sendOTP, register, logout, isLoading }}
+      value={{ user, fullProfile, loginWithPassword, loginWithOTP, sendOTP, register, updateProfile, logout, isLoading }}
     >
       {children}
     </AuthContext.Provider>

@@ -25,17 +25,16 @@ export type FamilyPlanningGoal =
   | "prediction_accuracy"
   | "fertility_education";
 
-export type MenopauseGoal =
-  | "track_symptoms"
-  | "hormonal_understanding"
-  | "sleep_lifestyle"
-  | "pattern_tracking"
-  | "health_awareness";
-
-export type Goal = PubertyGoal | MaternityGoal | FamilyPlanningGoal | MenopauseGoal;
+export type Goal = PubertyGoal | MaternityGoal | FamilyPlanningGoal;
 
 export interface PubertyOnboardingData {
+  period_awareness?: "Yes" | "No";
   has_started_periods?: boolean;
+  first_period_month?: string;
+  first_period_year?: string;
+  menarche_age?: number;
+  menarche_category?: "Early Puberty" | "Normal" | "Late Puberty";
+  cycle_regularity?: "Regular" | "Irregular" | "Not sure";
   cramps?: "Yes" | "No" | "Not sure";
   mood_swings?: "Yes, a lot" | "Sometimes" | "Not really";
   fatigue?: "Often" | "Sometimes" | "Rarely";

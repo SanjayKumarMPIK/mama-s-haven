@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { useOnboarding, type Goal, type OnboardingConfig } from "@/hooks/useOnboarding";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,6 +7,7 @@ import type { Phase } from "@/hooks/usePhase";
 import { X, ChevronRight, ChevronLeft, AlertTriangle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PubertyQuestions from "./PubertyQuestions";
+import { toast } from "sonner";
 
 // ─── Goal option data per phase ──────────────────────────────────────────────
 
@@ -41,19 +41,10 @@ const FAMILY_PLANNING_GOALS: GoalOption[] = [
   { id: "fertility_education", emoji: "🧠", label: "Fertility education" },
 ];
 
-const MENOPAUSE_GOALS: GoalOption[] = [
-  { id: "track_symptoms", emoji: "🔥", label: "Track symptoms" },
-  { id: "hormonal_understanding", emoji: "🧠", label: "Hormonal understanding" },
-  { id: "sleep_lifestyle", emoji: "💤", label: "Sleep & lifestyle" },
-  { id: "pattern_tracking", emoji: "📊", label: "Pattern tracking" },
-  { id: "health_awareness", emoji: "🩺", label: "Health awareness" },
-];
-
-const GOALS_MAP: Record<Phase, GoalOption[]> = {
+const GOALS_MAP: Partial<Record<Phase, GoalOption[]>> = {
   puberty: PUBERTY_GOALS,
   maternity: MATERNITY_GOALS,
   "family-planning": FAMILY_PLANNING_GOALS,
-  menopause: MENOPAUSE_GOALS,
 };
 
 // ─── Phase card data ─────────────────────────────────────────────────────────
@@ -96,16 +87,17 @@ const PHASE_OPTIONS: PhaseOption[] = [
     border: "border-teal-200 hover:border-teal-400",
     iconBg: "bg-teal-100",
   },
-  {
-    phase: "menopause",
-    emoji: "🌿",
-    title: "Menopause",
-    description: "Symptom tracking, hormonal insights, sleep and wellness guidance",
-    gradient: "from-amber-50 to-orange-50",
-    border: "border-amber-200 hover:border-amber-400",
-    iconBg: "bg-amber-100",
-  },
 ];
+
+const MEDICAL_CONDITION_OPTIONS = [
+  { id: "Hypothyroidism", icon: "🦋" },
+  { id: "Hyperthyroidism", icon: "⚡" },
+  { id: "PCOD", icon: "🌙" },
+  { id: "PCOS", icon: "🧬" },
+  { id: "Diabetes", icon: "🍽️" },
+  { id: "Anemia", icon: "🩸" },
+  { id: "Osteoporosis", icon: "🦴" },
+] as const;
 
 // ─── Age Warning Dialog ──────────────────────────────────────────────────────
 
@@ -171,14 +163,16 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 
 export default function OnboardingFlow() {
   const { config, showOnboarding, setShowOnboarding, saveConfig } = useOnboarding();
-  const { fullProfile } = useAuth();
+  const { fullProfile, updateProfile } = useAuth();
   const { saveProfile } = usePregnancyProfile();
-  const navigate = useNavigate();
 
   // Local state for form
-  const [step, setStep] = useState(1); // 1 = purpose, 2 = goals (or maternity setup), 3 = puberty questions
+  const [step, setStep] = useState(1); // 1 = medical, 2 = purpose, 3 = goals/maternity, 4 = puberty questions
   const [selectedPhase, setSelectedPhase] = useState<Phase | null>(config.onboardingCompleted ? config.phase : null);
   const [selectedGoals, setSelectedGoals] = useState<Set<Goal>>(new Set(config.goals));
+  const [selectedMedicalConditions, setSelectedMedicalConditions] = useState<Set<string>>(
+    new Set(fullProfile?.health?.medicalConditions ?? []),
+  );
   const [ageWarning, setAgeWarning] = useState<string | null>(null);
   const [phaseToConfirm, setPhaseToConfirm] = useState<Phase | null>(null);
 
@@ -199,7 +193,7 @@ export default function OnboardingFlow() {
   if (!showOnboarding) return null;
 
   const userAge = fullProfile?.basic?.age ? parseInt(fullProfile.basic.age, 10) : config.age;
-  const totalSteps = 2;
+  const totalSteps = 3;
 
   // ─── Age validation ────────────────────────────────────────────────────────
   const checkAgeForPhase = (phase: Phase): boolean => {
@@ -218,13 +212,6 @@ export default function OnboardingFlow() {
         setPhaseToConfirm(phase);
         return false;
       }
-      if (userAge < 50 && phase === "menopause") {
-        setAgeWarning(
-          "Menopause tracking is typically for ages 50 and above. Are you sure you want to continue?",
-        );
-        setPhaseToConfirm(phase);
-        return false;
-      }
     }
     return true;
   };
@@ -233,7 +220,7 @@ export default function OnboardingFlow() {
     if (checkAgeForPhase(phase)) {
       setSelectedPhase(phase);
       setSelectedGoals(new Set());
-      setStep(2); // For maternity: shows setup form. For others: shows goals.
+      setStep(3); // For maternity: setup form. For others: goals.
     }
   };
 
@@ -241,7 +228,7 @@ export default function OnboardingFlow() {
     if (phaseToConfirm) {
       setSelectedPhase(phaseToConfirm);
       setSelectedGoals(new Set());
-      setStep(2);
+      setStep(3);
     }
     setAgeWarning(null);
     setPhaseToConfirm(null);
@@ -264,38 +251,46 @@ export default function OnboardingFlow() {
     });
   };
 
+  const toggleMedicalCondition = (condition: string) => {
+    setSelectedMedicalConditions((prev) => {
+      const next = new Set(prev);
+      if (next.has(condition)) next.delete(condition);
+      else next.add(condition);
+      return next;
+    });
+  };
+
+  const persistMedicalConditions = () => {
+    const medicalConditions = Array.from(selectedMedicalConditions);
+    updateProfile((prev) => ({
+      ...prev,
+      health: {
+        ...prev.health,
+        medicalConditions,
+        knownConditions: medicalConditions.join(", "),
+      },
+    }));
+  };
+
+  const handleContinueMedical = () => {
+    if (selectedMedicalConditions.size === 0) {
+      toast.message("You can skip for now, but this helps personalize your insights.");
+    }
+    persistMedicalConditions();
+    setStep(2);
+  };
+
+  const handleSkipMedical = () => {
+    setSelectedMedicalConditions(new Set());
+    persistMedicalConditions();
+    setStep(2);
+  };
+
   const handleCompletePhase2 = () => {
     if (!selectedPhase || selectedGoals.size === 0) return;
     
     if (selectedPhase === "puberty") {
-      setStep(3); // Progress to the Puberty specific questionnaire
-      return;
-    }
-
-    // Menopause: save config and navigate to menopause onboarding or calendar
-    if (selectedPhase === "menopause") {
-      const cfg: Partial<OnboardingConfig> = {
-        phase: selectedPhase,
-        goals: Array.from(selectedGoals),
-        age: userAge,
-        onboardingCompleted: true,
-      };
-      saveConfig(cfg);
-      setShowOnboarding(false);
-
-      // Check if menopause profile already exists
-      try {
-        const session = localStorage.getItem("swasthyasakhi_session");
-        const userId = session ? JSON.parse(session)?.id : "anonymous";
-        const existing = localStorage.getItem(`ss-menopause-profile-${userId}`);
-        if (existing) {
-          navigate("/menopause/calendar");
-        } else {
-          navigate("/menopause/onboarding");
-        }
-      } catch {
-        navigate("/menopause/onboarding");
-      }
+      setStep(4); // Progress to the Puberty specific questionnaire
       return;
     }
 
@@ -368,9 +363,66 @@ export default function OnboardingFlow() {
         <StepIndicator current={Math.min(step - 1, totalSteps - 1)} total={totalSteps} />
 
         <div className="w-full max-w-2xl">
+          {/* ───── Step 1: Medical Conditions ───── */}
+          {step === 1 && (
+            <div className="animate-fadeIn">
+              <h2 className="text-xl md:text-2xl font-bold text-center text-slate-800 mb-2">
+                Medical Conditions
+              </h2>
+              <p className="text-center text-sm text-slate-500 mb-2">
+                This helps us give you personalized health insights.
+              </p>
+              <p className="text-center text-xs text-slate-400 mb-8">
+                Strongly recommended. You can update this later in Profile Settings.
+              </p>
+
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {MEDICAL_CONDITION_OPTIONS.map((opt) => {
+                    const active = selectedMedicalConditions.has(opt.id);
+                    return (
+                      <button
+                        type="button"
+                        key={opt.id}
+                        onClick={() => toggleMedicalCondition(opt.id)}
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all",
+                          active ? "border-primary bg-primary/5" : "border-slate-200 hover:border-primary/30 bg-white",
+                        )}
+                      >
+                        <span className="text-xl">{opt.icon}</span>
+                        <span className="text-sm font-medium text-slate-700">{opt.id}</span>
+                        {active && (
+                          <span className="ml-auto w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex flex-col items-center gap-3 mt-8">
+                <button
+                  onClick={handleContinueMedical}
+                  className="w-full max-w-xs py-3.5 rounded-xl bg-primary text-white font-semibold shadow-lg shadow-primary/20 hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                >
+                  Continue <ChevronRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSkipMedical}
+                  className="text-sm text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  Skip for now
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* ───── Step 1: Purpose Selection ───── */}
-          {step === 1 && (
+          {step === 2 && (
             <div className="animate-fadeIn">
               <h2 className="text-xl md:text-2xl font-bold text-center text-slate-800 mb-2">
                 What brings you to SwasthyaSakhi?
@@ -404,7 +456,7 @@ export default function OnboardingFlow() {
           )}
 
           {/* ───── Step 2 (Maternity): Set Up Your Dashboard ───── */}
-          {step === 2 && selectedPhase === "maternity" && (
+          {step === 3 && selectedPhase === "maternity" && (
             <div className="animate-fadeIn">
               <div className="text-center mb-8">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
@@ -462,7 +514,7 @@ export default function OnboardingFlow() {
                 <button
                   onClick={() => {
                     setSelectedPhase(null);
-                    setStep(1);
+                    setStep(2);
                   }}
                   className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 transition-colors"
                 >
@@ -473,7 +525,7 @@ export default function OnboardingFlow() {
           )}
 
           {/* ───── Step 2 (Non-Maternity): Sub-Purpose Selection ───── */}
-          {step === 2 && selectedPhase && selectedPhase !== "maternity" && (
+          {step === 3 && selectedPhase && selectedPhase !== "maternity" && (
             <div className="animate-fadeIn">
               <h2 className="text-xl md:text-2xl font-bold text-center text-slate-800 mb-2">
                 What would you like help with?
@@ -483,7 +535,7 @@ export default function OnboardingFlow() {
               </p>
 
               <div className="grid sm:grid-cols-2 gap-3 max-w-lg mx-auto">
-                {GOALS_MAP[selectedPhase].map((option) => {
+                {(GOALS_MAP[selectedPhase] ?? []).map((option) => {
                   const isSelected = selectedGoals.has(option.id);
                   return (
                     <button
@@ -521,7 +573,7 @@ export default function OnboardingFlow() {
                 <button
                   onClick={() => {
                     setSelectedPhase(null);
-                    setStep(1);
+                    setStep(2);
                   }}
                   className="flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 transition-colors"
                 >
@@ -532,9 +584,10 @@ export default function OnboardingFlow() {
           )}
 
           {/* ───── Step 3: Puberty Questionnaire (Optional) ───── */}
-          {step === 3 && selectedPhase === "puberty" && (
+          {step === 4 && selectedPhase === "puberty" && (
             <PubertyQuestions 
-              onBack={() => setStep(2)} 
+              onBack={() => setStep(3)} 
+              userDob={fullProfile?.basic?.dob}
               onComplete={handlePubertyComplete} 
             />
           )}

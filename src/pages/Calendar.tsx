@@ -272,12 +272,11 @@ export default function CalendarPage() {
 }
 
 function PubertyCalendarView() {
-  const { logs: allLogs, pubertyLogs, saveLog, saveBulkLogs, deleteBulkLogs, clearAllLogs } = useHealthLog();
+  const { getPhaseLogs, saveLog, saveBulkLogs, deleteBulkLogs, clearAllLogs } = useHealthLog();
   const { phase } = usePhase();
   const { profile } = useProfile();
 
-  // For symptom display, use phase-specific logs; for period data, use puberty logs (single source of truth)
-  const phaseLogs = phase === "family-planning" ? { ...allLogs } : pubertyLogs;
+  const phaseLogs = getPhaseLogs(phase);
 
   const now = new Date();
   const [mode, setMode] = useState<CalendarMode>("year");
@@ -328,16 +327,17 @@ function PubertyCalendarView() {
               return <div key={`empty-${idx}`} className="h-7 rounded-md" />;
             const iso = toISODate(year, monthIndex0, day);
             const isFuture = iso > todayISO;
-            const entry = phaseLogs[iso];
-            const hasData = hasAnyLogData(entry);
-            const sympCount = getSymptomCountFromEntry(entry);
-            const maxSev = getMaxSeverityFromEntry(entry);
+            const phaseEntry = phaseLogs[iso];
+            const periodEntry = phaseLogs[iso];
+            const hasData = hasAnyLogData(phaseEntry) || isPeriodDay(periodEntry);
+            const sympCount = getSymptomCountFromEntry(phaseEntry);
+            const maxSev = getMaxSeverityFromEntry(phaseEntry);
             const isToday = iso === todayISO;
             const isSelected = iso === selectedDateISO;
-            const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(entry);
-            const dotColor = entry ? (PHASE_DOT[entry.phase] ?? "bg-primary") : null;
-            const isPeriod = isPeriodDay(entry);
-            const isIrregular = isIrregularPeriodDay(entry);
+            const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(phaseEntry);
+            const dotColor = phaseEntry ? (PHASE_DOT[phaseEntry.phase] ?? "bg-primary") : null;
+            const isPeriod = isPeriodDay(periodEntry);
+            const isIrregular = isIrregularPeriodDay(periodEntry);
 
             return (
               <button
@@ -394,16 +394,17 @@ function PubertyCalendarView() {
 
   function DayCell({ dateISO }: { dateISO: string }) {
     const isFuture = dateISO > todayISO;
-    const entry = phaseLogs[dateISO];
-    const hasData = hasAnyLogData(entry);
-    const sympCount = getSymptomCountFromEntry(entry);
-    const maxSev = getMaxSeverityFromEntry(entry);
+    const phaseEntry = phaseLogs[dateISO];
+    const periodEntry = phaseLogs[dateISO];
+    const hasData = hasAnyLogData(phaseEntry) || isPeriodDay(periodEntry);
+    const sympCount = getSymptomCountFromEntry(phaseEntry);
+    const maxSev = getMaxSeverityFromEntry(phaseEntry);
     const isToday = dateISO === todayISO;
     const isSelected = dateISO === selectedDateISO;
-    const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(entry);
-    const dotColor = entry ? (PHASE_DOT[entry.phase] ?? "bg-primary") : null;
-    const isPeriod = isPeriodDay(entry);
-    const isIrregular = isIrregularPeriodDay(entry);
+    const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(phaseEntry);
+    const dotColor = phaseEntry ? (PHASE_DOT[phaseEntry.phase] ?? "bg-primary") : null;
+    const isPeriod = isPeriodDay(periodEntry);
+    const isIrregular = isIrregularPeriodDay(periodEntry);
 
     return (
       <button
@@ -672,7 +673,6 @@ function PubertyCalendarView() {
             dateISO={selectedDateISO}
             phase={phase}
             logs={phaseLogs}
-            allLogs={allLogs}
             symptomOptions={symptomOptions}
             onClose={() => setModalOpen(false)}
             onSave={saveLog}
@@ -693,12 +693,11 @@ interface SymptomLogPanelProps {
   dateISO: string;
   phase: Phase;
   logs: HealthLogs;
-  allLogs: HealthLogs;
   symptomOptions: { id: string; label: string }[];
   onClose: () => void;
   onSave: (dateISO: string, entry: HealthLogEntry) => void;
   onSaveBulk: (entries: Record<string, HealthLogEntry>) => void;
-  onDeleteBulk: (dateISOs: string[]) => void;
+  onDeleteBulk: (dateISOs: string[], phase?: Phase) => void;
   periodDuration: number;
   cycleLength: number | null;
 }
@@ -715,7 +714,6 @@ function SymptomLogPanel({
   dateISO,
   phase,
   logs,
-  allLogs,
   symptomOptions,
   onClose,
   onSave,
@@ -753,10 +751,9 @@ function SymptomLogPanel({
   });
   const [selectedAnalyticsId, setSelectedAnalyticsId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  // For period data lookups, always use allLogs (which contains puberty entries = single source of truth)
-  const periodEntry = allLogs[dateISO];
+  const periodEntry = logs[dateISO];
   // Determine if this date is already within an existing period range
-  const existingPeriodRange = useMemo(() => findPeriodRangeForDate(dateISO, allLogs), [dateISO, allLogs]);
+  const existingPeriodRange = useMemo(() => findPeriodRangeForDate(dateISO, logs), [dateISO, logs]);
   const isExistingPeriodStart = isPeriodStartDay(periodEntry);
   const isExistingContinuation = isAutoMarkedContinuation(periodEntry);
   const isWithinExistingRange = existingPeriodRange !== null;
@@ -765,8 +762,8 @@ function SymptomLogPanel({
   // Pre-detect if toggling ON would create an irregular entry
   // Threshold = user's cycle length (e.g. 28 days) — any period within the full cycle is irregular
   const irregularDetection = useMemo(
-    () => detectIrregularEntry(dateISO, allLogs, cycleLength || DEFAULT_CYCLE_LENGTH),
-    [dateISO, allLogs, cycleLength]
+    () => detectIrregularEntry(dateISO, logs, cycleLength || DEFAULT_CYCLE_LENGTH),
+    [dateISO, logs, cycleLength]
   );
 
   // Period Started toggle should only reflect actual period start status (not continuation days)
@@ -958,7 +955,7 @@ function SymptomLogPanel({
           const checkDate = new Date(dateISO + "T12:00:00");
           checkDate.setDate(checkDate.getDate() + dayOffset);
           const checkISO = checkDate.toISOString().slice(0, 10);
-          const checkEntry = allLogs[checkISO];
+          const checkEntry = logs[checkISO];
           if (checkEntry && (checkEntry.phase === "puberty" || checkEntry.phase === "family-planning") && (checkEntry as any)._periodAutoMarked) {
             datesToRemove.push(checkISO);
           } else {
@@ -975,7 +972,7 @@ function SymptomLogPanel({
             const futureDay = new Date(futureStart);
             futureDay.setDate(futureDay.getDate() + dayOffset);
             const futureISO = futureDay.toISOString().slice(0, 10);
-            const futureEntry = allLogs[futureISO];
+            const futureEntry = logs[futureISO];
             if (futureEntry && (futureEntry.phase === "puberty" || futureEntry.phase === "family-planning") && (futureEntry as any)._periodAutoMarked) {
               datesToRemove.push(futureISO);
             }
@@ -991,7 +988,7 @@ function SymptomLogPanel({
         }
 
         if (datesToRemove.length > 0) {
-          onDeleteBulk(datesToRemove);
+          onDeleteBulk(datesToRemove, phase);
         }
 
         toast.success(`Period range removed`, {
@@ -1034,7 +1031,7 @@ function SymptomLogPanel({
       }
 
       // ── Regular period start — full cycle generation ──
-      const existingStarts = Object.entries(allLogs)
+      const existingStarts = Object.entries(logs)
         .filter(([, e]) => (e.phase === "puberty" || e.phase === "family-planning") && (e as any).periodStarted && !(e as any)._irregular)
         .map(([d]) => d)
         .sort();
@@ -1073,21 +1070,37 @@ function SymptomLogPanel({
             // Skip the very first day (already saved above)
             if (cycle === 0 && dayOffset === 0) continue;
 
-            const existingLog = allLogs[periodISO];
+            const existingLog = logs[periodISO];
             // Don't overwrite manually-set start days or irregular entries
             if (existingLog && (existingLog.phase === "puberty" || existingLog.phase === "family-planning")) {
               if ((existingLog as any).periodStarted && !(existingLog as any)._periodAutoMarked) continue;
               if ((existingLog as any)._irregular) continue;
             }
 
-            const base: any = existingLog?.phase === "puberty" ? { ...existingLog } : {
-              phase: "puberty",
-              periodStarted: false,
-              periodEnded: false,
-              flowIntensity: null,
-              symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
-              mood: null,
-            };
+            let base: any;
+            if (existingLog?.phase === phase) {
+              base = { ...existingLog };
+            } else if (phase === "family-planning") {
+              base = {
+                phase: "family-planning",
+                periodStarted: false,
+                lastPeriodDate: dateISO,
+                cycleLength: actualCycleLength,
+                symptoms: { irregularCycle: false, ovulationPain: false, moodChanges: false, fatigue: false, stress: false, sleepIssues: false },
+                mood: null,
+                sleepHours: null,
+                sleepQuality: null,
+              };
+            } else {
+              base = {
+                phase: "puberty",
+                periodStarted: false,
+                periodEnded: false,
+                flowIntensity: null,
+                symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
+                mood: null,
+              };
+            }
             base._periodAutoMarked = true;
             base._periodGroupId = groupId;
             base.periodStarted = dayOffset === 0; 

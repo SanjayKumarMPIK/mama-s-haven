@@ -38,7 +38,7 @@ export default function DayLogModal({ dateISO, onClose }: Props) {
     setCurrentEntry(null);
   }, [dateISO, phase]);
 
-  const existing = dateISO ? getLog(dateISO) : undefined;
+  const existing = dateISO ? getLog(dateISO, phase) : undefined;
   const badge = PHASE_BADGE[phase];
 
   const handleChange = useCallback((entry: HealthLogEntry) => {
@@ -55,7 +55,7 @@ export default function DayLogModal({ dateISO, onClose }: Props) {
   const handleDelete = () => {
     if (!dateISO) return;
     if (window.confirm("Remove the log for this day?")) {
-      deleteLog(dateISO);
+      deleteLog(dateISO, phase);
       onClose();
     }
   };

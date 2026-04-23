@@ -20,6 +20,7 @@ import {
 import { predictMaternityDeficiencies, type MaternityPredictionResult, type MaternityFallbackRecommendation } from "@/lib/maternityNutritionEngine";
 import { predictPubertyDeficiencies, type PubertyNutritionResult, type PubertyDeficiencyPrediction, type Confidence } from "@/lib/pubertyNutritionEngine";
 import { predictFamilyPlanningDeficiencies, type FamilyPlanningPredictionResult } from "@/lib/familyPlanningNutritionEngine";
+import { generatePubertyDailyFoodChart, type PubertyDailyFoodChart, type MealSlot } from "@/lib/pubertyFoodChartEngine";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 
 // ─── Phase accent map ─────────────────────────────────────────────────────────
@@ -87,6 +88,15 @@ export default function NutritionGuide() {
     return null;
   }, [logs, phase, profile, onboardingConfig]);
 
+  const pubertyFoodChart = useMemo<PubertyDailyFoodChart | null>(() => {
+    if (phase !== "puberty") return null;
+    return generatePubertyDailyFoodChart({
+      logs,
+      profile,
+      onboarding: onboardingConfig,
+    });
+  }, [logs, phase, profile, onboardingConfig]);
+
   // ── Compute family planning specific insights (memoized) ──
   const familyPlanningData = useMemo(() => {
     if (phase === "family-planning") return predictFamilyPlanningDeficiencies(logs);
@@ -119,7 +129,7 @@ export default function NutritionGuide() {
       <div className="container py-6 space-y-6">
         {/* ─── PUBERTY PHASE ─────────────────────────────────────────────── */}
         {phase === "puberty" && pubertyData ? (
-          <PubertyNutritionView data={pubertyData} accent={accent} />
+          <PubertyNutritionView data={pubertyData} chart={pubertyFoodChart} accent={accent} />
         ) : phase === "family-planning" && familyPlanningData ? (
           <FamilyPlanningNutritionView data={familyPlanningData} accent={accent} />
         ) : phase === "maternity" && maternityData ? (
@@ -522,11 +532,33 @@ function DeficiencyCard({
 
 function PubertyNutritionView({
   data,
+  chart,
   accent,
 }: {
   data: PubertyNutritionResult;
+  chart: PubertyDailyFoodChart | null;
   accent: any;
 }) {
+  const [selectedBySlot, setSelectedBySlot] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    if (!chart) return init;
+    for (const slot of Object.keys(chart.meals) as MealSlot[]) {
+      init[slot] = chart.meals[slot].selectedOptionId;
+    }
+    return init;
+  });
+
+  const [expandedWhy, setExpandedWhy] = useState<Record<string, boolean>>({});
+
+  const effectiveSelectedBySlot = useMemo(() => {
+    if (!chart) return selectedBySlot;
+    const next = { ...selectedBySlot };
+    for (const slot of Object.keys(chart.meals) as MealSlot[]) {
+      if (!next[slot]) next[slot] = chart.meals[slot].selectedOptionId;
+    }
+    return next;
+  }, [chart, selectedBySlot]);
+
   return (
     <>
       {/* ── Safety Banner ──────────────────────────────────────────────── */}
@@ -543,6 +575,149 @@ function PubertyNutritionView({
           </p>
         </div>
       </ScrollReveal>
+
+      {/* ── Dynamic Daily Food Chart ─────────────────────────────────────── */}
+      {chart && (
+        <ScrollReveal delay={60}>
+          <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
+                Daily Food Chart
+              </p>
+              <h2 className="text-lg font-bold leading-snug">Personalized meals for today</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Puberty status: <strong>{chart.pubertyStatus}</strong> • Diet: <strong>{chart.dietType}</strong>
+              </p>
+            </div>
+
+            {(chart.medicalConditions.length > 0 || chart.detectedSymptoms.length > 0) && (
+              <div className="flex flex-wrap gap-2 mt-4">
+                {chart.medicalConditions.slice(0, 6).map((c) => (
+                  <span key={c} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-border/30">
+                    🩺 {c}
+                  </span>
+                ))}
+                {chart.detectedSymptoms.slice(0, 6).map((s) => (
+                  <span key={s} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-border/30">
+                    ⚡ {s}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5 space-y-3">
+              {(Object.keys(chart.meals) as MealSlot[]).map((slot) => {
+                const meal = chart.meals[slot];
+                const selectedId = effectiveSelectedBySlot[slot] ?? meal.selectedOptionId;
+                const selectedOpt = meal.options.find((o) => o.id === selectedId) ?? meal.options[0];
+                const isOpen = !!expandedWhy[slot];
+
+                return (
+                  <div key={slot} className="rounded-xl border border-border/40 bg-background/70 p-4">
+                    <div className="flex items-start gap-3 flex-wrap">
+                      <div className="flex-1 min-w-[220px]">
+                        <p className="text-xs font-semibold text-muted-foreground">{slot}</p>
+                        <p className="text-sm font-bold mt-1">{selectedOpt?.label}</p>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {(selectedOpt?.tags ?? []).slice(0, 6).map((t) => (
+                            <span
+                              key={t}
+                              className="text-[10px] px-2 py-0.5 rounded-full bg-muted/40 border border-border/30 text-muted-foreground font-semibold"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="min-w-[220px] flex-1">
+                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                          Swap option
+                        </label>
+                        <select
+                          value={selectedId}
+                          onChange={(e) => setSelectedBySlot((prev) => ({ ...prev, [slot]: e.target.value }))}
+                          className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm"
+                        >
+                          {meal.options.map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.label}
+                            </option>
+                          ))}
+                        </select>
+
+                        <button
+                          type="button"
+                          onClick={() => setExpandedWhy((prev) => ({ ...prev, [slot]: !prev[slot] }))}
+                          className="mt-2 text-xs font-semibold text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-1.5"
+                        >
+                          <Info className="w-3.5 h-3.5" />
+                          Why this food?
+                          {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div
+                      className="transition-all duration-300 ease-in-out overflow-hidden"
+                      style={{ maxHeight: isOpen ? "220px" : "0px", opacity: isOpen ? 1 : 0 }}
+                    >
+                      <div className="mt-3 rounded-lg bg-muted/20 border border-border/30 p-3 space-y-2">
+                        {(selectedOpt?.why ?? []).length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                              Food reason
+                            </p>
+                            <ul className="space-y-1">
+                              {selectedOpt.why.map((w) => (
+                                <li key={w} className="text-xs text-foreground/80 leading-relaxed">
+                                  • {w}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {(meal.slotWhy ?? []).length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
+                              Personalization
+                            </p>
+                            <ul className="space-y-1">
+                              {meal.slotWhy.map((w) => (
+                                <li key={w} className="text-xs text-foreground/80 leading-relaxed">
+                                  • {w}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {chart.avoidOrLimit.length > 0 && (
+              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 mb-2">
+                  Avoid / Limit
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {chart.avoidOrLimit.slice(0, 10).map((x) => (
+                    <span
+                      key={x}
+                      className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-amber-200 text-amber-900"
+                    >
+                      {x}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </ScrollReveal>
+      )}
 
       {/* ── Age Group Badge ──────────────────────────────────────────── */}
       <ScrollReveal delay={50}>

@@ -13,6 +13,7 @@ import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import { TimelineOverview } from "@/components/dashboard/TimelineOverview";
 import PrematureCareView from "@/components/dashboard/PrematureCareView";
 import { DiabetesDashboardWidget } from "@/components/dashboard/DiabetesDashboardWidget";
+import { DueDateChecker } from "@/components/dashboard/due-date/DueDateChecker";
 import {
   Calendar, ChevronRight, CheckCircle2, Circle, Clock,
   Baby, Heart, Apple, Droplets, Activity, AlertTriangle,
@@ -424,6 +425,7 @@ function DashboardView({
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
+      <DueDateChecker />
       {/* ─── Hero Header ──────────────────────────────────────────────── */}
       <div className="bg-tricolor-gradient border-b border-border">
         <div className="container py-6">

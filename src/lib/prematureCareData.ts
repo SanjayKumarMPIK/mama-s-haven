@@ -163,3 +163,330 @@ export function getWeightTrend(
   if (diff > 0) return "slow";
   return "losing";
 }
+
+// ─── Baby Supportive Helper ─────────────────────────────────────────────────────
+
+export interface BabyHelperQuestion {
+  id: string;
+  emoji: string;
+  question: string;
+  yesGuidance: string[];
+  noGuidance: string[];
+  skippable?: boolean;
+}
+
+export const BABY_HELPER_QUESTIONS: BabyHelperQuestion[] = [
+  {
+    id: "feeding",
+    emoji: "🍼",
+    question: "Is the baby feeding well?",
+    yesGuidance: [
+      "Continue feeding every 2–3 hours.",
+      "Maintain hydration and monitor feeding comfort.",
+    ],
+    noGuidance: [
+      "Try smaller frequent feeds.",
+      "Ensure proper latch positioning.",
+      "Burp baby after feeding.",
+      "Consult a healthcare provider if feeding refusal continues.",
+    ],
+  },
+  {
+    id: "activity",
+    emoji: "👶",
+    question: "Is the baby active and responsive?",
+    yesGuidance: [
+      "Baby responsiveness appears healthy.",
+      "Continue monitoring activity.",
+    ],
+    noGuidance: [
+      "Monitor feeding intake and sleeping duration.",
+      "Observe if reduced activity continues.",
+      "Contact a healthcare provider if symptoms worsen.",
+    ],
+    skippable: true,
+  },
+  {
+    id: "temperature",
+    emoji: "🌡️",
+    question: "Is the baby temperature normal?",
+    yesGuidance: [
+      "Continue maintaining warm surroundings.",
+      "Avoid sudden temperature changes.",
+    ],
+    noGuidance: [
+      "Keep baby wrapped warmly.",
+      "Avoid cold exposure.",
+      "Monitor body temperature regularly.",
+      "Seek medical guidance if temperature remains unstable.",
+    ],
+  },
+  {
+    id: "sleeping",
+    emoji: "😴",
+    question: "Is the baby sleeping comfortably?",
+    yesGuidance: [
+      "Maintain safe sleep positioning.",
+      "Keep sleep environment calm.",
+    ],
+    noGuidance: [
+      "Observe sleep duration.",
+      "Reduce environmental disturbances.",
+      "Track sleeping patterns.",
+    ],
+  },
+  {
+    id: "crying",
+    emoji: "😢",
+    question: "Is the baby crying unusually?",
+    yesGuidance: [
+      "Check feeding, diaper comfort, and temperature.",
+      "Monitor whether crying becomes persistent.",
+    ],
+    noGuidance: [
+      "Continue normal observation.",
+      "Maintain routine care.",
+    ],
+  },
+  {
+    id: "breathing",
+    emoji: "💨",
+    question: "Is the baby breathing comfortably?",
+    yesGuidance: [
+      "Breathing appears stable.",
+      "Continue daily monitoring.",
+    ],
+    noGuidance: [
+      "Watch for pauses in breathing.",
+      "Observe chest movement.",
+      "Seek immediate medical support if breathing difficulty persists.",
+    ],
+  },
+  {
+    id: "latching",
+    emoji: "🤱",
+    question: "Is the baby having difficulty latching?",
+    yesGuidance: [
+      "Continue feeding support.",
+      "Monitor feeding duration.",
+    ],
+    noGuidance: [
+      "Try skin-to-skin contact.",
+      "Adjust feeding position.",
+      "Consult lactation support if needed.",
+    ],
+  },
+];
+
+export interface GuidanceRecommendation {
+  type: "immediate" | "feeding" | "monitoring" | "escalation";
+  text: string;
+}
+
+export function generateGuidance(
+  answers: Record<string, boolean | null>,
+): GuidanceRecommendation[] {
+  const recommendations: GuidanceRecommendation[] = [];
+  const negativeAnswers = Object.entries(answers).filter(([_, value]) => value === false);
+
+  // Priority: Immediate care for critical issues
+  if (answers["breathing"] === false) {
+    recommendations.push({
+      type: "immediate",
+      text: "Watch for pauses in breathing. Observe chest movement. Seek immediate medical support if breathing difficulty persists.",
+    });
+  }
+
+  if (answers["feeding"] === false) {
+    recommendations.push({
+      type: "immediate",
+      text: "Focus on feeding support. Try smaller frequent feeds and ensure proper latch positioning.",
+    });
+  }
+
+  if (answers["temperature"] === false) {
+    recommendations.push({
+      type: "immediate",
+      text: "Maintain baby warmth. Keep baby wrapped warmly and avoid cold exposure.",
+    });
+  }
+
+  // Feeding advice
+  if (answers["feeding"] === false || answers["latching"] === false) {
+    recommendations.push({
+      type: "feeding",
+      text: "Monitor feeding closely. Consult lactation support if difficulties continue.",
+    });
+  }
+
+  // Monitoring advice
+  if (answers["activity"] === false || answers["sleeping"] === false) {
+    recommendations.push({
+      type: "monitoring",
+      text: "Monitor activity level and sleep patterns closely. Track any changes.",
+    });
+  }
+
+  // Escalation warning
+  if (negativeAnswers.length >= 2) {
+    recommendations.push({
+      type: "escalation",
+      text: "Contact healthcare provider if symptoms continue or worsen.",
+    });
+  }
+
+  // If all answers are positive
+  if (negativeAnswers.length === 0 && Object.keys(answers).length === BABY_HELPER_QUESTIONS.length) {
+    recommendations.push({
+      type: "immediate",
+      text: "All checks passed! Continue routine care and daily monitoring.",
+    });
+  }
+
+  return recommendations;
+}
+
+// ─── Structured Care Guide Generator ─────────────────────────────────────
+
+export interface StructuredCareGuide {
+  immediateCare: string[];
+  feedingGuidance: string[];
+  comfortGuidance: string[];
+  monitoringAdvice: string[];
+  medicalHelp: string[];
+  priorityFocus: string;
+}
+
+export function generateStructuredGuide(
+  answers: Record<string, boolean | null>,
+): StructuredCareGuide {
+  const guide: StructuredCareGuide = {
+    immediateCare: [],
+    feedingGuidance: [],
+    comfortGuidance: [],
+    monitoringAdvice: [],
+    medicalHelp: [],
+    priorityFocus: "",
+  };
+
+  // Determine priority focus
+  const priorities: string[] = [];
+  if (answers["feeding"] === false) priorities.push("feeding support");
+  if (answers["temperature"] === false) priorities.push("body temperature regulation");
+  if (answers["breathing"] === false) priorities.push("breathing comfort");
+  if (answers["activity"] === false) priorities.push("activity monitoring");
+  if (answers["sleeping"] === false) priorities.push("sleep care");
+  if (answers["latching"] === false) priorities.push("latching support");
+
+  if (priorities.length === 0) {
+    guide.priorityFocus = "Continue routine care and daily monitoring.";
+  } else if (priorities.length === 1) {
+    guide.priorityFocus = `Focus on ${priorities[0]}.`;
+  } else {
+    guide.priorityFocus = `Focus on ${priorities.slice(0, -1).join(", ")} and ${priorities[priorities.length - 1]}.`;
+  }
+
+  // Immediate Care Priority
+  if (answers["breathing"] === false) {
+    guide.immediateCare.push("Watch for pauses in breathing");
+    guide.immediateCare.push("Observe chest movement");
+    guide.immediateCare.push("Seek immediate medical support if breathing difficulty persists");
+  }
+  if (answers["feeding"] === false) {
+    guide.immediateCare.push("Try smaller frequent feeds");
+    guide.immediateCare.push("Keep feeding intervals short");
+    guide.immediateCare.push("Burp after feeds");
+    guide.immediateCare.push("Monitor intake carefully");
+  }
+  if (answers["temperature"] === false) {
+    guide.immediateCare.push("Keep baby wrapped warmly");
+    guide.immediateCare.push("Avoid cold exposure");
+    guide.immediateCare.push("Monitor room temperature");
+  }
+
+  // Feeding Guidance
+  if (answers["feeding"] === false) {
+    guide.feedingGuidance.push("Try smaller frequent feeds");
+    guide.feedingGuidance.push("Ensure proper latch positioning");
+    guide.feedingGuidance.push("Burp baby after feeding");
+    guide.feedingGuidance.push("Consult a healthcare provider if feeding refusal continues");
+  } else {
+    guide.feedingGuidance.push("Continue feeding every 2–3 hours");
+    guide.feedingGuidance.push("Maintain hydration and monitor feeding comfort");
+  }
+
+  if (answers["latching"] === false) {
+    guide.feedingGuidance.push("Try skin-to-skin contact");
+    guide.feedingGuidance.push("Adjust feeding position");
+    guide.feedingGuidance.push("Consult lactation support if needed");
+  } else {
+    guide.feedingGuidance.push("Continue feeding support");
+    guide.feedingGuidance.push("Monitor feeding duration");
+  }
+
+  // Comfort & Recovery Guidance
+  if (answers["sleeping"] === false) {
+    guide.comfortGuidance.push("Reduce noise and bright light");
+    guide.comfortGuidance.push("Keep sleeping area warm");
+    guide.comfortGuidance.push("Observe sleep duration");
+    guide.comfortGuidance.push("Track sleeping patterns");
+  } else {
+    guide.comfortGuidance.push("Maintain safe sleep positioning");
+    guide.comfortGuidance.push("Keep sleep environment calm");
+  }
+
+  if (answers["temperature"] === false) {
+    guide.comfortGuidance.push("Keep baby wrapped warmly");
+    guide.comfortGuidance.push("Avoid cold exposure");
+    guide.comfortGuidance.push("Monitor body temperature regularly");
+  } else {
+    guide.comfortGuidance.push("Continue maintaining warm surroundings");
+    guide.comfortGuidance.push("Avoid sudden temperature changes");
+  }
+
+  if (answers["crying"] === false) {
+    guide.comfortGuidance.push("Continue normal observation");
+    guide.comfortGuidance.push("Maintain routine care");
+  } else {
+    guide.comfortGuidance.push("Check feeding, diaper comfort, and temperature");
+    guide.comfortGuidance.push("Monitor whether crying becomes persistent");
+  }
+
+  // Monitoring Advice
+  if (answers["activity"] === false) {
+    guide.monitoringAdvice.push("Monitor feeding intake and sleeping duration");
+    guide.monitoringAdvice.push("Observe if reduced activity continues");
+    guide.monitoringAdvice.push("Contact a healthcare provider if symptoms worsen");
+  } else {
+    guide.monitoringAdvice.push("Baby responsiveness appears healthy");
+    guide.monitoringAdvice.push("Continue monitoring activity");
+  }
+
+  guide.monitoringAdvice.push("Monitor feeding consistency");
+  guide.monitoringAdvice.push("Monitor breathing comfort");
+  guide.monitoringAdvice.push("Monitor activity levels");
+  guide.monitoringAdvice.push("Monitor temperature stability");
+
+  // When To Seek Medical Help
+  if (answers["breathing"] === false) {
+    guide.medicalHelp.push("Seek medical support if breathing remains uncomfortable");
+  }
+  if (answers["feeding"] === false && answers["activity"] === false) {
+    guide.medicalHelp.push("Persistent feeding refusal and low activity require medical attention");
+  }
+  if (answers["temperature"] === false) {
+    guide.medicalHelp.push("Seek medical guidance if temperature remains unstable");
+  }
+  if (answers["feeding"] === false) {
+    guide.medicalHelp.push("Consult a healthcare provider if feeding refusal continues");
+  }
+
+  // If all positive
+  const allPositive = Object.values(answers).every((v) => v === true);
+  if (allPositive && Object.keys(answers).length === BABY_HELPER_QUESTIONS.length) {
+    guide.priorityFocus = "Your baby seems to be doing well. Continue routine care.";
+    guide.medicalHelp.push("Continue regular check-ups as advised by your doctor");
+  }
+
+  return guide;
+}

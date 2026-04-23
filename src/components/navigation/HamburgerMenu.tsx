@@ -33,7 +33,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
   { to: "/weekly-guide", label: "Menstrual Guide", icon: Calendar },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
-  { to: "/pregnancy-dashboard", label: "Pregnancy Dashboard", icon: Baby },
+  { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
   { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
 ];
 

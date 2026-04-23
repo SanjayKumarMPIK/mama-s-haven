@@ -379,3 +379,311 @@
     padding: 1rem 0.75rem 2rem;
   }
 }
+
+/* ═════════════════════════════════════════════════
+   Postpartum Check-in Wizard
+   ═════════════════════════════════════════════════ */
+
+/* Progress bar */
+.pp-progress-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 1.5rem;
+}
+.pp-progress-dot {
+  height: 4px;
+  border-radius: 999px;
+  flex: 1;
+  background: hsl(220 15% 90%);
+  transition: background 0.4s ease, box-shadow 0.4s ease;
+}
+.pp-progress-dot.active {
+  background: linear-gradient(90deg, hsl(22 90% 52%), hsl(260 50% 60%));
+  box-shadow: 0 0 6px hsl(22 90% 52% / 0.3);
+}
+
+/* Step counter */
+.pp-step-counter {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: hsl(220 15% 55%);
+  margin-bottom: 0.75rem;
+}
+
+/* Option pills (MILD / MODERATE / SEVERE selectors) */
+.pp-option-pills {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  margin-top: 1rem;
+}
+
+.pp-option-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.125rem;
+  border-radius: 0.875rem;
+  border: 2px solid hsl(220 15% 90%);
+  background: white;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  animation: fadeIn 0.3s ease-out both;
+}
+
+.pp-option-pill:nth-child(2) { animation-delay: 0.06s; }
+.pp-option-pill:nth-child(3) { animation-delay: 0.12s; }
+
+.pp-option-pill:hover {
+  border-color: hsl(22 60% 75%);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px hsl(22 90% 52% / 0.1);
+}
+.pp-option-pill:active {
+  transform: scale(0.98);
+}
+
+.pp-option-pill.mild:hover,
+.pp-option-pill.mild.selected {
+  border-color: hsl(152 55% 55%);
+  background: hsl(152 40% 96%);
+}
+.pp-option-pill.moderate:hover,
+.pp-option-pill.moderate.selected {
+  border-color: hsl(35 90% 55%);
+  background: hsl(35 80% 96%);
+}
+.pp-option-pill.severe:hover,
+.pp-option-pill.severe.selected {
+  border-color: hsl(0 70% 55%);
+  background: hsl(0 60% 97%);
+}
+.pp-option-pill.positive:hover,
+.pp-option-pill.positive.selected {
+  border-color: hsl(152 55% 55%);
+  background: hsl(152 40% 96%);
+}
+.pp-option-pill.negative:hover,
+.pp-option-pill.negative.selected {
+  border-color: hsl(0 70% 55%);
+  background: hsl(0 60% 97%);
+}
+.pp-option-pill.neutral:hover,
+.pp-option-pill.neutral.selected {
+  border-color: hsl(220 40% 60%);
+  background: hsl(220 30% 97%);
+}
+
+.pp-pill-indicator {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 50%;
+  border: 2px solid hsl(220 15% 80%);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+  position: relative;
+}
+.pp-option-pill.selected .pp-pill-indicator {
+  border-color: hsl(22 90% 52%);
+}
+.pp-option-pill.selected .pp-pill-indicator::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: hsl(22 90% 52%);
+}
+
+/* Question card */
+.pp-question-card {
+  background: white;
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+  border: 1px solid hsl(220 15% 92%);
+  box-shadow: 0 2px 12px hsl(220 20% 85% / 0.3);
+  animation: scaleIn 0.35s ease-out both;
+}
+
+/* Result card (glassmorphic) */
+.pp-result-card {
+  background: linear-gradient(135deg,
+    hsl(260 40% 98% / 0.8),
+    hsl(22 40% 98% / 0.8),
+    hsl(160 30% 98% / 0.8)
+  );
+  backdrop-filter: blur(12px);
+  border: 1px solid hsl(220 15% 90%);
+  border-radius: 1.25rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 24px hsl(220 20% 85% / 0.25);
+  animation: fadeIn 0.5s ease-out both;
+}
+
+/* Risk badge */
+.pp-risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.pp-risk-badge.low {
+  background: hsl(152 40% 92%);
+  color: hsl(152 60% 30%);
+  border: 1px solid hsl(152 30% 85%);
+}
+.pp-risk-badge.medium {
+  background: hsl(35 80% 92%);
+  color: hsl(35 70% 30%);
+  border: 1px solid hsl(35 60% 85%);
+}
+.pp-risk-badge.high {
+  background: hsl(0 60% 93%);
+  color: hsl(0 70% 35%);
+  border: 1px solid hsl(0 50% 85%);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Alert card */
+.pp-alert-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  background: hsl(0 60% 97%);
+  border: 1px solid hsl(0 50% 88%);
+  animation: fadeIn 0.4s ease-out both;
+}
+.pp-alert-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: hsl(0 60% 88%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Care section collapse */
+.pp-care-section {
+  border: 1px solid hsl(220 15% 92%);
+  border-radius: 1rem;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+  animation: fadeIn 0.4s ease-out both;
+}
+.pp-care-section-header {
+  padding: 0.875rem 1rem;
+  font-weight: 700;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: hsl(220 15% 98%);
+  border-bottom: 1px solid hsl(220 15% 93%);
+}
+.pp-care-section-body {
+  padding: 0.875rem 1rem;
+}
+.pp-care-section-body ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.pp-care-section-body li {
+  position: relative;
+  padding: 0.375rem 0 0.375rem 1.25rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: hsl(220 15% 30%);
+}
+.pp-care-section-body li::before {
+  content: '✦';
+  position: absolute;
+  left: 0;
+  color: hsl(22 90% 52%);
+  font-size: 0.7rem;
+  top: 0.5rem;
+}
+
+/* Activity card */
+.pp-activity-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: white;
+  border: 1px solid hsl(220 15% 92%);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.pp-activity-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px hsl(220 20% 88% / 0.3);
+}
+
+/* Processing spinner */
+.pp-processing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: 1.5rem;
+  animation: fadeIn 0.4s ease-out both;
+}
+
+@keyframes pp-spin {
+  to { transform: rotate(360deg); }
+}
+.pp-spinner {
+  width: 3rem;
+  height: 3rem;
+  border: 3px solid hsl(220 15% 90%);
+  border-top-color: hsl(22 90% 52%);
+  border-radius: 50%;
+  animation: pp-spin 0.8s linear infinite;
+}
+
+/* Delivery type cards */
+.pp-delivery-card {
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 2px solid hsl(220 15% 90%);
+  background: white;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.25s ease;
+  animation: fadeIn 0.35s ease-out both;
+}
+.pp-delivery-card:nth-child(2) { animation-delay: 0.08s; }
+.pp-delivery-card:hover {
+  border-color: hsl(22 60% 70%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px hsl(22 90% 52% / 0.12);
+}
+.pp-delivery-card:active {
+  transform: scale(0.97);
+}
+
+/* Congrats animation */
+@keyframes pp-confetti {
+  0% { transform: scale(0) rotate(0deg); opacity: 0; }
+  50% { opacity: 1; }
+  100% { transform: scale(1) rotate(10deg); opacity: 1; }
+}
+.pp-confetti {
+  animation: pp-confetti 0.6s ease-out both;
+}

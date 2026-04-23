@@ -49,6 +49,7 @@ import WellnessPlan from "./pages/menopause/WellnessPlan";
 import DailyGoals from "./pages/menopause/DailyGoals";
 import MenopauseCareEssentials from "./pages/menopause/MenopauseCareEssentials";
 import FunActivity from "./pages/menopause/FunActivity";
+import BabySupportiveHelper from "./pages/BabySupportiveHelper";
 
 
 const queryClient = new QueryClient();
@@ -93,6 +94,7 @@ const App = () => (
                         <Route path="/weekly-report" element={<WeeklyBodyReport />} />
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/medicine-reminder" element={<MedicineReminder />} />
+                        <Route path="/baby-supportive-helper" element={<BabySupportiveHelper />} />
 
                         {/* Menopause phase routes */}
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />

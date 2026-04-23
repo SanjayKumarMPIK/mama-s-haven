@@ -9,6 +9,7 @@ import { X, ChevronRight, ChevronLeft, AlertTriangle, Check, Info } from "lucide
 import { cn } from "@/lib/utils";
 import PubertyQuestions from "./PubertyQuestions";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 // ─── Goal option data per phase ──────────────────────────────────────────────
 

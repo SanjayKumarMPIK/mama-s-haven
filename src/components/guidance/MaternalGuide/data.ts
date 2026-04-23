@@ -49,7 +49,7 @@ export const timelineData: WeekData[] = Array.from({ length: 40 }).map((_, i) =>
       ],
     },
     motherChanges: {
-      physical: trimester === 1 ? ["Uterus expanding", "Breast changes"] : trimester === 2 ? ["Baby bump showing", "Increased energy"] : ["Feeling heavy", "Braxton Hicks"],
+      physical: trimester === 1 ? ["Uterus expanding", "Breast changes"] : trimester === 2 ? ["Baby bump showing", "Increased energy"] : ["Feeling heavy", "Practice contractions"],
       emotional: trimester === 1 ? ["Mood swings", "Anxiety mixed with excitement"] : trimester === 2 ? ["Feeling more settled", "Nesting instincts"] : ["Impatient", "Anxious about birth"],
     },
     symptoms: [

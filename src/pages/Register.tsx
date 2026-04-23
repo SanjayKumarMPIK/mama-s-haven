@@ -38,7 +38,7 @@ const registerSchema = z.object({
     lastPeriodDate: z.string().optional(),
     cycleLength: z.string().optional(),
     haemoglobin: z.string().optional(),
-    dietType: z.enum(["veg", "non-veg", "mixed", "eggetarian"], { message: "Diet type is required" }),
+    dietType: z.enum(["veg", "mixed"], { message: "Diet type is required" }),
     knownConditions: z.string().optional(),
     medicalConditions: z.array(z.string()).optional(),
   }),
@@ -253,17 +253,10 @@ export default function Register() {
                         <Input id="basic.fullName" placeholder="Anjali Sharma" className="h-12 bg-slate-50 border-slate-200" {...form.register("basic.fullName")} />
                         {getErrorFields('basic')?.fullName && <p className="text-red-500 text-sm">{getErrorFields('basic').fullName.message}</p>}
                       </div>
-                      <div className="grid grid-cols-2 gap-4 space-y-0">
-                         <div className="space-y-2">
-                          <Label htmlFor="basic.age" className="text-slate-700 font-medium">Age <span className="text-red-500">*</span></Label>
-                          <Input id="basic.age" readOnly className="h-12 bg-slate-100 border-slate-200 cursor-not-allowed" {...form.register("basic.age")} />
-                          {getErrorFields('basic')?.age && <p className="text-red-500 text-sm">{getErrorFields('basic').age.message}</p>}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="basic.dob" className="text-slate-700 font-medium">Date of Birth <span className="text-red-500">*</span></Label>
-                          <Input id="basic.dob" type="date" className="h-12 bg-slate-50 border-slate-200" {...form.register("basic.dob")} />
-                          {getErrorFields('basic')?.dob && <p className="text-red-500 text-sm">{getErrorFields('basic').dob.message}</p>}
-                        </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="basic.dob" className="text-slate-700 font-medium">Date of Birth <span className="text-red-500">*</span></Label>
+                        <Input id="basic.dob" type="date" className="h-12 bg-slate-50 border-slate-200" {...form.register("basic.dob")} />
+                        {getErrorFields('basic')?.dob && <p className="text-red-500 text-sm">{getErrorFields('basic').dob.message}</p>}
                       </div>
                     </div>
 
@@ -374,8 +367,6 @@ export default function Register() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="veg">Veg</SelectItem>
-                            <SelectItem value="eggetarian">Eggetarian</SelectItem>
-                            <SelectItem value="non-veg">Non-veg</SelectItem>
                             <SelectItem value="mixed">Mixed</SelectItem>
                           </SelectContent>
                         </Select>

@@ -27,7 +27,18 @@ export type KeySymptomId =
   | "sleepIssues"
   | "hotFlashes"
   | "nightSweats"
-  | "jointPain";
+  | "jointPain"
+  | "frequentUrination"
+  | "foodAversions"
+  | "increasedAppetite"
+  | "babyBumpGrowth"
+  | "fetalMovement"
+  | "skinChanges"
+  | "mildSwelling"
+  | "shortnessOfBreath"
+  | "practiceContractions"
+  | "sleepDifficulty"
+  | "heartburn";
 
 export type Trend = "Frequent" | "Occasional" | "Stable";
 export type Timing = "Before period" | "During cycle" | "Random";
@@ -53,7 +64,7 @@ export interface SymptomAnalysisResult {
 
 type SymptomDef = { id: KeySymptomId; label: string };
 
-export const KEY_SYMPTOMS_BY_PHASE: Record<Phase, SymptomDef[]> = {
+export const KEY_SYMPTOMS_BY_PHASE: Record<string, SymptomDef[]> = {
   puberty: [
     { id: "cramps", label: "Cramps" },
     { id: "fatigue", label: "Fatigue" },
@@ -81,18 +92,33 @@ export const KEY_SYMPTOMS_BY_PHASE: Record<Phase, SymptomDef[]> = {
   maternity_T3: [
     { id: "shortnessOfBreath", label: "Shortness of Breath" },
     { id: "frequentUrination", label: "Frequent Urination" },
-    { id: "braxtonHicks", label: "Braxton Hicks Contractions" },
+    { id: "practiceContractions", label: "Practice Contractions" },
     { id: "sleepDifficulty", label: "Sleep Difficulty" },
     { id: "heartburn", label: "Heartburn" },
     { id: "swelling", label: "Swelling" },
   ],
   maternity: [
+    // T1 Symptoms
     { id: "nausea", label: "Nausea / Vomiting" },
     { id: "fatigue", label: "Fatigue" },
     { id: "breastTenderness", label: "Breast Tenderness" },
-    { id: "frequentUrination", label: "Frequent Urination" },
-    { id: "moodSwings", label: "Mood Swings" },
     { id: "foodAversions", label: "Food Aversions" },
+    // T2 Symptoms
+    { id: "increasedAppetite", label: "Increased Appetite" },
+    { id: "babyBumpGrowth", label: "Baby Bump Growth" },
+    { id: "fetalMovement", label: "Fetal Movement" },
+    { id: "backPain", label: "Back Pain" },
+    { id: "skinChanges", label: "Skin Changes" },
+    { id: "mildSwelling", label: "Mild Swelling" },
+    // T3 Symptoms
+    { id: "shortnessOfBreath", label: "Shortness of Breath" },
+    { id: "frequentUrination", label: "Frequent Urination" },
+    { id: "practiceContractions", label: "Practice Contractions" },
+    { id: "sleepDifficulty", label: "Sleep Difficulty" },
+    { id: "heartburn", label: "Heartburn" },
+    { id: "swelling", label: "Swelling" },
+    // General
+    { id: "moodSwings", label: "Mood Swings" },
   ],
   "family-planning": [
     { id: "irregularCycle", label: "Irregular cycle" },
@@ -284,20 +310,13 @@ function isSymptomTrueForEntry(phase: Phase, entry: any, symptomId: KeySymptomId
   if (phase === "maternity") {
     const e = entry as MaternityEntry;
     switch (symptomId) {
-      case "nausea":
-        return !!e.symptoms.nausea;
       case "fatigue":
-        return e.fatigueLevel !== null;
-      case "dizziness":
-        return !!e.symptoms.dizziness;
-      case "backPain":
-        return !!e.symptoms.backPain;
-      case "swelling":
-        return !!e.symptoms.swelling;
+        return e.fatigueLevel !== null || !!e.symptoms.fatigue;
       case "sleepDisturbance":
         return !!e.symptoms.sleepDisturbance || (e.sleepHours !== null && e.sleepHours < 6);
       default:
-        return false;
+        // By default, since maternity symptoms are a Record<string, boolean>
+        return !!e.symptoms[symptomId];
     }
   }
 

@@ -49,7 +49,7 @@ const T2_SYMPTOMS: TrimesterSymptom[] = [
 const T3_SYMPTOMS: TrimesterSymptom[] = [
   { id: "shortnessOfBreath", label: "Shortness of Breath", emoji: "😮‍💨" },
   { id: "frequentUrination", label: "Frequent Urination", emoji: "🚻" },
-  { id: "braxtonHicks", label: "Braxton Hicks Contractions", emoji: "⚡" },
+  { id: "practiceContractions", label: "Practice Contractions", emoji: "⚡" },
   { id: "sleepDifficulty", label: "Sleep Difficulty", emoji: "🌙" },
   { id: "heartburn", label: "Heartburn", emoji: "🔥" },
   { id: "swelling", label: "Swelling", emoji: "💧" },

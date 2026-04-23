@@ -26,7 +26,7 @@ export interface StoredUserData {
     lastPeriodDate?: string;
     cycleLength?: string;
     haemoglobin?: string;
-    dietType?: "veg" | "non-veg" | "mixed" | "eggetarian";
+    dietType?: "veg" | "mixed";
     knownConditions?: string;
     medicalConditions?: string[];
   };

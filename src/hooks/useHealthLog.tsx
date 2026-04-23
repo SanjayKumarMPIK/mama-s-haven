@@ -8,12 +8,30 @@ export type MoodType = "Good" | "Okay" | "Low";
 export type FlowIntensity = "Light" | "Medium" | "Heavy";
 export type FatigueLevel = "Low" | "Medium" | "High";
 export type SleepQuality = "Good" | "Okay" | "Poor";
+export type PeriodBloodColor =
+  | "Bright Red"
+  | "Dark Red / Maroon"
+  | "Brown"
+  | "Black"
+  | "Pink"
+  | "Orange"
+  | "Grey";
+
+export interface PeriodInfectionSymptoms {
+  badSmell: boolean;
+  itching: boolean;
+  severePain: boolean;
+}
 
 export interface PubertyEntry {
   phase: "puberty";
   periodStarted: boolean;
   periodEnded: boolean;
   flowIntensity: FlowIntensity | null;
+  /** Daily period blood color (when applicable) */
+  bloodColor?: PeriodBloodColor;
+  /** Infection-related symptoms for smart alerts (optional) */
+  periodSymptoms?: PeriodInfectionSymptoms;
   symptoms: {
     cramps: boolean;
     fatigue: boolean;
@@ -58,6 +76,10 @@ export interface FamilyPlanningEntry {
   phase: "family-planning";
   lastPeriodDate: string; // ISO date string
   cycleLength: number | null;
+  /** Daily period blood color (when applicable) */
+  bloodColor?: PeriodBloodColor;
+  /** Infection-related symptoms for smart alerts (optional) */
+  periodSymptoms?: PeriodInfectionSymptoms;
   symptoms: {
     irregularCycle: boolean;
     ovulationPain: boolean;

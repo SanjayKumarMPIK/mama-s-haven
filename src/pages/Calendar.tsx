@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarCh
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
 
-import { useHealthLog, type HealthLogEntry, type HealthLogs, type PubertyEntry } from "@/hooks/useHealthLog";
+import { useHealthLog, type HealthLogEntry, type HealthLogs, type PubertyEntry, type PeriodBloodColor } from "@/hooks/useHealthLog";
 import { usePhase, type Phase } from "@/hooks/usePhase";
 import { useProfile } from "@/hooks/useProfile";
 import {
@@ -43,6 +43,74 @@ const MONTH_NAMES = [
 
 function toISODate(y: number, m0: number, day: number) {
   return `${y}-${String(m0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+const BLOOD_COLOR_OPTIONS: PeriodBloodColor[] = [
+  "Bright Red",
+  "Dark Red / Maroon",
+  "Brown",
+  "Black",
+  "Pink",
+  "Orange",
+  "Grey",
+];
+
+function bloodColorInsight(color: PeriodBloodColor): string {
+  switch (color) {
+    case "Bright Red":
+      return "Fresh blood, normal flow.";
+    case "Dark Red / Maroon":
+      return "Older blood, common at start or end.";
+    case "Brown":
+      return "Old blood, normal at beginning or end.";
+    case "Black":
+      return "Older blood. Usually normal, monitor if unusual symptoms.";
+    case "Pink":
+      return "Light flow or low estrogen. Ensure proper nutrition.";
+    case "Orange":
+      return "May indicate infection if paired with odor or irritation.";
+    case "Grey":
+      return "Possible infection. Consider consulting a doctor.";
+  }
+}
+
+function addDaysISO(dateISO: string, deltaDays: number): string {
+  const d = new Date(dateISO + "T12:00:00");
+  d.setDate(d.getDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function shouldShowDoctorAlert(args: {
+  dateISO: string;
+  allLogs: HealthLogs;
+  selectedColor: PeriodBloodColor | "";
+  periodSymptoms: { badSmell: boolean; itching: boolean; severePain: boolean };
+  lookbackDays?: number;
+  repeatThreshold?: number;
+}): boolean {
+  const {
+    dateISO,
+    allLogs,
+    selectedColor,
+    periodSymptoms,
+    lookbackDays = 7,
+    repeatThreshold = 2,
+  } = args;
+
+  const hasConcernSymptoms = Object.values(periodSymptoms).some(Boolean);
+  const isRiskColor = selectedColor === "Grey" || selectedColor === "Orange";
+  if (!isRiskColor || !hasConcernSymptoms) return false;
+
+  // Count risky colors in recent history (excluding today, then add today)
+  let priorRiskyCount = 0;
+  for (let i = 1; i <= lookbackDays; i++) {
+    const iso = addDaysISO(dateISO, -i);
+    const e = allLogs[iso];
+    const c = (e as any)?.bloodColor as PeriodBloodColor | undefined;
+    if (c === "Grey" || c === "Orange") priorRiskyCount += 1;
+  }
+  const totalWithToday = priorRiskyCount + 1;
+  return totalWithToday >= repeatThreshold;
 }
 
 function severityDotClass(sev: number) {
@@ -200,6 +268,8 @@ function hasAnyLogData(entry: HealthLogEntry | undefined): boolean {
   if (sympCount > 0) return true;
   if ((entry as any).mood) return true;
   if ((entry as any).notes) return true;
+  if ((entry as any).bloodColor) return true;
+  if ((entry as any).periodSymptoms && Object.values((entry as any).periodSymptoms).some(Boolean)) return true;
   if (isPeriodDay(entry)) return true;
   return false;
 }
@@ -253,6 +323,7 @@ function buildTooltipForEntry(entry: HealthLogEntry | undefined): string | undef
     parts.push(...active.slice(0, 3));
   }
   if ((entry as any).mood) parts.push(`Mood: ${(entry as any).mood}`);
+  if ((entry as any).bloodColor) parts.push(`Color: ${(entry as any).bloodColor}`);
   if (parts.length === 0) return "Logged";
   return `Logged: ${parts.join(", ")}`;
 }
@@ -714,6 +785,7 @@ function SymptomLogPanel({
   dateISO,
   phase,
   logs,
+  allLogs,
   symptomOptions,
   onClose,
   onSave,
@@ -785,6 +857,38 @@ function SymptomLogPanel({
     setPeriodToggleChanged(true);
   }, []);
 
+  const [bloodColor, setBloodColor] = useState<PeriodBloodColor | "">(() => {
+    const existingColor = (periodEntry as any)?.bloodColor as PeriodBloodColor | undefined;
+    return existingColor ?? "";
+  });
+
+  const [periodInfectionSymptoms, setPeriodInfectionSymptoms] = useState<{
+    badSmell: boolean;
+    itching: boolean;
+    severePain: boolean;
+  }>(() => {
+    const existingSymptoms = (periodEntry as any)?.periodSymptoms as
+      | { badSmell: boolean; itching: boolean; severePain: boolean }
+      | undefined;
+    return existingSymptoms ?? { badSmell: false, itching: false, severePain: false };
+  });
+
+  const showBloodColorSection = (phase === "puberty" || phase === "family-planning") && (
+    isPeriodDay(periodEntry) || periodStarted || isWithinExistingRange || isExistingIrregular || isExistingContinuation
+  );
+
+  const doctorAlert = useMemo(() => {
+    if (!showBloodColorSection) return false;
+    return shouldShowDoctorAlert({
+      dateISO,
+      allLogs,
+      selectedColor: bloodColor,
+      periodSymptoms: periodInfectionSymptoms,
+      lookbackDays: 7,
+      repeatThreshold: 2,
+    });
+  }, [showBloodColorSection, dateISO, allLogs, bloodColor, periodInfectionSymptoms]);
+
   const activeSymptomIds = useMemo(
     () => Object.entries(selectedSymptoms).filter(([, v]) => v).map(([k]) => k),
     [selectedSymptoms]
@@ -818,7 +922,9 @@ function SymptomLogPanel({
     const hasSleep = sleepHours !== "" || sleepQuality !== "";
     const hasNotes = notes.trim().length > 0;
     const hasPeriod = (phase === "puberty" || phase === "family-planning") && periodStarted;
-    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod) {
+    const hasBloodColor = bloodColor !== "";
+    const hasPeriodConcerns = Object.values(periodInfectionSymptoms).some(Boolean);
+    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod && !hasBloodColor && !hasPeriodConcerns) {
       toast.error("Please select at least one symptom, sleep log, mood, or add a note before saving.");
       return;
     }
@@ -830,6 +936,7 @@ function SymptomLogPanel({
     const moodValue = mood !== "" ? (mood as "Good" | "Okay" | "Low") : null;
     const sleepHoursValue = sleepHours !== "" ? Number(sleepHours) : null;
     const sleepQualityValue = sleepQuality !== "" ? (sleepQuality as "Good" | "Okay" | "Poor") : null;
+    const periodSymptomsHasAny = Object.values(periodInfectionSymptoms).some(Boolean);
 
     if (phase === "puberty") {
       entry = {
@@ -837,6 +944,8 @@ function SymptomLogPanel({
         periodStarted: periodStarted,
         periodEnded: false,
         flowIntensity: null,
+        bloodColor: bloodColor !== "" ? bloodColor : undefined,
+        periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
         symptoms: {
           cramps: !!selectedSymptoms.cramps,
           fatigue: !!selectedSymptoms.fatigue,
@@ -874,6 +983,8 @@ function SymptomLogPanel({
         lastPeriodDate: existingFP?.lastPeriodDate ?? "",
         cycleLength: existingFP?.cycleLength ?? null,
         periodStarted: periodStarted,
+        bloodColor: bloodColor !== "" ? bloodColor : undefined,
+        periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
         symptoms: {
           irregularCycle: !!selectedSymptoms.irregularCycle,
           ovulationPain: !!selectedSymptoms.ovulationPain,
@@ -1217,6 +1328,108 @@ function SymptomLogPanel({
                   )}
                 />
               </div>
+            </section>
+          )}
+
+          {/* Blood Color Logging (period days only) */}
+          {showBloodColorSection && (
+            <section className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold">What is the color of your flow today?</h3>
+                <p className="text-xs text-muted-foreground">
+                  Select one option for instant insight.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {BLOOD_COLOR_OPTIONS.map((opt) => {
+                  const active = bloodColor === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setBloodColor(active ? "" : opt)}
+                      className={cn(
+                        "px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
+                        active
+                          ? "bg-primary/15 border-primary/50 text-primary shadow-sm"
+                          : "bg-background border-border hover:bg-muted/50 text-foreground"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={cn(
+                          "w-3 h-3 rounded-full border-2 transition-colors",
+                          active ? "bg-primary border-primary" : "border-muted-foreground/40"
+                        )} />
+                        {opt}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {bloodColor !== "" && (
+                <div className={cn(
+                  "rounded-lg border p-3 text-sm",
+                  bloodColor === "Grey" || bloodColor === "Orange"
+                    ? "bg-amber-50 border-amber-200 text-amber-900"
+                    : "bg-emerald-50 border-emerald-200 text-emerald-900"
+                )}>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1">
+                    Insight
+                  </p>
+                  <p className="text-sm leading-relaxed">{bloodColorInsight(bloodColor)}</p>
+                </div>
+              )}
+
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Symptoms to watch (optional)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {([
+                    { key: "badSmell", label: "Bad smell" },
+                    { key: "itching", label: "Itching" },
+                    { key: "severePain", label: "Severe pain" },
+                  ] as const).map((s) => {
+                    const active = periodInfectionSymptoms[s.key];
+                    return (
+                      <button
+                        key={s.key}
+                        type="button"
+                        onClick={() =>
+                          setPeriodInfectionSymptoms((prev) => ({ ...prev, [s.key]: !prev[s.key] }))
+                        }
+                        className={cn(
+                          "px-3 py-2 rounded-xl border text-xs font-semibold transition-all text-left",
+                          active
+                            ? "bg-orange-50 border-orange-200 text-orange-800"
+                            : "bg-background border-border hover:bg-muted/50 text-foreground"
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={cn(
+                            "w-3 h-3 rounded-full border-2 transition-colors",
+                            active ? "bg-orange-500 border-orange-500" : "border-muted-foreground/40"
+                          )} />
+                          {s.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {doctorAlert && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                  <p className="text-xs font-semibold text-red-800 uppercase tracking-wider mb-1">
+                    Smart alert
+                  </p>
+                  <p className="text-sm text-red-800 leading-relaxed">
+                    We recommend consulting a doctor for further evaluation.
+                  </p>
+                </div>
+              )}
             </section>
           )}
 

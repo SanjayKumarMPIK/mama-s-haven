@@ -37,6 +37,7 @@ export interface ProfileData {
   haemoglobin: string;
   knownConditions: string;
   medicalConditions: string[];
+  dietType: "veg" | "non-veg" | "mixed" | "eggetarian";
   lifeStage: string;
 
   // Meta
@@ -153,6 +154,7 @@ export function useProfile() {
     const haemoglobin = health?.haemoglobin ?? "";
     const knownConditions = health?.knownConditions ?? "";
     const medicalConditions = health?.medicalConditions ?? [];
+    const dietType = (health?.dietType ?? "mixed") as ProfileData["dietType"];
     const lifeStage = health?.lifeStage ?? phase;
 
     const registeredAt = fullProfile?.registeredAt ?? "";
@@ -175,6 +177,7 @@ export function useProfile() {
       haemoglobin,
       knownConditions,
       medicalConditions,
+      dietType,
       lifeStage,
       registeredAt,
       isProfileAvailable: !!name,

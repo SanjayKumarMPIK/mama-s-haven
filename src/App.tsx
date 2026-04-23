@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Outlet } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -53,6 +53,72 @@ import FunActivity from "./pages/menopause/FunActivity";
 
 const queryClient = new QueryClient();
 
+function AppShell() {
+  return (
+    <AuthGate>
+      <Navbar />
+      <Outlet />
+      <MissedLogReminder />
+      <MedicineAlertPopup />
+      <Footer />
+    </AuthGate>
+  );
+}
+
+const router = createBrowserRouter(
+  [
+    {
+      path: "/",
+      element: <AppShell />,
+      children: [
+        { index: true, element: <Index /> },
+        { path: "login", element: <Login /> },
+        { path: "register", element: <Register /> },
+        { path: "tools", element: <Tools /> },
+        { path: "shopping", element: <Shopping /> },
+        { path: "stress-relief", element: <StressRelief /> },
+        { path: "articles", element: <Articles /> },
+        { path: "postpartum", element: <Postpartum /> },
+        { path: "assistant", element: <Assistant /> },
+        { path: "weekly-guide", element: <WeeklyGuide /> },
+        { path: "nutrition", element: <NutritionGuide /> },
+        { path: "symptom-checker", element: <SymptomChecker /> },
+        { path: "emergency", element: <EmergencyGuidance /> },
+        { path: "wellness", element: <WellnessDashboard /> },
+        { path: "puberty", element: <Puberty /> },
+        { path: "maternity", element: <Maternity /> },
+        { path: "family-planning", element: <FamilyPlanning /> },
+        { path: "phc-nearby", element: <PhcNearby /> },
+        { path: "vaccine-tracker", element: <VaccineTracker /> },
+        { path: "pregnancy-dashboard", element: <PregnancyDashboard /> },
+        { path: "health-log", element: <HealthLog /> },
+        { path: "calendar", element: <Calendar /> },
+        { path: "weekly-report", element: <WeeklyBodyReport /> },
+        { path: "profile", element: <Profile /> },
+        { path: "medicine-reminder", element: <MedicineReminder /> },
+
+        // Menopause phase routes
+        { path: "menopause/onboarding", element: <MenopauseOnboarding /> },
+        { path: "menopause/calendar", element: <MenopauseCalendar /> },
+        { path: "menopause/analytics", element: <SymptomAnalytics /> },
+        { path: "menopause/wellness", element: <WellnessPlan /> },
+        { path: "menopause/goals", element: <DailyGoals /> },
+        { path: "menopause/care", element: <MenopauseCareEssentials /> },
+        { path: "menopause/fun", element: <FunActivity /> },
+
+        { path: "about", element: <About /> },
+        { path: "contact", element: <Contact /> },
+        { path: "*", element: <NotFound /> },
+      ],
+    },
+  ],
+  {
+    future: {
+      v7_relativeSplatPath: true,
+    },
+  },
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
@@ -64,54 +130,7 @@ const App = () => (
                 <TooltipProvider>
                   <Toaster />
                   <Sonner />
-                  <BrowserRouter>
-                    <AuthGate>
-                      <Navbar />
-                      <Routes>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/tools" element={<Tools />} />
-                        <Route path="/shopping" element={<Shopping />} />
-                        <Route path="/stress-relief" element={<StressRelief />} />
-                        <Route path="/articles" element={<Articles />} />
-                        <Route path="/postpartum" element={<Postpartum />} />
-                        <Route path="/assistant" element={<Assistant />} />
-                        <Route path="/weekly-guide" element={<WeeklyGuide />} />
-                        <Route path="/nutrition" element={<NutritionGuide />} />
-                        <Route path="/symptom-checker" element={<SymptomChecker />} />
-                        <Route path="/emergency" element={<EmergencyGuidance />} />
-                        <Route path="/wellness" element={<WellnessDashboard />} />
-                        <Route path="/puberty" element={<Puberty />} />
-                        <Route path="/maternity" element={<Maternity />} />
-                        <Route path="/family-planning" element={<FamilyPlanning />} />
-                        <Route path="/phc-nearby" element={<PhcNearby />} />
-                        <Route path="/vaccine-tracker" element={<VaccineTracker />} />
-                        <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
-                        <Route path="/health-log" element={<HealthLog />} />
-                        <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/weekly-report" element={<WeeklyBodyReport />} />
-                        <Route path="/profile" element={<Profile />} />
-                        <Route path="/medicine-reminder" element={<MedicineReminder />} />
-
-                        {/* Menopause phase routes */}
-                        <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
-                        <Route path="/menopause/calendar" element={<MenopauseCalendar />} />
-                        <Route path="/menopause/analytics" element={<SymptomAnalytics />} />
-                        <Route path="/menopause/wellness" element={<WellnessPlan />} />
-                        <Route path="/menopause/goals" element={<DailyGoals />} />
-                        <Route path="/menopause/care" element={<MenopauseCareEssentials />} />
-                        <Route path="/menopause/fun" element={<FunActivity />} />
-
-                        <Route path="/about" element={<About />} />
-                        <Route path="/contact" element={<Contact />} />
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                      <MissedLogReminder />
-                      <MedicineAlertPopup />
-                      <Footer />
-                    </AuthGate>
-                  </BrowserRouter>
+                  <RouterProvider router={router} />
                 </TooltipProvider>
               </OnboardingProvider>
             </HealthLogProvider>

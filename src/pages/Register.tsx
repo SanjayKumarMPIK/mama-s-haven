@@ -38,7 +38,7 @@ const registerSchema = z.object({
     lastPeriodDate: z.string().optional(),
     cycleLength: z.string().optional(),
     haemoglobin: z.string().optional(),
-    dietType: z.enum(["veg", "non-veg", "mixed"], { message: "Diet type is required" }),
+    dietType: z.enum(["veg", "non-veg", "mixed", "eggetarian"], { message: "Diet type is required" }),
     knownConditions: z.string().optional(),
     medicalConditions: z.array(z.string()).optional(),
   }),
@@ -374,6 +374,7 @@ export default function Register() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="veg">Veg</SelectItem>
+                            <SelectItem value="eggetarian">Eggetarian</SelectItem>
                             <SelectItem value="non-veg">Non-veg</SelectItem>
                             <SelectItem value="mixed">Mixed</SelectItem>
                           </SelectContent>

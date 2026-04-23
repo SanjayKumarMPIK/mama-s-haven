@@ -27,6 +27,7 @@ function buildTooltip(entry: HealthLogEntry): string {
     if (e.periodStarted) parts.push("Period started");
     if (e.periodEnded) parts.push("Period ended");
     if (e.flowIntensity) parts.push(`Flow: ${e.flowIntensity}`);
+    if ((e as any).bloodColor) parts.push(`Color: ${(e as any).bloodColor}`);
     const sx = Object.entries(e.symptoms)
       .filter(([, v]) => v)
       .map(([k]) => k.replace(/([A-Z])/g, " $1").trim());
@@ -45,6 +46,7 @@ function buildTooltip(entry: HealthLogEntry): string {
     if (e.sleepHours) parts.push(`Sleep: ${e.sleepHours}h`);
     if (e.mood) parts.push(`Mood: ${e.mood}`);
     if (e.cycleLength) parts.push(`Cycle: ${e.cycleLength}d`);
+    if ((e as any).bloodColor) parts.push(`Color: ${(e as any).bloodColor}`);
     if (e.symptoms.ovulationPain) parts.push("Ovulation pain");
     if (e.symptoms.moodChanges) parts.push("Mood changes");
     if (e.symptoms.irregularCycle) parts.push("Irregular cycle");

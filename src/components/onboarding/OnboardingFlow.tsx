@@ -171,7 +171,7 @@ export default function OnboardingFlow() {
   const navigate = useNavigate();
 
   // Local state for form
-  const [step, setStep] = useState(1); // 1 = medical, 2 = purpose, 3 = goals/maternity, 4 = puberty questions
+  const [step, setStep] = useState(2); // 1 = medical (skipped), 2 = purpose, 3 = goals/maternity, 4 = puberty questions
   const [selectedPhase, setSelectedPhase] = useState<Phase | null>(config.onboardingCompleted ? config.phase : null);
   const [selectedGoals, setSelectedGoals] = useState<Set<Goal>>(new Set(config.goals));
   const [selectedMedicalConditions, setSelectedMedicalConditions] = useState<Set<string>>(

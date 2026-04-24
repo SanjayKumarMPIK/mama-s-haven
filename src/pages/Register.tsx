@@ -115,6 +115,13 @@ export default function Register() {
 
   const onSubmit = async (data: RegistrationData) => {
     setIsLoading(true);
+    // Clear any previous user's state so the new user is forced through onboarding
+    try {
+      localStorage.removeItem("ss-phase");
+      localStorage.removeItem("ss-onboarding");
+      localStorage.removeItem("ss-wellness-profile");
+    } catch {}
+
     const contact = data.basic.contact.trim();
     const isPhone = /^[0-9]{10}$/.test(contact);
     const mappedData = {
@@ -126,7 +133,7 @@ export default function Register() {
       },
       health: {
         ...data.health,
-        lifeStage: "puberty",
+        lifeStage: "",
       },
     };
     const success = await register(mappedData);

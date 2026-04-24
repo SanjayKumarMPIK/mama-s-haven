@@ -134,6 +134,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         if (next.phase) {
           setPhase(next.phase);
         }
+      } else {
+        setConfig(DEFAULT_CONFIG);
       }
     } catch {}
   }, [storageKey, setPhase]);

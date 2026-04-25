@@ -50,6 +50,9 @@ import DailyGoals from "./pages/menopause/DailyGoals";
 import MenopauseCareEssentials from "./pages/menopause/MenopauseCareEssentials";
 import FunActivity from "./pages/menopause/FunActivity";
 import BabySupportiveHelper from "./pages/BabySupportiveHelper";
+import DeficiencyInsights from "./pages/DeficiencyInsights";
+import FitnessHealthCalculatorPage from "./pages/maternity/FitnessHealthCalculatorPage";
+import PersonalizedDietPage from "./pages/nutrition/PersonalizedDietPage";
 
 
 const queryClient = new QueryClient();
@@ -97,6 +100,9 @@ const router = createBrowserRouter(
         { path: "weekly-report", element: <WeeklyBodyReport /> },
         { path: "profile", element: <Profile /> },
         { path: "medicine-reminder", element: <MedicineReminder /> },
+        { path: "deficiency-insights", element: <DeficiencyInsights /> },
+        { path: "maternity/nutrition/fitness-health-calculator", element: <FitnessHealthCalculatorPage /> },
+        { path: "maternity/nutrition/personalized-diet", element: <PersonalizedDietPage /> },
 
         // Menopause phase routes
         { path: "menopause/onboarding", element: <MenopauseOnboarding /> },
@@ -161,6 +167,9 @@ const App = () => (
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/medicine-reminder" element={<MedicineReminder />} />
                         <Route path="/baby-supportive-helper" element={<BabySupportiveHelper />} />
+                        <Route path="/deficiency-insights" element={<DeficiencyInsights />} />
+                        <Route path="/maternity/nutrition/fitness-health-calculator" element={<FitnessHealthCalculatorPage />} />
+                        <Route path="/maternity/nutrition/personalized-diet" element={<PersonalizedDietPage />} />
 
                         {/* Menopause phase routes */}
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />

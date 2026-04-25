@@ -36,12 +36,12 @@ export function CompletionSummaryStep({ details, onClose }: Props) {
             baby_blood_group: details.bloodGroup,
             updated_at: new Date().toISOString()
           };
-          
+
           await (supabase as any)
             .from("pregnancy_profiles")
             .upsert(payload, { onConflict: "user_id" });
         }
-        
+
         // Save to local profile to shift to postpartum phase
         saveDelivery({
           isDelivered: true,
@@ -59,51 +59,55 @@ export function CompletionSummaryStep({ details, onClose }: Props) {
         setIsSaving(false);
       }
     }
-    
+
     saveToSupabase();
   }, []);
 
   const handleFinish = () => {
     onClose();
-    // Refresh to trigger postpartum state properly via dashboard reload
+    // Navigate to pregnancy dashboard to trigger proper mode switch
     navigate("/pregnancy-dashboard", { replace: true });
-    window.location.reload();
   };
 
   return (
-    <div className="bg-white rounded-[2rem] p-8 text-center shadow-xl shadow-emerald-100/40 animate-in slide-in-from-bottom-8 duration-500 fill-mode-both">
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm animate-in slide-in-from-bottom-8 duration-500 fill-mode-both">
       {isSaving ? (
-        <div className="py-12 flex flex-col items-center justify-center space-y-4">
-          <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
-          <p className="text-slate-500 animate-pulse font-medium">Preparing your postpartum journey...</p>
+        <div className="py-8 flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-sm text-muted-foreground animate-pulse font-medium">Preparing your postpartum journey...</p>
         </div>
       ) : (
         <div className="animate-in fade-in zoom-in-95 duration-500">
-          <div className="w-24 h-24 bg-gradient-to-tr from-emerald-100 to-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm ring-4 ring-white">
-            <CheckCircle2 className="w-12 h-12 text-emerald-500" />
-          </div>
-          
-          <h2 className="text-3xl font-extrabold text-slate-800 mb-6 font-serif">
-            Welcome, Baby {details.name}!
-          </h2>
-          
-          <div className="bg-slate-50 rounded-xl p-5 mb-8 text-left space-y-3 shadow-inner">
-            <div className="flex justify-between items-center border-b pb-2">
-              <span className="text-slate-500 text-sm">Weight</span>
-              <span className="font-semibold text-slate-800">{details.weight} kg</span>
-            </div>
-            <div className="flex justify-between items-center border-b pb-2">
-              <span className="text-slate-500 text-sm">Blood Group</span>
-              <span className="font-semibold text-slate-800">{details.bloodGroup}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500 text-sm">Gender</span>
-              <span className="font-semibold text-slate-800 capitalize">{details.gender.replace(/_/g, " ")}</span>
+          <div className="flex items-center justify-center mb-6">
+            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-primary" />
             </div>
           </div>
 
-          <Button 
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-full py-6 text-lg font-semibold shadow-lg shadow-emerald-200 transition-transform active:scale-[0.98]"
+          <h2 className="text-xl font-bold text-foreground mb-1 text-center">
+            Welcome, Baby {details.name}!
+          </h2>
+          <p className="text-sm text-muted-foreground mb-6 text-center">
+            Your baby's information has been saved.
+          </p>
+
+          <div className="bg-muted/50 rounded-xl p-4 mb-6 space-y-3">
+            <div className="flex justify-between items-center border-b border-border pb-2">
+              <span className="text-muted-foreground text-sm">Weight</span>
+              <span className="font-semibold text-foreground">{details.weight} kg</span>
+            </div>
+            <div className="flex justify-between items-center border-b border-border pb-2">
+              <span className="text-muted-foreground text-sm">Blood Group</span>
+              <span className="font-semibold text-foreground">{details.bloodGroup}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground text-sm">Gender</span>
+              <span className="font-semibold text-foreground capitalize">{details.gender.replace(/_/g, " ")}</span>
+            </div>
+          </div>
+
+          <Button
+            className="w-full bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-semibold shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
             onClick={handleFinish}
           >
             Start Postpartum Dashboard

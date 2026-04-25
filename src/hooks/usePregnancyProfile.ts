@@ -59,6 +59,7 @@ export interface DeliveryData {
 
 export type MaternityMode = "pregnancy" | "premature" | "postpartum";
 export type RiskLevel = "high" | "moderate" | "low" | null;
+export type GDMStatus = "confirmed" | "negative" | "not_sure" | "not_done" | null;
 
 const EMPTY_DELIVERY: DeliveryData = {
   isDelivered: false,
@@ -109,6 +110,8 @@ export interface PregnancyProfile {
   isSetup: boolean;
   delivery: DeliveryData;
   deliveryTransitionCompleted: boolean; // Flag to track if celebration flow completed
+  gdmStatus: GDMStatus;   // Gestational Diabetes Mellitus status from GTT test
+  gttQuestionCompleted: boolean; // Flag to track if GTT question flow completed
 
   /* ── legacy compat — kept so old code referencing `dueDate` doesn't crash
        during migration; equals activeEDD ─────────────────────────────────── */
@@ -138,6 +141,8 @@ function loadProfile(): PregnancyProfile {
           isSetup: true,
           delivery: raw.delivery || { ...EMPTY_DELIVERY },
           deliveryTransitionCompleted: raw.deliveryTransitionCompleted || false,
+          gdmStatus: raw.gdmStatus || null,
+          gttQuestionCompleted: raw.gttQuestionCompleted || false,
           dueDate: legacyDueDate,
         };
       }
@@ -157,6 +162,8 @@ function loadProfile(): PregnancyProfile {
         isSetup: !!lmp,
         delivery: raw.delivery || { ...EMPTY_DELIVERY },
         deliveryTransitionCompleted: raw.deliveryTransitionCompleted || false,
+        gdmStatus: raw.gdmStatus || null,
+        gttQuestionCompleted: raw.gttQuestionCompleted || false,
         dueDate: activeEDD, // legacy compat
       };
     }
@@ -171,6 +178,8 @@ function loadProfile(): PregnancyProfile {
     isSetup: false,
     delivery: { ...EMPTY_DELIVERY },
     deliveryTransitionCompleted: false,
+    gdmStatus: null,
+    gttQuestionCompleted: false,
     dueDate: "",
   };
 }
@@ -187,6 +196,10 @@ interface PregnancyProfileContextType {
   saveDelivery: (data: DeliveryData) => void;
   /** Mark delivery transition as completed (after celebration flow). */
   markDeliveryTransitionCompleted: () => void;
+  /** Update GDM status from GTT test result. */
+  setGDMStatus: (status: GDMStatus) => void;
+  /** Mark GTT question flow as completed. */
+  markGTTQuestionCompleted: () => void;
   clearProfile: () => void;
   /** The effective EDD used for all calculations. */
   activeEDD: string;
@@ -196,12 +209,18 @@ interface PregnancyProfileContextType {
   progress: number;
   /** Current maternity mode based on delivery state. */
   mode: MaternityMode;
+  /** Whether the GTT popup is currently open */
+  isGTTPopupOpen: boolean;
+  /** Open the GTT popup */
+  openGTTPopup: () => void;
+  /** Close the GTT popup */
+  closeGTTPopup: () => void;
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
 
 const EMPTY: PregnancyProfile = {
-  name: "", lmp: "", calculatedEDD: "", userEDD: "", region: "north", isSetup: false, delivery: { ...EMPTY_DELIVERY }, deliveryTransitionCompleted: false, dueDate: "",
+  name: "", lmp: "", calculatedEDD: "", userEDD: "", region: "north", isSetup: false, delivery: { ...EMPTY_DELIVERY }, deliveryTransitionCompleted: false, gdmStatus: null, gttQuestionCompleted: false, dueDate: "",
 };
 
 const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
@@ -210,6 +229,8 @@ const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
   setUserEDD: () => {},
   saveDelivery: () => {},
   markDeliveryTransitionCompleted: () => {},
+  setGDMStatus: () => {},
+  markGTTQuestionCompleted: () => {},
   clearProfile: () => {},
   activeEDD: "",
   currentWeek: 1,
@@ -217,12 +238,16 @@ const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
   trimester: 1,
   progress: 0,
   mode: "pregnancy",
+  isGTTPopupOpen: false,
+  openGTTPopup: () => {},
+  closeGTTPopup: () => {},
 });
 
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export function PregnancyProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<PregnancyProfile>(loadProfile);
+  const [isGTTPopupOpen, setIsGTTPopupOpen] = useState(false);
 
   // Persist whenever profile changes
   useEffect(() => {
@@ -259,6 +284,8 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
       isSetup: true,
       delivery: prev.delivery, // preserve delivery if exists
       deliveryTransitionCompleted: prev.deliveryTransitionCompleted || false,
+      gdmStatus: prev.gdmStatus || null,
+      gttQuestionCompleted: prev.gttQuestionCompleted || false,
       dueDate: calculatedEDD, // legacy compat
     }));
   }, []);
@@ -288,6 +315,25 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     }));
   }, []);
 
+  // Update GDM status from GTT test result
+  const setGDMStatus = useCallback((status: GDMStatus) => {
+    setProfile((prev) => ({
+      ...prev,
+      gdmStatus: status,
+    }));
+  }, []);
+
+  // Mark GTT question flow as completed
+  const markGTTQuestionCompleted = useCallback(() => {
+    setProfile((prev) => ({
+      ...prev,
+      gttQuestionCompleted: true,
+    }));
+  }, []);
+
+  const openGTTPopup = useCallback(() => setIsGTTPopupOpen(true), []);
+  const closeGTTPopup = useCallback(() => setIsGTTPopupOpen(false), []);
+
   // Clear everything
   const clearProfile = useCallback(() => {
     try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
@@ -313,6 +359,8 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     setUserEDD,
     saveDelivery,
     markDeliveryTransitionCompleted,
+    setGDMStatus,
+    markGTTQuestionCompleted,
     clearProfile,
     activeEDD,
     currentWeek,
@@ -320,6 +368,9 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     trimester,
     progress,
     mode,
+    isGTTPopupOpen,
+    openGTTPopup,
+    closeGTTPopup,
   };
 
   return createElement(PregnancyProfileContext.Provider, { value }, children);

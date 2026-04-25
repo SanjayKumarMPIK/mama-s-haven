@@ -20,7 +20,7 @@ import {
   Baby, Heart, Apple, Droplets, Activity, AlertTriangle,
   Syringe, ClipboardList, Milestone as MilestoneIcon, Shield,
   Flame, ArrowLeft, Sparkles, Phone, FileText, RotateCcw,
-  Edit3, X, CalendarDays, Info
+  Edit3, X, CalendarDays, Info, Stethoscope
 } from "lucide-react";
 
 // ─── Baby size visuals per trimester range ───────────────────────────────────
@@ -435,11 +435,13 @@ function DashboardView({
 }) {
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
   const dash = usePregnancyDashboard(currentWeek);
-  const { profile, clearProfile } = usePregnancyProfile();
+  const { profile, clearProfile, openGTTPopup } = usePregnancyProfile();
   const weekData = WEEK_DATA[Math.min(selectedWeek, 40) - 1];
   const babyVisual = getBabyVisual(selectedWeek);
   const trimesterLabel = trimester === 1 ? "1st Trimester" : trimester === 2 ? "2nd Trimester" : "3rd Trimester";
   const trimesterColor = trimester === 1 ? "text-teal-600" : trimester === 2 ? "text-amber-600" : "text-primary";
+
+  const showGDMRcard = currentWeek >= 25 && (profile.gdmStatus === null || profile.gdmStatus === "not_done" || profile.gdmStatus === "not_sure");
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
@@ -492,6 +494,33 @@ function DashboardView({
             <div className="mt-4">
               <EDDOverrideCard />
             </div>
+
+            {/* Persistent GDM Follow-Up Card */}
+            {showGDMRcard && (
+              <div className="mt-3">
+                <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 shadow-sm flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+                      <Stethoscope className="w-5 h-5 text-violet-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-sm text-violet-900">GDM Follow-Up</h4>
+                      <p className="text-xs text-violet-700">
+                        {profile.gdmStatus === null && "GTT update required"}
+                        {profile.gdmStatus === "not_done" && "GTT test pending"}
+                        {profile.gdmStatus === "not_sure" && "GTT result pending"}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={openGTTPopup}
+                    className="px-4 py-2 rounded-lg bg-violet-600 text-white text-xs font-semibold hover:bg-violet-700 transition-colors shadow-sm active:scale-[0.97]"
+                  >
+                    Update Status
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Delivery Arrival Prompt */}
             {currentWeek >= 28 && !profile.delivery.isDelivered && (

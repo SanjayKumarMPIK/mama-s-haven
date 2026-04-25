@@ -8,6 +8,13 @@
  * Do NOT import in Puberty, Family Planning, or Menopause modules.
  */
 
+import {
+  generatePrioritizedSymptoms,
+  getSymptomsForCondition as engineGetSymptomsForCondition,
+  isConditionSymptom as engineIsConditionSymptom,
+  getConditionForSymptom as engineGetConditionForSymptom
+} from "./maternity/symptomPriorityEngine";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type Trimester = "T1" | "T2" | "T3";
@@ -24,6 +31,11 @@ export interface NutritionTip {
   label: string;
   emoji: string;
   description: string;
+}
+
+export interface PrioritizedSymptomsResult {
+  coreSymptoms: TrimesterSymptom[];
+  customizableSymptoms: TrimesterSymptom[];
 }
 
 // ─── Symptom Definitions (6 per trimester) ────────────────────────────────────
@@ -155,6 +167,54 @@ const NUTRITION_BY_TRIMESTER: Record<Trimester, NutritionTip[]> = {
 /** Get the 6 symptoms for a given trimester */
 export function getSymptomsForTrimester(trimester: Trimester): TrimesterSymptom[] {
   return SYMPTOMS_BY_TRIMESTER[trimester];
+}
+
+/**
+ * Get prioritized symptoms based on medical conditions.
+ * This function integrates the symptomPriorityEngine to inject condition-specific symptoms.
+ */
+export function getPrioritizedSymptomsForTrimester(
+  trimester: Trimester,
+  medicalConditions: string[] = [],
+  pregnancyWeek?: number
+): PrioritizedSymptomsResult {
+  const defaultSymptoms = SYMPTOMS_BY_TRIMESTER[trimester];
+
+  // If no medical conditions and not premature care, return defaults unchanged
+  if ((!medicalConditions || medicalConditions.length === 0) && (pregnancyWeek === undefined || pregnancyWeek < 32)) {
+    return {
+      coreSymptoms: defaultSymptoms,
+      customizableSymptoms: [],
+    };
+  }
+
+  try {
+    return generatePrioritizedSymptoms({
+      trimester,
+      medicalConditions,
+      defaultSymptoms,
+      pregnancyWeek,
+    });
+  } catch (error) {
+    console.error("Failed to load symptomPriorityEngine:", error);
+    return {
+      coreSymptoms: defaultSymptoms,
+      customizableSymptoms: [],
+    };
+  }
+}
+
+// Re-export functions from symptomPriorityEngine for convenience
+export function getSymptomsForCondition(condition: string) {
+  return engineGetSymptomsForCondition(condition);
+}
+
+export function isConditionSymptom(symptomId: string) {
+  return engineIsConditionSymptom(symptomId);
+}
+
+export function getConditionForSymptom(symptomId: string) {
+  return engineGetConditionForSymptom(symptomId);
 }
 
 /** Get the 4 nutrition tips for a given trimester */

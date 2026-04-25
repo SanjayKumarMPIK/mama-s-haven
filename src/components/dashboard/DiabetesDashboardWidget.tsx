@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import ScrollReveal from "@/components/ScrollReveal";
+import { usePregnancyProfile, type GDMStatus } from "@/hooks/usePregnancyProfile";
 
 const MATERNITY_DIABETES_HEALTH_KEY = "maternity-module-diabetes-health";
 
@@ -52,6 +53,7 @@ function loadMaternityHealthMerged(): MaternityHealthState {
 }
 
 export function DiabetesDashboardWidget({ currentWeek }: { currentWeek: number }) {
+  const { profile, setGDMStatus } = usePregnancyProfile();
   const [health, setHealth] = useState<MaternityHealthState>(() => loadMaternityHealthMerged());
 
   const updateStage = useCallback((stage: DiabetesStage) => {
@@ -61,6 +63,10 @@ export function DiabetesDashboardWidget({ currentWeek }: { currentWeek: number }
       diabetesPromptShown: true,
     }));
   }, []);
+
+  const handleGDMStatusChange = useCallback((status: GDMStatus) => {
+    setGDMStatus(status);
+  }, [setGDMStatus]);
 
   const handleRecheck = useCallback((value: "yes" | "no" | "unknown") => {
     setHealth((prev) => ({
@@ -115,6 +121,56 @@ export function DiabetesDashboardWidget({ currentWeek }: { currentWeek: number }
 
   return (
     <div className="space-y-6">
+      {/* GDM Status Editor */}
+      <ScrollReveal>
+        <div className="rounded-2xl border border-border/60 bg-card shadow-sm text-left p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
+                <span className="text-violet-600 text-lg">🩺</span>
+              </div>
+              <div>
+                <h4 className="font-bold text-sm">GTT Test Status</h4>
+                <p className="text-[10px] text-muted-foreground">Glucose Tolerance Test (Week 24)</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mb-3">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">
+              Current Status
+            </label>
+            <select
+              value={profile.gdmStatus || ""}
+              onChange={(e) => handleGDMStatusChange(e.target.value as GDMStatus)}
+              className="w-full h-10 rounded-lg border border-border px-3 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Not tested yet</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="negative">Negative</option>
+              <option value="not_sure">Not Sure</option>
+              <option value="not_done">Test Pending</option>
+            </select>
+          </div>
+
+          {profile.gdmStatus === "confirmed" && (
+            <div className="mt-3 p-3 rounded-lg bg-rose-50 border border-rose-200">
+              <p className="text-xs text-rose-800">
+                <strong>Important:</strong> Your GDM status is confirmed. Please follow your doctor's dietary and monitoring recommendations.
+              </p>
+            </div>
+          )}
+
+          {profile.gdmStatus === "negative" && (
+            <div className="mt-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+              <p className="text-xs text-emerald-800">
+                <strong>Great news:</strong> Your GTT result is normal. Continue with regular prenatal care.
+              </p>
+            </div>
+          )}
+        </div>
+      </ScrollReveal>
+
       {!health?.diabetesPromptShown && (
         <ScrollReveal>
           <div className="rounded-2xl border border-border/60 bg-card shadow-sm text-left p-5">

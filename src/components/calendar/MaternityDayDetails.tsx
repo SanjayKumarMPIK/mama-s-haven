@@ -16,17 +16,10 @@ import {
 import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
 import { useHealthLog, type HealthLogEntry, type MaternityEntry } from "@/hooks/useHealthLog";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useProfile } from "@/hooks/useProfile";
 import { useCustomSymptoms } from "@/hooks/useCustomSymptoms";
+import { getNutritionForTrimester, weekToTrimester, getPrioritizedSymptomsForTrimester, checkConsecutiveSevereSymptoms, getTrimesterLabel, type Trimester, type Severity } from "@/lib/maternityTrimesterData";
 import { SymptomCustomizer } from "./SymptomCustomizer";
-import {
-  getSymptomsForTrimester,
-  getNutritionForTrimester,
-  getTrimesterLabel,
-  weekToTrimester,
-  checkConsecutiveSevereSymptoms,
-  type Severity,
-  type Trimester,
-} from "@/lib/maternityTrimesterData";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -74,7 +67,8 @@ interface MaternityDayDetailsProps {
 export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsProps) {
   const { getLog, saveLog, maternityLogs } = useHealthLog();
   const { activeEDD } = usePregnancyProfile();
-  const { activeSymptoms } = useCustomSymptoms();
+  const { profile } = useProfile();
+  const ctx = useCustomSymptoms();
   const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
   const existingEntry = getLog(dateISO) as MaternityEntry | undefined;
@@ -87,18 +81,86 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
     return weekToTrimester(week);
   }, [dateISO, activeEDD, existingEntry, isMaternity]);
 
-  // 2. Fetch Trimester Data
+  // 2. Fetch Trimester Data with medical condition prioritization
   const nutritionDef = useMemo(() => getNutritionForTrimester(trimester), [trimester]);
 
-  // 3. Use active symptoms from custom symptoms hook
+  // 3. Get prioritized symptoms based on medical conditions and premature care status
+  const prioritizedSymptoms = useMemo(() => {
+    const medicalConditions = profile?.medicalConditions || [];
+    const week = getWeekForDate(dateISO, activeEDD);
+    return getPrioritizedSymptomsForTrimester(trimester, medicalConditions, week);
+  }, [trimester, profile?.medicalConditions, dateISO, activeEDD]);
+
+  // 4. Maternity Symptom Swaps State (Persisted per trimester)
+  const [swaps, setSwaps] = useState<Record<number, string>>(() => {
+    try {
+      const stored = localStorage.getItem(`maternity_swaps_${trimester}`);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const handleMaternitySwap = useCallback((slotIndex: number, newSymptomId: string) => {
+    setSwaps((prev) => {
+      const updated = { ...prev, [slotIndex]: newSymptomId };
+      localStorage.setItem(`maternity_swaps_${trimester}`, JSON.stringify(updated));
+      return updated;
+    });
+  }, [trimester]);
+
+  const handleMaternityReset = useCallback(() => {
+    if (confirm("Reset to default maternity symptoms for this trimester?")) {
+      setSwaps({});
+      localStorage.removeItem(`maternity_swaps_${trimester}`);
+    }
+  }, [trimester]);
+
+  // 5. Combine predefined library with displaced symptoms
+  const maternityLibrary = useMemo(() => {
+    const displaced = prioritizedSymptoms.customizableSymptoms.map((s) => ({
+      id: s.id,
+      name: s.label,
+      category: "displaced" as any,
+    }));
+    return [...displaced, ...ctx.predefinedLibrary];
+  }, [prioritizedSymptoms.customizableSymptoms, ctx.predefinedLibrary]);
+
+  // 6. Use prioritized core symptoms + user swaps for display
   const activeSymptomOptions = useMemo(() => {
-    return activeSymptoms.map((symptom) => ({
+    const base = [...prioritizedSymptoms.coreSymptoms];
+    
+    for (const [slotStr, symptomId] of Object.entries(swaps)) {
+      const slotIndex = parseInt(slotStr, 10);
+      if (slotIndex >= 0 && slotIndex < base.length) {
+        const foundLib = maternityLibrary.find((s) => s.id === symptomId);
+        if (foundLib) {
+          const origDisplaced = prioritizedSymptoms.customizableSymptoms.find((s) => s.id === symptomId);
+          base[slotIndex] = {
+            id: foundLib.id,
+            label: foundLib.name,
+            emoji: origDisplaced ? origDisplaced.emoji : "📌",
+          };
+        }
+      }
+    }
+
+    return base.map((symptom) => ({
       id: symptom.id,
-      label: symptom.name,
-      emoji: "🩺",
+      label: symptom.label,
+      emoji: symptom.emoji,
       description: "Track this symptom",
     }));
-  }, [activeSymptoms]);
+  }, [prioritizedSymptoms.coreSymptoms, swaps, maternityLibrary, prioritizedSymptoms.customizableSymptoms]);
+
+  // 7. Adapter for SymptomCustomizer modal
+  const customizerActiveSymptoms = useMemo(() => {
+    return activeSymptomOptions.map((opt, idx) => ({
+      id: opt.id,
+      name: opt.label,
+      isCore: !swaps[idx],
+    }));
+  }, [activeSymptomOptions, swaps]);
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -266,6 +328,10 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
         <SymptomCustomizer
           isOpen={showSymptomCustomizer}
           onClose={() => setShowSymptomCustomizer(false)}
+          activeSymptoms={customizerActiveSymptoms}
+          library={maternityLibrary}
+          onSwap={handleMaternitySwap}
+          onReset={handleMaternityReset}
         />
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-border/60">
@@ -560,7 +626,7 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
             />
           </section>
 
-          {/* Customize Symptoms Button */}
+          {/* Customize Symptoms Section */}
           <section className="space-y-3 rounded-xl border border-dashed border-border/60 bg-muted/20 p-4">
             <button
               onClick={() => setShowSymptomCustomizer(true)}
@@ -570,7 +636,7 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
               Customize Active Symptoms
             </button>
             <p className="text-xs text-muted-foreground text-center">
-              {activeSymptoms.length} active symptoms • Swap with predefined library
+              {activeSymptomOptions.length} active symptoms • Swap with predefined library
             </p>
           </section>
         </div>

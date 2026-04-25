@@ -9,6 +9,7 @@ import type { PersonalizationResult } from "@/lib/familyPlanningPersonalizationE
 import FamilyPlanningOnboarding from "@/components/onboarding/FamilyPlanningOnboarding";
 import ContraceptionGuide from "@/components/guidance/ContraceptionGuide";
 import ScrollReveal from "@/components/ScrollReveal";
+import DynamicToolsPanel from "@/components/familyplanning/DynamicToolsPanel";
 import {
   ArrowLeft, CalendarDays, Activity, Leaf, Stethoscope,
   AlertTriangle, CheckCircle2, Settings2, Heart, Shield,
@@ -362,15 +363,9 @@ export default function FamilyPlanning() {
               {d.intentLabel} — tailored guidance based on your reproductive history and goals.
             </p>
           </div>
-          <IntentHeader p={p} onChangeIntent={() => setShowIntentModal(true)} />
         </ScrollReveal>
 
         <div className="space-y-6 mt-6">
-          {/* Daily Guidance Hero */}
-          <ScrollReveal>
-            <DailyGuidanceCard p={p} />
-          </ScrollReveal>
-
           {/* Spacing Awareness (mothers only) */}
           {p.spacing.show && (
             <ScrollReveal delay={60}>
@@ -378,35 +373,18 @@ export default function FamilyPlanning() {
             </ScrollReveal>
           )}
 
-          {/* Fertility Calculator (TTC + Tracking) */}
-          {(d.showFertilityInsights || d.showRiskAssessment) && (
-            <ScrollReveal delay={80}>
-              <FertilityCalculator intent={fpProfile.intent} />
-            </ScrollReveal>
-          )}
-
-          {/* Contraception Guide (Avoid only) */}
-          {d.showContraception && p.contraception.length > 0 && (
-            <ScrollReveal delay={120}>
-              <ContraceptionGuide
-                categories={p.contraception}
-                isFirstTime={p.segment === "first-time"}
-              />
-            </ScrollReveal>
-          )}
+          {/* ═══ Dynamic Tools System ═══ */}
+          <ScrollReveal delay={80}>
+            <DynamicToolsPanel />
+          </ScrollReveal>
 
           {/* Consultation */}
           <ScrollReveal delay={160}>
             <ConsultationTrigger />
           </ScrollReveal>
 
-          {/* Lifestyle */}
-          <ScrollReveal delay={200}>
-            <LifestyleGuidance />
-          </ScrollReveal>
-
           {/* Disclaimer */}
-          <ScrollReveal delay={240}>
+          <ScrollReveal delay={200}>
             <div className="rounded-2xl border border-border bg-muted/30 p-4 flex items-center gap-3">
               <Shield className="w-5 h-5 text-muted-foreground shrink-0" />
               <p className="text-[11px] text-muted-foreground leading-relaxed">
@@ -416,15 +394,6 @@ export default function FamilyPlanning() {
           </ScrollReveal>
         </div>
       </div>
-
-      {/* Intent Change Modal */}
-      {showIntentModal && (
-        <IntentChangeModal
-          current={fpProfile.intent}
-          onSelect={(i) => { updateIntent(i); setShowIntentModal(false); }}
-          onClose={() => setShowIntentModal(false)}
-        />
-      )}
     </div>
   );
 }

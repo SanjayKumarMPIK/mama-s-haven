@@ -108,6 +108,7 @@ export interface PregnancyProfile {
   region: Region;
   isSetup: boolean;
   delivery: DeliveryData;
+  deliveryTransitionCompleted: boolean; // Flag to track if celebration flow completed
 
   /* ── legacy compat — kept so old code referencing `dueDate` doesn't crash
        during migration; equals activeEDD ─────────────────────────────────── */
@@ -136,6 +137,7 @@ function loadProfile(): PregnancyProfile {
           region: raw.region || "north",
           isSetup: true,
           delivery: raw.delivery || { ...EMPTY_DELIVERY },
+          deliveryTransitionCompleted: raw.deliveryTransitionCompleted || false,
           dueDate: legacyDueDate,
         };
       }
@@ -154,6 +156,7 @@ function loadProfile(): PregnancyProfile {
         region: raw.region || "north",
         isSetup: !!lmp,
         delivery: raw.delivery || { ...EMPTY_DELIVERY },
+        deliveryTransitionCompleted: raw.deliveryTransitionCompleted || false,
         dueDate: activeEDD, // legacy compat
       };
     }
@@ -167,6 +170,7 @@ function loadProfile(): PregnancyProfile {
     region: "north",
     isSetup: false,
     delivery: { ...EMPTY_DELIVERY },
+    deliveryTransitionCompleted: false,
     dueDate: "",
   };
 }
@@ -181,6 +185,8 @@ interface PregnancyProfileContextType {
   setUserEDD: (edd: string | null) => void;
   /** Save delivery details. */
   saveDelivery: (data: DeliveryData) => void;
+  /** Mark delivery transition as completed (after celebration flow). */
+  markDeliveryTransitionCompleted: () => void;
   clearProfile: () => void;
   /** The effective EDD used for all calculations. */
   activeEDD: string;
@@ -195,7 +201,7 @@ interface PregnancyProfileContextType {
 // ─── Context ─────────────────────────────────────────────────────────────────
 
 const EMPTY: PregnancyProfile = {
-  name: "", lmp: "", calculatedEDD: "", userEDD: "", region: "north", isSetup: false, delivery: { ...EMPTY_DELIVERY }, dueDate: "",
+  name: "", lmp: "", calculatedEDD: "", userEDD: "", region: "north", isSetup: false, delivery: { ...EMPTY_DELIVERY }, deliveryTransitionCompleted: false, dueDate: "",
 };
 
 const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
@@ -203,6 +209,7 @@ const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
   saveProfile: () => {},
   setUserEDD: () => {},
   saveDelivery: () => {},
+  markDeliveryTransitionCompleted: () => {},
   clearProfile: () => {},
   activeEDD: "",
   currentWeek: 1,
@@ -251,6 +258,7 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
       region: data.region,
       isSetup: true,
       delivery: prev.delivery, // preserve delivery if exists
+      deliveryTransitionCompleted: prev.deliveryTransitionCompleted || false,
       dueDate: calculatedEDD, // legacy compat
     }));
   }, []);
@@ -269,6 +277,14 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     setProfile((prev) => ({
       ...prev,
       delivery: data,
+    }));
+  }, []);
+
+  // Mark delivery transition as completed (after celebration flow)
+  const markDeliveryTransitionCompleted = useCallback(() => {
+    setProfile((prev) => ({
+      ...prev,
+      deliveryTransitionCompleted: true,
     }));
   }, []);
 
@@ -296,6 +312,7 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     saveProfile,
     setUserEDD,
     saveDelivery,
+    markDeliveryTransitionCompleted,
     clearProfile,
     activeEDD,
     currentWeek,

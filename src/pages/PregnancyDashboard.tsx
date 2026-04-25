@@ -395,6 +395,23 @@ export default function PregnancyDashboard() {
     return <SetupScreen simpleMode={simpleMode} />;
   }
 
+  // Auto-redirect to Postpartum Dashboard if due date has arrived AND transition is completed
+  if (activeEDD) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(activeEDD + "T00:00:00");
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (dueDate.getTime() <= today.getTime()) {
+      // If transition not completed, let DueDateChecker show celebration flow
+      // If completed, redirect to postpartum dashboard
+      if (profile.deliveryTransitionCompleted) {
+        return <Navigate to="/postpartum-dashboard" replace />;
+      }
+      // Otherwise, continue to render dashboard with DueDateChecker which will show celebration
+    }
+  }
+
   // Mode-based rendering
   if (mode === "premature") {
     return <PrematureCareView />;

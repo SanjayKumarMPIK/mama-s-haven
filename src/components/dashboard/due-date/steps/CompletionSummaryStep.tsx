@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { usePregnancyProfile, calcWeeksAtBirth } from "@/hooks/usePregnancyProfile";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { BabyDetails } from "../CelebrationFlow";
@@ -15,7 +15,7 @@ interface Props {
 
 export function CompletionSummaryStep({ details, onClose }: Props) {
   const { user } = useAuth();
-  const { saveDelivery } = usePregnancyProfile();
+  const { saveDelivery, profile, markDeliveryTransitionCompleted } = usePregnancyProfile();
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -43,10 +43,13 @@ export function CompletionSummaryStep({ details, onClose }: Props) {
         }
 
         // Save to local profile to shift to postpartum phase
+        const birthDate = new Date().toISOString().split("T")[0];
+        const weeksAtBirth = profile.lmp ? calcWeeksAtBirth(profile.lmp, birthDate) : 40;
+
         saveDelivery({
           isDelivered: true,
-          birthDate: new Date().toISOString().split("T")[0],
-          weeksAtBirth: 40, // Assume full term if reached EDD
+          birthDate,
+          weeksAtBirth,
           birthWeight: parseFloat(details.weight) || null
         });
 
@@ -65,8 +68,34 @@ export function CompletionSummaryStep({ details, onClose }: Props) {
 
   const handleFinish = () => {
     onClose();
-    // Navigate to pregnancy dashboard to trigger proper mode switch
-    navigate("/pregnancy-dashboard", { replace: true });
+    // Mark celebration as shown in sessionStorage
+    const activeEDD = profile.userEDD || profile.calculatedEDD;
+    if (activeEDD) {
+      sessionStorage.setItem(`due_date_celebration_shown_${activeEDD}`, "true");
+    }
+
+    // Mark delivery transition as completed
+    markDeliveryTransitionCompleted();
+
+    // Calculate gestational age at delivery
+    const birthDate = new Date().toISOString().split("T")[0];
+    const weeksAtBirth = profile.lmp ? calcWeeksAtBirth(profile.lmp, birthDate) : 40;
+
+    console.log("=== CompletionSummaryStep Routing Debug ===");
+    console.log("LMP:", profile.lmp);
+    console.log("Birth Date:", birthDate);
+    console.log("Weeks at Birth:", weeksAtBirth);
+    console.log("Routing to:", weeksAtBirth >= 37 ? "/postpartum-dashboard" : "/pregnancy-dashboard");
+    console.log("==========================================");
+
+    // Route based on gestational age
+    if (weeksAtBirth >= 37) {
+      // Full term or post-term - navigate to postpartum dashboard
+      navigate("/postpartum-dashboard", { replace: true });
+    } else {
+      // Premature - navigate to premature dashboard
+      navigate("/pregnancy-dashboard", { replace: true });
+    }
   };
 
   return (

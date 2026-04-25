@@ -20,7 +20,14 @@ import {
 import { predictMaternityDeficiencies, type MaternityPredictionResult, type MaternityFallbackRecommendation } from "@/lib/maternityNutritionEngine";
 import { predictPubertyDeficiencies, type PubertyNutritionResult, type PubertyDeficiencyPrediction, type Confidence } from "@/lib/pubertyNutritionEngine";
 import { predictFamilyPlanningDeficiencies, type FamilyPlanningPredictionResult } from "@/lib/familyPlanningNutritionEngine";
-import { generatePubertyDailyFoodChart, type PubertyDailyFoodChart, type MealSlot } from "@/lib/pubertyFoodChartEngine";
+import {
+  generatePubertyDailyFoodChart,
+  generatePubertyDeficiencyPlan,
+  type PubertyDailyFoodChart,
+  type PubertyDeficiencyPlan,
+  type MealSlot,
+} from "@/lib/pubertyFoodChartEngine";
+import { computeIntelligentNutrition, type IntelligentNutritionResult } from "@/lib/pubertyIntelligentNutritionEngine";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 
 // ─── Phase accent map ─────────────────────────────────────────────────────────
@@ -97,6 +104,21 @@ export default function NutritionGuide() {
     });
   }, [logs, phase, profile, onboardingConfig]);
 
+  // ── Compute intelligent puberty nutrition analysis (memoized) ──
+  const intelligentNutrition = useMemo<IntelligentNutritionResult | null>(() => {
+    if (phase !== "puberty") return null;
+    return computeIntelligentNutrition(logs, profile, onboardingConfig);
+  }, [logs, phase, profile, onboardingConfig]);
+
+  const pubertyDeficiencyPlan = useMemo<PubertyDeficiencyPlan | null>(() => {
+    if (phase !== "puberty") return null;
+    return generatePubertyDeficiencyPlan({
+      logs,
+      profile,
+      onboarding: onboardingConfig,
+    });
+  }, [logs, phase, profile, onboardingConfig]);
+
   // ── Compute family planning specific insights (memoized) ──
   const familyPlanningData = useMemo(() => {
     if (phase === "family-planning") return predictFamilyPlanningDeficiencies(logs);
@@ -129,7 +151,13 @@ export default function NutritionGuide() {
       <div className="container py-6 space-y-6">
         {/* ─── PUBERTY PHASE ─────────────────────────────────────────────── */}
         {phase === "puberty" && pubertyData ? (
-          <PubertyNutritionView data={pubertyData} chart={pubertyFoodChart} accent={accent} />
+          <PubertyNutritionView
+            data={pubertyData}
+            chart={pubertyFoodChart}
+            plan={pubertyDeficiencyPlan}
+            accent={accent}
+            intelligent={intelligentNutrition}
+          />
         ) : phase === "family-planning" && familyPlanningData ? (
           <FamilyPlanningNutritionView data={familyPlanningData} accent={accent} />
         ) : phase === "maternity" && maternityData ? (
@@ -544,11 +572,15 @@ function DeficiencyCard({
 function PubertyNutritionView({
   data,
   chart,
+  plan,
   accent,
+  intelligent,
 }: {
   data: PubertyNutritionResult;
   chart: PubertyDailyFoodChart | null;
+  plan: PubertyDeficiencyPlan | null;
   accent: any;
+  intelligent: IntelligentNutritionResult | null;
 }) {
   const [selectedBySlot, setSelectedBySlot] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
@@ -586,6 +618,228 @@ function PubertyNutritionView({
           </p>
         </div>
       </ScrollReveal>
+
+      {/* ── Smart Nutrition Assistant (requested output format) ───────────── */}
+      {plan && plan.deficiencies.length > 0 && (
+        <ScrollReveal delay={20}>
+          <div className="rounded-2xl border border-border/40 bg-card p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckSquare className="w-4 h-4 text-primary" />
+              <h2 className="text-base font-bold tracking-tight">Smart Nutrition Assistant</h2>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Uses medical conditions, calendar symptoms with severity, and {plan.pubertyStatus.toLowerCase()} status.
+            </p>
+
+            {plan.symptoms.length > 0 && (
+              <div className="mb-4">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Symptoms</p>
+                <div className="flex flex-wrap gap-2">
+                  {plan.symptoms.map((s) => (
+                    <span key={`${s.symptom}-${s.severity}`} className="text-[11px] px-2.5 py-1 rounded-full border border-border/30 bg-muted/30">
+                      {s.symptom} ({s.severity})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Deficiencies</p>
+                <ul className="space-y-1">
+                  {plan.deficiencies.map((d) => (
+                    <li key={d.deficiency} className="text-sm">
+                      - {d.deficiency} ({d.priority})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Recommended nutrients</p>
+                <ul className="space-y-1.5">
+                  {plan.deficiencies.map((d) => (
+                    <li key={`rec-${d.deficiency}`} className="text-sm leading-relaxed">
+                      - {d.nutrients.join(" + ")} {"->"} {d.foods.slice(0, 5).join(", ")} ({d.frequency})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+      )}
+
+      {/* ═══ INTELLIGENT NUTRITION ASSISTANT ═══════════════════════════════ */}
+      {intelligent && intelligent.hasData && (
+        <>
+          {/* ── Analysis Summary Banner ────────────────────────────────── */}
+          <ScrollReveal delay={30}>
+            <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6 relative overflow-hidden`}>
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-bl-[100px] opacity-[0.07] bg-gradient-to-br from-pink-400 to-rose-600" />
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-lg`}>
+                  <Sparkles className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Intelligent Nutrition Analysis</h2>
+                  <p className="text-xs text-muted-foreground">Personalized based on your symptoms, conditions & profile</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-background/80 border border-border/30">
+                  📊 {intelligent.analyzedDays} days analyzed
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-background/80 border border-border/30">
+                  🕐 {intelligent.pubertyTiming} Puberty
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-background/80 border border-border/30">
+                  🥗 {intelligent.dietPreference}
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-background/80 border border-border/30">
+                  📍 {intelligent.regionLabel}
+                </span>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* ── Deficiency Summary ─────────────────────────────────────── */}
+          {intelligent.deficiencyList.length > 0 && (
+            <ScrollReveal delay={50}>
+              <div className="rounded-2xl border border-border/40 bg-card p-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-lg">🔬</span>
+                  <h2 className="text-base font-bold tracking-tight">Identified Deficiencies</h2>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {intelligent.deficiencyList.map((d) => (
+                    <div key={d.nutrient} className={`flex items-center gap-3 p-3 rounded-xl border transition-shadow hover:shadow-sm ${
+                      d.priority === "High" ? "border-amber-200 bg-amber-50/50" :
+                      d.priority === "Medium" ? "border-blue-200 bg-blue-50/30" :
+                      "border-border/40 bg-muted/20"
+                    }`}>
+                      <span className="text-xl shrink-0">{d.emoji}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold">{d.nutrient}</p>
+                          <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+                            d.priority === "High" ? "bg-amber-200/70 text-amber-800" :
+                            d.priority === "Medium" ? "bg-blue-200/70 text-blue-800" :
+                            "bg-slate-200/70 text-slate-700"
+                          }`}>{d.priority}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{d.reason}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </ScrollReveal>
+          )}
+
+          {/* ── Nutrient Recommendations with Frequency ───────────────── */}
+          {intelligent.nutrientRecommendations.length > 0 && (
+            <ScrollReveal delay={70}>
+              <div className="flex items-center gap-2 mb-3 mt-1">
+                <span className="text-base">🍽️</span>
+                <h2 className="text-base font-bold tracking-tight">Recommended Nutrients & Foods</h2>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {intelligent.nutrientRecommendations.map((rec) => (
+                  <div key={rec.id} className={`rounded-2xl border-2 p-5 transition-all hover:shadow-lg ${
+                    rec.priority === "High" ? "border-amber-200 bg-gradient-to-br from-amber-50/80 to-orange-50/40" :
+                    rec.priority === "Medium" ? "border-blue-200 bg-gradient-to-br from-blue-50/60 to-sky-50/30" :
+                    "border-border/40 bg-card"
+                  }`}>
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">{rec.emoji}</span>
+                        <div>
+                          <h3 className="text-sm font-bold">{rec.nutrient}</h3>
+                          <p className={`text-[10px] font-semibold mt-0.5 ${
+                            rec.priority === "High" ? "text-amber-700" :
+                            rec.priority === "Medium" ? "text-blue-700" :
+                            "text-slate-600"
+                          }`}>{rec.severityLabel}</p>
+                        </div>
+                      </div>
+                      <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                        rec.priority === "High" ? "border-amber-300 bg-amber-100 text-amber-800" :
+                        rec.priority === "Medium" ? "border-blue-300 bg-blue-100 text-blue-800" :
+                        "border-slate-300 bg-slate-100 text-slate-700"
+                      }`}>{rec.priority}</span>
+                    </div>
+
+                    {/* Reason */}
+                    <p className="text-xs text-muted-foreground leading-relaxed mb-3">{rec.reason}</p>
+
+                    {/* Food sources */}
+                    <div className="mb-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Food Sources</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {rec.sources.map((food) => (
+                          <span key={food} className={`px-2 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r ${accent.gradient} text-white shadow-sm`}>
+                            {food}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Frequency badge */}
+                    <div className={`flex items-center gap-2 p-2.5 rounded-lg border ${
+                      rec.priority === "High" ? "border-amber-200/60 bg-amber-50/50" :
+                      rec.priority === "Medium" ? "border-blue-200/60 bg-blue-50/50" :
+                      "border-border/30 bg-muted/20"
+                    }`}>
+                      <Zap className={`w-3.5 h-3.5 shrink-0 ${
+                        rec.priority === "High" ? "text-amber-600" :
+                        rec.priority === "Medium" ? "text-blue-600" :
+                        "text-slate-500"
+                      }`} />
+                      <p className="text-[11px] font-semibold">
+                        Frequency: <span className="font-bold">{rec.frequency}</span>
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollReveal>
+          )}
+
+          {/* ── Special Notes ─────────────────────────────────────────── */}
+          {intelligent.specialNotes.length > 0 && (
+            <ScrollReveal delay={90}>
+              <div className="flex items-center gap-2 mb-3 mt-1">
+                <span className="text-base">📋</span>
+                <h2 className="text-base font-bold tracking-tight">Special Notes</h2>
+              </div>
+              <div className="space-y-3">
+                {intelligent.specialNotes.map((note, i) => (
+                  <div key={i} className={`rounded-xl p-4 border ${
+                    note.type === "medical"
+                      ? "border-rose-200/60 bg-gradient-to-r from-rose-50/40 to-pink-50/30"
+                      : "border-violet-200/60 bg-gradient-to-r from-violet-50/40 to-purple-50/30"
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      <span className="text-xl shrink-0 mt-0.5">{note.icon}</span>
+                      <div>
+                        <p className={`text-sm font-bold mb-1 ${
+                          note.type === "medical" ? "text-rose-900" : "text-violet-900"
+                        }`}>{note.title}</p>
+                        <p className={`text-xs leading-relaxed ${
+                          note.type === "medical" ? "text-rose-800/80" : "text-violet-800/80"
+                        }`}>{note.advice}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollReveal>
+          )}
+        </>
+      )}
 
       {/* ── Dynamic Daily Food Chart ─────────────────────────────────────── */}
       {chart && (

@@ -21,6 +21,8 @@ import {
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { MaternityDayCell, getMaternitySymptomCount, hasMaternityData } from "./MaternityDayCell";
 import { MaternityDayDetails } from "./MaternityDayDetails";
+import { useMaternalTestReminders } from "@/hooks/useMaternalTestReminders";
+import { MATERNAL_TESTS } from "@/lib/maternalTestsData";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -56,6 +58,19 @@ function getWeeklyInsight(week: number): string {
 export default function MaternityCalendar() {
   const { maternityLogs, clearAllLogs } = useHealthLog();
   const { currentWeek, trimester, daysLeft, profile } = usePregnancyProfile();
+  const { calendarReminders, testsWithStatus } = useMaternalTestReminders();
+
+  // Build a map of dateISO -> test title for calendar badges
+  const reminderBadgeMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const reminder of calendarReminders) {
+      const test = MATERNAL_TESTS.find((t) => t.id === reminder.testId);
+      if (test && reminder.reminderDate) {
+        map[reminder.reminderDate] = test.title;
+      }
+    }
+    return map;
+  }, [calendarReminders]);
 
   const now = new Date();
   const [mode, setMode] = useState<CalendarMode>("month");
@@ -133,6 +148,7 @@ export default function MaternityCalendar() {
                 entry={maternityLogs[iso]}
                 isSelected={iso === selectedDateISO}
                 isMiniView
+                reminderBadge={reminderBadgeMap[iso]}
                 onClick={openModal}
               />
             );
@@ -226,6 +242,7 @@ export default function MaternityCalendar() {
                   todayISO={todayISO}
                   entry={maternityLogs[iso]}
                   isSelected={iso === selectedDateISO}
+                  reminderBadge={reminderBadgeMap[iso]}
                   onClick={openModal}
                 />
               );
@@ -249,6 +266,10 @@ export default function MaternityCalendar() {
             <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
               <span className="w-2 h-2 rounded-full bg-rose-500" />
               Severe
+            </span>
+            <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-teal-500" />
+              Test Reminder
             </span>
             <span className="text-[10px] text-muted-foreground ml-auto">
               Click any day to log

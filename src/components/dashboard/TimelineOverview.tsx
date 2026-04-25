@@ -1,5 +1,6 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { useMaternalTestReminders, type TestReminderStatus } from "@/hooks/useMaternalTestReminders";
 
 interface TimelineOverviewProps {
   currentWeek: number;
@@ -31,6 +32,7 @@ function WeekNode({
   trimesterBorderColor: string;
   trimesterBgColor: string;
   onClick: (w: number) => void;
+  testStatus?: TestReminderStatus;
 }) {
   return (
     <div className="relative flex flex-col items-center group cursor-pointer" onClick={() => onClick(week)}>
@@ -63,6 +65,21 @@ function WeekNode({
           {week}
         </span>
       </div>
+      {/* Test status indicator */}
+      {testStatus && testStatus !== "upcoming" && testStatus !== "past" && (
+        <span
+          className={cn(
+            "w-1.5 h-1.5 rounded-full mt-0.5",
+            testStatus === "completed" && "bg-emerald-500",
+            testStatus === "recommended" && "bg-purple-500 animate-pulse",
+            testStatus === "reminder-set" && "bg-teal-500",
+            testStatus === "due-today" && "bg-amber-500 animate-pulse",
+            testStatus === "due-soon" && "bg-amber-400",
+            testStatus === "ignored" && "bg-gray-300"
+          )}
+          title={`Test: ${testStatus}`}
+        />
+      )}
       <span
         className={cn(
           "mt-2 text-[10px] font-medium transition-colors",
@@ -78,6 +95,31 @@ function WeekNode({
 // ── Main Timeline Overview component ──
 export function TimelineOverview({ currentWeek, selectedWeek, onSelectWeek }: TimelineOverviewProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { testsWithStatus } = useMaternalTestReminders();
+
+  // Map week -> best test status for that week
+  const weekTestStatusMap = useMemo(() => {
+    const map: Record<number, TestReminderStatus> = {};
+    const priority: Record<TestReminderStatus, number> = {
+      "due-today": 0,
+      "due-soon": 1,
+      "recommended": 2,
+      "reminder-set": 3,
+      "completed": 4,
+      "ignored": 5,
+      "upcoming": 6,
+      "past": 7,
+    };
+    for (const test of testsWithStatus) {
+      for (let w = test.weekStart; w <= test.weekEnd; w++) {
+        const current = map[w];
+        if (!current || priority[test.status] < priority[current]) {
+          map[w] = test.status;
+        }
+      }
+    }
+    return map;
+  }, [testsWithStatus]);
 
   // Auto-scroll to current real week on load
   useEffect(() => {
@@ -135,6 +177,7 @@ export function TimelineOverview({ currentWeek, selectedWeek, onSelectWeek }: Ti
                 trimesterBorderColor={colors.border}
                 trimesterBgColor={colors.bg}
                 onClick={onSelectWeek}
+                testStatus={weekTestStatusMap[w]}
               />
             </div>
           );

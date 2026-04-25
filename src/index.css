@@ -150,6 +150,17 @@
 .animate-fadeIn  { animation: fadeIn 0.4s ease-out both; }
 .animate-scaleIn { animation: scaleIn 0.3s ease-out both; }
 
+@keyframes swing {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(15deg); }
+  40% { transform: rotate(-10deg); }
+  60% { transform: rotate(6deg); }
+  80% { transform: rotate(-3deg); }
+}
+.animate-swing { animation: swing 1.2s ease-in-out infinite; }
+
+.animate-float { animation: float 3s ease-in-out infinite; }
+
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -51,6 +51,7 @@ import MenopauseCareEssentials from "./pages/menopause/MenopauseCareEssentials";
 import FunActivity from "./pages/menopause/FunActivity";
 import BabySupportiveHelper from "./pages/BabySupportiveHelper";
 import DeficiencyInsights from "./pages/DeficiencyInsights";
+import FPToolPage from "./pages/FPToolPage";
 import FitnessHealthCalculatorPage from "./pages/maternity/FitnessHealthCalculatorPage";
 import PersonalizedDietPage from "./pages/nutrition/PersonalizedDietPage";
 import NutritionChecklistPage from "./pages/nutrition/NutritionChecklistPage";
@@ -82,6 +83,7 @@ const router = createBrowserRouter(
         { path: "login", element: <Login /> },
         { path: "register", element: <Register /> },
         { path: "tools", element: <Tools /> },
+        { path: "tools/fp/:toolId", element: <FPToolPage /> },
         { path: "shopping", element: <Shopping /> },
         { path: "stress-relief", element: <StressRelief /> },
         { path: "articles", element: <Articles /> },
@@ -151,6 +153,7 @@ const App = () => (
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
                         <Route path="/tools" element={<Tools />} />
+                        <Route path="/tools/fp/:toolId" element={<FPToolPage />} />
                         <Route path="/shopping" element={<Shopping />} />
                         <Route path="/stress-relief" element={<StressRelief />} />
                         <Route path="/articles" element={<Articles />} />

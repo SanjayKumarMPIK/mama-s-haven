@@ -34,7 +34,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/weekly-guide", label: "Menstrual Guide", icon: Calendar },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
   { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
-  { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
+  { to: "/medicine-reminder", label: "Care Log", icon: Pill },
 ];
 
 // Routes to hide when phase is menopause (menopause has its own dedicated pages)

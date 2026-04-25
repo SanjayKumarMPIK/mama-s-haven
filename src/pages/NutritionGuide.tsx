@@ -11,7 +11,7 @@ import {
   Apple, Calendar, ChevronRight, ArrowRight, Activity,
   Zap, Sparkles, ShieldCheck, Leaf, ChevronDown, ChevronUp,
   AlertTriangle, Info, Heart, Sun, Droplets, Brain,
-  Bone, Battery, Pill,
+  Bone, Battery, Pill, Utensils, CheckSquare
 } from "lucide-react";
 import {
   computeNutritionInsights,
@@ -292,7 +292,7 @@ export default function NutritionGuide() {
 
             {/* ─── Integration Links ─────────────────────────────────────── */}
             <ScrollReveal>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <Link
                   to="/symptom-checker"
                   className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
@@ -301,6 +301,17 @@ export default function NutritionGuide() {
                   <div className="flex-1">
                     <p className="text-sm font-semibold">Symptom Insights</p>
                     <p className="text-[11px] text-muted-foreground">See your patterns</p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link
+                  to="/deficiency-insights"
+                  className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
+                >
+                  <Zap className={`w-5 h-5 ${accent.text}`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold">Deficiency Insights</p>
+                    <p className="text-[11px] text-muted-foreground">Analyze nutrients</p>
                   </div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                 </Link>
@@ -892,6 +903,82 @@ function MaternityNutritionView({
             </span>
           </p>
         </div>
+      </ScrollReveal>
+
+      {/* Deficiency Insights Quick Access Card */}
+      <ScrollReveal delay={20}>
+        <Link
+          to="/deficiency-insights"
+          className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+        >
+          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-md shrink-0`}>
+            <Zap className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-bold text-foreground">Deficiency Insights</h3>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              Analyze symptoms and identify likely nutritional deficiencies based on calendar severity logs.
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+        </Link>
+      </ScrollReveal>
+
+      {/* Fitness & Health Calculator Card */}
+      <ScrollReveal delay={30}>
+        <Link
+          to="/maternity/nutrition/fitness-health-calculator"
+          className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+        >
+          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-md shrink-0`}>
+            <Activity className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-bold text-foreground">Fitness & Health Calculator</h3>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              Personalized calorie, protein, and hydration recommendations based on your profile.
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+        </Link>
+      </ScrollReveal>
+
+      {/* Personalized Diet Card */}
+      <ScrollReveal delay={40}>
+        <Link
+          to="/maternity/nutrition/personalized-diet"
+          className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+        >
+          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-md shrink-0`}>
+            <Utensils className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-bold text-foreground">Personalized Diet</h3>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              Get a region-based diet plan personalized to your pregnancy stage and preferences.
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+        </Link>
+      </ScrollReveal>
+
+      {/* Nutrition Checklist Card */}
+      <ScrollReveal delay={45}>
+        <Link
+          to="/maternity/nutrition/checklist"
+          className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+        >
+          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-md shrink-0`}>
+            <CheckSquare className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <h3 className="text-base font-bold text-foreground">Nutrition Checklist</h3>
+            <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+              Track nutrition habits personalized to your trimester and symptoms.
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+        </Link>
       </ScrollReveal>
 
       {data.hasData && data.predictions.length > 0 ? (

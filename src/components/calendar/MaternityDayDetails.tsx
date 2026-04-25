@@ -11,10 +11,13 @@ import {
   FileText,
   CheckCircle2,
   AlertTriangle,
+  Settings,
 } from "lucide-react";
 import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
 import { useHealthLog, type HealthLogEntry, type MaternityEntry } from "@/hooks/useHealthLog";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useCustomSymptoms } from "@/hooks/useCustomSymptoms";
+import { SymptomCustomizer } from "./SymptomCustomizer";
 import {
   getSymptomsForTrimester,
   getNutritionForTrimester,
@@ -71,6 +74,8 @@ interface MaternityDayDetailsProps {
 export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsProps) {
   const { getLog, saveLog, maternityLogs } = useHealthLog();
   const { activeEDD } = usePregnancyProfile();
+  const { activeSymptoms } = useCustomSymptoms();
+  const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
   const existingEntry = getLog(dateISO) as MaternityEntry | undefined;
   const isMaternity = existingEntry?.phase === "maternity";
@@ -83,8 +88,17 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
   }, [dateISO, activeEDD, existingEntry, isMaternity]);
 
   // 2. Fetch Trimester Data
-  const symptomDef = useMemo(() => getSymptomsForTrimester(trimester), [trimester]);
   const nutritionDef = useMemo(() => getNutritionForTrimester(trimester), [trimester]);
+
+  // 3. Use active symptoms from custom symptoms hook
+  const activeSymptomOptions = useMemo(() => {
+    return activeSymptoms.map((symptom) => ({
+      id: symptom.id,
+      label: symptom.name,
+      emoji: "🩺",
+      description: "Track this symptom",
+    }));
+  }, [activeSymptoms]);
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -248,6 +262,11 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
         aria-label={`Maternity log for ${dateISO}`}
         className="fixed inset-y-0 right-0 z-50 w-full max-w-xl bg-background border-l border-border shadow-2xl flex flex-col animate-in slide-in-from-right-full duration-300"
       >
+        {/* Symptom Customizer Modal */}
+        <SymptomCustomizer
+          isOpen={showSymptomCustomizer}
+          onClose={() => setShowSymptomCustomizer(false)}
+        />
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-border/60">
           <div>
@@ -311,9 +330,9 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
                 No Symptoms Today
               </button>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {symptomDef.map((opt) => {
+              {activeSymptomOptions.map((opt) => {
                 const isActive = !!selectedSymptoms[opt.id];
                 const severity = symptomSeverities[opt.id];
 
@@ -539,6 +558,20 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
               className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-none"
               placeholder="How are you feeling today? Any concerns, cravings, or observations..."
             />
+          </section>
+
+          {/* Customize Symptoms Button */}
+          <section className="space-y-3 rounded-xl border border-dashed border-border/60 bg-muted/20 p-4">
+            <button
+              onClick={() => setShowSymptomCustomizer(true)}
+              className="w-full py-2.5 text-sm font-medium border-2 border-dashed border-border rounded-md hover:border-primary/50 hover:bg-primary/5 flex items-center justify-center gap-2 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              Customize Active Symptoms
+            </button>
+            <p className="text-xs text-muted-foreground text-center">
+              {activeSymptoms.length} active symptoms • Swap with predefined library
+            </p>
           </section>
         </div>
 

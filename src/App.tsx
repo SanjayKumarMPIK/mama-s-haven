@@ -50,6 +50,12 @@ import DailyGoals from "./pages/menopause/DailyGoals";
 import MenopauseCareEssentials from "./pages/menopause/MenopauseCareEssentials";
 import FunActivity from "./pages/menopause/FunActivity";
 import BabySupportiveHelper from "./pages/BabySupportiveHelper";
+import DeficiencyInsights from "./pages/DeficiencyInsights";
+import FitnessHealthCalculatorPage from "./pages/maternity/FitnessHealthCalculatorPage";
+import PersonalizedDietPage from "./pages/nutrition/PersonalizedDietPage";
+import NutritionChecklistPage from "./pages/nutrition/NutritionChecklistPage";
+import PostpartumDashboard from "./modules/postpartum/pages/PostpartumDashboard";
+import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
 
 
 const queryClient = new QueryClient();
@@ -57,11 +63,11 @@ const queryClient = new QueryClient();
 function AppShell() {
   return (
     <AuthGate>
-      <Navbar />
-      <Outlet />
-      <MissedLogReminder />
-      <MedicineAlertPopup />
-      <Footer />
+      <CustomSymptomsProvider>
+        <Navbar />
+        <Outlet />
+        <MissedLogReminder />
+      </CustomSymptomsProvider>
     </AuthGate>
   );
 }
@@ -79,7 +85,7 @@ const router = createBrowserRouter(
         { path: "shopping", element: <Shopping /> },
         { path: "stress-relief", element: <StressRelief /> },
         { path: "articles", element: <Articles /> },
-        { path: "postpartum", element: <Postpartum /> },
+        { path: "postpartum-guide", element: <Postpartum /> },
         { path: "assistant", element: <Assistant /> },
         { path: "weekly-guide", element: <WeeklyGuide /> },
         { path: "nutrition", element: <NutritionGuide /> },
@@ -97,6 +103,11 @@ const router = createBrowserRouter(
         { path: "weekly-report", element: <WeeklyBodyReport /> },
         { path: "profile", element: <Profile /> },
         { path: "medicine-reminder", element: <MedicineReminder /> },
+        { path: "deficiency-insights", element: <DeficiencyInsights /> },
+        { path: "maternity/nutrition/fitness-health-calculator", element: <FitnessHealthCalculatorPage /> },
+        { path: "maternity/nutrition/personalized-diet", element: <PersonalizedDietPage /> },
+        { path: "maternity/nutrition/checklist", element: <NutritionChecklistPage /> },
+        { path: "postpartum-dashboard", element: <PostpartumDashboard /> },
 
         // Menopause phase routes
         { path: "menopause/onboarding", element: <MenopauseOnboarding /> },
@@ -133,8 +144,9 @@ const App = () => (
                   <Sonner />
                   <BrowserRouter>
                     <AuthGate>
-                      <Navbar />
-                      <Routes>
+                      <CustomSymptomsProvider>
+                        <Navbar />
+                        <Routes>
                         <Route path="/" element={<Index />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
@@ -142,7 +154,7 @@ const App = () => (
                         <Route path="/shopping" element={<Shopping />} />
                         <Route path="/stress-relief" element={<StressRelief />} />
                         <Route path="/articles" element={<Articles />} />
-                        <Route path="/postpartum" element={<Postpartum />} />
+                        <Route path="/postpartum-guide" element={<Postpartum />} />
                         <Route path="/assistant" element={<Assistant />} />
                         <Route path="/weekly-guide" element={<WeeklyGuide />} />
                         <Route path="/nutrition" element={<NutritionGuide />} />
@@ -161,6 +173,11 @@ const App = () => (
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/medicine-reminder" element={<MedicineReminder />} />
                         <Route path="/baby-supportive-helper" element={<BabySupportiveHelper />} />
+                        <Route path="/deficiency-insights" element={<DeficiencyInsights />} />
+                        <Route path="/maternity/nutrition/fitness-health-calculator" element={<FitnessHealthCalculatorPage />} />
+                        <Route path="/maternity/nutrition/personalized-diet" element={<PersonalizedDietPage />} />
+                        <Route path="/maternity/nutrition/checklist" element={<NutritionChecklistPage />} />
+                        <Route path="/postpartum-dashboard" element={<PostpartumDashboard />} />
 
                         {/* Menopause phase routes */}
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
@@ -178,6 +195,7 @@ const App = () => (
                       <MissedLogReminder />
                       <MedicineAlertPopup />
                       <Footer />
+                      </CustomSymptomsProvider>
                     </AuthGate>
                   </BrowserRouter>
                 </TooltipProvider>

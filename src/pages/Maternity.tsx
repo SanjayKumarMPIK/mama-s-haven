@@ -405,7 +405,7 @@ function DailyCare() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-function MedicineReminderCard() {
+function CareLogCard() {
   const { getTodayStats, getNextDose, medicines } = useMedicineReminder();
   const stats = getTodayStats();
   const nextDose = getNextDose();
@@ -422,7 +422,7 @@ function MedicineReminderCard() {
             <Pill className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">Medicine Reminder</h2>
+            <h2 className="text-lg font-bold">Care Log</h2>
             <p className="text-xs text-muted-foreground">Track your prescribed medicines</p>
           </div>
         </div>
@@ -685,9 +685,9 @@ export default function Maternity() {
             </>
           </ScrollReveal>
 
-          {/* Medicine Reminder card */}
+          {/* Care Log card */}
           <ScrollReveal delay={140}>
-            <MedicineReminderCard />
+            <CareLogCard />
           </ScrollReveal>
 
           {/* Warning signs — always visible */}

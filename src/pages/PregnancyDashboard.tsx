@@ -14,6 +14,7 @@ import { TimelineOverview } from "@/components/dashboard/TimelineOverview";
 import PrematureCareView from "@/components/dashboard/PrematureCareView";
 import { DiabetesDashboardWidget } from "@/components/dashboard/DiabetesDashboardWidget";
 import { DueDateChecker } from "@/components/dashboard/due-date/DueDateChecker";
+import { CelebrationFlow } from "@/components/dashboard/due-date/CelebrationFlow";
 import {
   Calendar, ChevronRight, CheckCircle2, Circle, Clock,
   Baby, Heart, Apple, Droplets, Activity, AlertTriangle,
@@ -392,6 +393,23 @@ export default function PregnancyDashboard() {
 
   if (!profile.isSetup) {
     return <SetupScreen simpleMode={simpleMode} />;
+  }
+
+  // Auto-redirect to Postpartum Dashboard if due date has arrived AND transition is completed
+  if (activeEDD) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dueDate = new Date(activeEDD + "T00:00:00");
+    dueDate.setHours(0, 0, 0, 0);
+
+    if (dueDate.getTime() <= today.getTime()) {
+      // If transition not completed, let DueDateChecker show celebration flow
+      // If completed, redirect to postpartum dashboard
+      if (profile.deliveryTransitionCompleted) {
+        return <Navigate to="/postpartum-dashboard" replace />;
+      }
+      // Otherwise, continue to render dashboard with DueDateChecker which will show celebration
+    }
   }
 
   // Mode-based rendering
@@ -850,12 +868,15 @@ function DashboardView({
 
 // ─── Delivery Arrival Card ───────────────────────────────────────────────────
 function DeliveryArrivalCard() {
-  const { profile, saveDelivery } = usePregnancyProfile();
+  const { profile, saveDelivery, activeEDD } = usePregnancyProfile();
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const [birthDate, setBirthDate] = useState("");
   const [manualWeeks, setManualWeeks] = useState("");
   const [birthWeight, setBirthWeight] = useState("");
   const [dismissed, setDismissed] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationTriggered, setCelebrationTriggered] = useState(false);
 
   if (dismissed) return null;
 
@@ -867,6 +888,18 @@ function DeliveryArrivalCard() {
 
   const handleSubmit = () => {
     if (!canSubmit) return;
+
+    // Trigger celebration first, delay save until modal closes to prevent component unmount
+    if (!celebrationTriggered) {
+      setCelebrationTriggered(true);
+      setShowCelebration(true);
+    }
+  };
+
+  const handleCelebrationClose = () => {
+    setShowCelebration(false);
+    
+    // Save data AFTER modal closes so navigation/unmount happens safely
     const data: DeliveryData = {
       isDelivered: true,
       birthDate,
@@ -907,77 +940,82 @@ function DeliveryArrivalCard() {
   }
 
   return (
-    <div className="rounded-xl border-2 border-violet-200 bg-card p-5 shadow-sm space-y-4 animate-fadeIn">
-      <div className="flex items-center gap-2 mb-1">
-        <Baby className="w-5 h-5 text-violet-600" />
-        <h3 className="text-sm font-bold">Delivery Details</h3>
-      </div>
-
-      {/* Birth date */}
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Date of Birth</label>
-        <input
-          type="date"
-          value={birthDate}
-          max={todayISO}
-          onChange={(e) => setBirthDate(e.target.value)}
-          className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-      </div>
-
-      {/* Weeks at birth */}
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">
-          Weeks at Birth {autoWeeks > 0 && !manualWeeks && <span className="text-primary">(auto-calculated: {autoWeeks} weeks)</span>}
-        </label>
-        <input
-          type="number"
-          value={manualWeeks}
-          min={20}
-          max={45}
-          placeholder={autoWeeks > 0 ? `${autoWeeks} (auto)` : "e.g. 34"}
-          onChange={(e) => setManualWeeks(e.target.value)}
-          className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-        <p className="text-[10px] text-muted-foreground mt-1">Leave empty to use auto-calculated value from your LMP</p>
-      </div>
-
-      {/* Birth weight (optional) */}
-      <div>
-        <label className="block text-xs font-medium text-muted-foreground mb-1">Birth Weight — grams (optional)</label>
-        <input
-          type="number"
-          value={birthWeight}
-          placeholder="e.g. 2100"
-          onChange={(e) => setBirthWeight(e.target.value)}
-          className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-        />
-      </div>
-
-      {/* Preview */}
-      {weeksAtBirth > 0 && weeksAtBirth < 37 && (
-        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-          <p className="text-xs text-amber-800">
-            <strong>Note:</strong> Baby born at {weeksAtBirth} weeks is considered premature. Your dashboard will switch to Premature Baby Care mode.
-          </p>
+    <>
+      <div className="rounded-xl border-2 border-violet-200 bg-card p-5 shadow-sm space-y-4 animate-fadeIn">
+        <div className="flex items-center gap-2 mb-1">
+          <Baby className="w-5 h-5 text-violet-600" />
+          <h3 className="text-sm font-bold">Delivery Details</h3>
         </div>
-      )}
 
-      <div className="flex gap-2">
-        <button
-          onClick={handleSubmit}
-          disabled={!canSubmit}
-          className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-40"
-        >
-          Save Delivery Details
-        </button>
-        <button
-          onClick={() => setExpanded(false)}
-          className="px-4 py-2.5 rounded-xl border border-border text-muted-foreground text-sm font-medium hover:bg-muted transition-all"
-        >
-          Cancel
-        </button>
+        {/* Birth date */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Date of Birth</label>
+          <input
+            type="date"
+            value={birthDate}
+            max={todayISO}
+            onChange={(e) => setBirthDate(e.target.value)}
+            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+
+        {/* Weeks at birth */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">
+            Weeks at Birth {autoWeeks > 0 && !manualWeeks && <span className="text-primary">(auto-calculated: {autoWeeks} weeks)</span>}
+          </label>
+          <input
+            type="number"
+            value={manualWeeks}
+            min={20}
+            max={45}
+            placeholder={autoWeeks > 0 ? `${autoWeeks} (auto)` : "e.g. 34"}
+            onChange={(e) => setManualWeeks(e.target.value)}
+            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+          <p className="text-[10px] text-muted-foreground mt-1">Leave empty to use auto-calculated value from your LMP</p>
+        </div>
+
+        {/* Birth weight (optional) */}
+        <div>
+          <label className="block text-xs font-medium text-muted-foreground mb-1">Birth Weight — grams (optional)</label>
+          <input
+            type="number"
+            value={birthWeight}
+            placeholder="e.g. 2100"
+            onChange={(e) => setBirthWeight(e.target.value)}
+            className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+
+        {/* Preview */}
+        {weeksAtBirth > 0 && weeksAtBirth < 37 && (
+          <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+            <p className="text-xs text-amber-800">
+              <strong>Note:</strong> Baby born at {weeksAtBirth} weeks is considered premature. Your dashboard will switch to Premature Baby Care mode.
+            </p>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            onClick={handleSubmit}
+            disabled={!canSubmit}
+            className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold shadow-sm hover:shadow-md transition-all disabled:opacity-40"
+          >
+            Save Delivery Details
+          </button>
+          <button
+            onClick={() => setExpanded(false)}
+            className="px-4 py-2.5 rounded-xl border border-border text-muted-foreground text-sm font-medium hover:bg-muted transition-all"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
-    </div>
+
+      {/* Celebration Flow */}
+      {showCelebration && <CelebrationFlow onClose={handleCelebrationClose} />}
+    </>
   );
 }

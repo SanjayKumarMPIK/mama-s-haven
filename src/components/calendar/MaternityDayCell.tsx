@@ -55,6 +55,7 @@ interface MaternityDayCellProps {
   entry: HealthLogEntry | undefined;
   isSelected: boolean;
   isMiniView?: boolean;
+  reminderBadge?: string; // test title for reminder badge
   onClick: (dateISO: string) => void;
 }
 
@@ -64,6 +65,7 @@ export function MaternityDayCell({
   entry,
   isSelected,
   isMiniView = false,
+  reminderBadge,
   onClick,
 }: MaternityDayCellProps) {
   const isFuture = dateISO > todayISO;
@@ -91,6 +93,9 @@ export function MaternityDayCell({
         )}
       >
         <span className="text-[11px] leading-none">{Number(dateISO.slice(-2))}</span>
+        {reminderBadge && (
+          <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-teal-500 ring-1 ring-white" title={reminderBadge} />
+        )}
         {hasData && (
           <span className={cn("absolute bottom-0.5 w-1.5 h-1.5 rounded-full", sevColor)} />
         )}
@@ -125,6 +130,11 @@ export function MaternityDayCell({
         </span>
       ) : (
         <span className={isSelected ? "text-blue-600 font-bold" : ""}>{Number(dateISO.slice(-2))}</span>
+      )}
+
+      {/* Reminder badge */}
+      {reminderBadge && (
+        <span className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full bg-teal-500 ring-2 ring-white" title={reminderBadge} />
       )}
 
       {/* Indicator dots row */}

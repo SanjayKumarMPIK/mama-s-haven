@@ -42,6 +42,7 @@ import Profile from "./pages/Profile";
 import MedicineReminder from "./pages/MedicineReminder";
 import MissedLogReminder from "@/components/MissedLogReminder";
 import MedicineAlertPopup from "@/components/MedicineAlertPopup";
+import MaternalTestRecommendationPopup from "@/components/MaternalTestRecommendationPopup";
 import MenopauseOnboarding from "./pages/menopause/MenopauseOnboarding";
 import MenopauseCalendar from "./pages/menopause/MenopauseCalendar";
 import SymptomAnalytics from "./pages/menopause/SymptomAnalytics";
@@ -194,6 +195,7 @@ const App = () => (
                       </Routes>
                       <MissedLogReminder />
                       <MedicineAlertPopup />
+                       <MaternalTestRecommendationPopup />
                       <Footer />
                       </CustomSymptomsProvider>
                     </AuthGate>

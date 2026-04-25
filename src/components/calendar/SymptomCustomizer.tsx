@@ -12,26 +12,45 @@ import { useCustomSymptoms, type ActiveSymptom, type PredefinedSymptom, type Sym
 interface SymptomCustomizerProps {
   isOpen: boolean;
   onClose: () => void;
+  activeSymptoms?: ActiveSymptom[];
+  library?: PredefinedSymptom[];
+  onSwap?: (slotIndex: number, newSymptomId: string) => void;
+  onReset?: () => void;
 }
 
-const CATEGORY_COLORS: Record<SymptomCategory, string> = {
+const CATEGORY_COLORS: Record<string, string> = {
   recovery: "bg-emerald-100 text-emerald-700 border-emerald-200",
   mental: "bg-purple-100 text-purple-700 border-purple-200",
   period: "bg-pink-100 text-pink-700 border-pink-200",
   breastfeeding: "bg-blue-100 text-blue-700 border-blue-200",
   medical: "bg-amber-100 text-amber-700 border-amber-200",
+  displaced: "bg-slate-100 text-slate-700 border-slate-200",
 };
 
-const CATEGORY_LABELS: Record<SymptomCategory, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
   recovery: "Recovery",
   mental: "Mental Health",
   period: "Period Related",
   breastfeeding: "Breastfeeding",
   medical: "Medical Monitoring",
+  displaced: "Displaced by Conditions",
 };
 
-export function SymptomCustomizer({ isOpen, onClose }: SymptomCustomizerProps) {
-  const { activeSymptoms, predefinedLibrary, swapActiveSymptom, resetToCore } = useCustomSymptoms();
+export function SymptomCustomizer({
+  isOpen,
+  onClose,
+  activeSymptoms: propsActiveSymptoms,
+  library: propsLibrary,
+  onSwap: propsOnSwap,
+  onReset: propsOnReset
+}: SymptomCustomizerProps) {
+  const ctx = useCustomSymptoms();
+  
+  const activeSymptoms = propsActiveSymptoms || ctx.activeSymptoms;
+  const predefinedLibrary = propsLibrary || ctx.predefinedLibrary;
+  const swapActiveSymptom = propsOnSwap || ctx.swapActiveSymptom;
+  const resetToCore = propsOnReset || ctx.resetToCore;
+
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
   const [selectedLibrarySymptom, setSelectedLibrarySymptom] = useState<PredefinedSymptom | null>(null);
 
@@ -78,7 +97,7 @@ export function SymptomCustomizer({ isOpen, onClose }: SymptomCustomizerProps) {
     }
     acc[symptom.category].push(symptom);
     return acc;
-  }, {} as Record<SymptomCategory, PredefinedSymptom[]>);
+  }, {} as Record<string, PredefinedSymptom[]>);
 
   const isDuplicate = selectedLibrarySymptom
     ? activeSymptoms.some((s) => s.id === selectedLibrarySymptom.id)

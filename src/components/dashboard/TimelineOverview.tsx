@@ -24,6 +24,7 @@ function WeekNode({
   trimesterBorderColor,
   trimesterBgColor,
   onClick,
+  testStatus,
 }: {
   week: number;
   isActive: boolean;

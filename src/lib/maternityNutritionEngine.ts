@@ -1,4 +1,5 @@
 import type { HealthLogs, MaternityEntry } from "@/hooks/useHealthLog";
+import { aggregateSymptoms, getSymptomScore, type AggregationResult } from "@/lib/nutrition/symptomAggregationEngine";
 
 // ─── Constants ────────────────────────────────────────────────────────
 
@@ -108,6 +109,16 @@ const DEFICIENCY_RULES: DeficiencyRule[] = [
     foods: ["Almonds", "Pumpkin Seeds", "Banana", "Dark Chocolate"],
     habits: ["Have warm milk with a pinch of nutmeg before bed.", "Practice gentle stretching before sleeping."],
   },
+  {
+    id: "digestive_support",
+    nutrient: "Digestive Support",
+    targetSymptoms: ["heartburn", "acidReflux", "bloating", "constipation"],
+    priorityTrimesters: [2, 3],
+    title: "Possible Digestive Support Needs",
+    whyItMatters: "Digestive discomfort is common in later pregnancy. Proper food choices can ease heartburn, reflux, and bloating.",
+    foods: ["Ginger", "Fennel seeds", "Papaya", "Oats", "Curd"],
+    habits: ["Eat smaller, more frequent meals to avoid heartburn.", "Avoid lying down immediately after eating.", "Stay upright for at least 30 minutes after meals."],
+  },
 ];
 
 const FALLBACK_RECOMMENDATIONS: Record<number, MaternityFallbackRecommendation> = {
@@ -140,36 +151,11 @@ export function predictMaternityDeficiencies(
   logs: HealthLogs,
   trimester: number
 ): MaternityPredictionResult {
-  const todayISO = toISODate(new Date());
-  const d7 = getDaysAgoISO(7);
-
-  const symptomGivenLast7d = new Set<string>();
-  let hasLoggedDays = false;
-
-  // Process logs
-  for (const [dateISO, entryRaw] of Object.entries(logs)) {
-    if (entryRaw.phase !== "maternity") continue;
-    if (dateISO > todayISO || dateISO < d7) continue;
-
-    hasLoggedDays = true;
-    const entry = entryRaw as MaternityEntry;
-
-    if (entry.fatigueLevel === "Medium" || entry.fatigueLevel === "High") {
-      symptomGivenLast7d.add("fatigue");
-    }
-    if (entry.sleepHours !== null && entry.sleepHours < 6) {
-      symptomGivenLast7d.add("sleepDisturbance");
-    }
-
-    if (entry.symptoms) {
-      Object.entries(entry.symptoms).forEach(([sym, isTrue]) => {
-        if (isTrue) symptomGivenLast7d.add(sym);
-      });
-    }
-  }
+  // Use symptom aggregation engine for weighted scoring
+  const aggregation = aggregateSymptoms(logs, 7);
 
   // If no symptoms, return fallback
-  if (!hasLoggedDays || symptomGivenLast7d.size === 0) {
+  if (!aggregation.hasData) {
     return {
       hasData: false,
       predictions: [],
@@ -179,23 +165,29 @@ export function predictMaternityDeficiencies(
 
   const predictions: MaternityDeficiencyPrediction[] = [];
 
-  // Match against rules
+  // Match against rules using weighted scores
   DEFICIENCY_RULES.forEach((rule) => {
-    // Check how many of the rule's target symptoms the user has logged
+    // Check which of the rule's target symptoms the user has logged
     const matchedSymptoms = rule.targetSymptoms.filter((sym) =>
-      symptomGivenLast7d.has(sym)
+      aggregation.symptoms.some((s) => s.symptom === sym)
     );
 
     if (matchedSymptoms.length > 0) {
-      // Calculate confidence
-      let score = matchedSymptoms.length;
+      // Calculate weighted score based on symptom aggregation
+      let totalWeightedScore = 0;
+      matchedSymptoms.forEach((sym) => {
+        totalWeightedScore += getSymptomScore(sym, aggregation);
+      });
+
+      // Add trimester priority bonus
       if (rule.priorityTrimesters.includes(trimester)) {
-        score += 1;
+        totalWeightedScore += 5;
       }
 
+      // Calculate confidence based on weighted score
       let confidence: Confidence = "Low";
-      if (score >= 3) confidence = "High";
-      else if (score === 2) confidence = "Medium";
+      if (totalWeightedScore >= 15) confidence = "High";
+      else if (totalWeightedScore >= 8) confidence = "Medium";
 
       // Format human-readable reasons (e.g., "fatigue and dizziness")
       const formattedReasons = matchedSymptoms.join(" and ");
@@ -214,7 +206,7 @@ export function predictMaternityDeficiencies(
     }
   });
 
-  // Sort by confidence (High first, then Medium, Low)
+  // Sort by weighted score (descending) - use confidence as proxy
   const confidenceWeight = { High: 3, Medium: 2, Low: 1 };
   predictions.sort((a, b) => confidenceWeight[b.confidence] - confidenceWeight[a.confidence]);
 

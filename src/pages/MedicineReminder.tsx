@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { Link } from "react-router-dom";
 import { usePhase } from "@/hooks/usePhase";
 import {
@@ -31,7 +31,9 @@ import {
   Edit3,
   Hourglass,
   Save,
+  FileText,
 } from "lucide-react";
+import MaternalTestsTimeline from "@/components/medicine/MaternalTestsTimeline";
 
 // ─── Status helpers ─────────────────────────────────────────────────────────────
 
@@ -79,7 +81,7 @@ function NotificationBanner({
         </h3>
         <p className="text-xs text-amber-700 mt-1 leading-relaxed">
           {permission === "denied"
-            ? "Notifications are blocked. Please enable them in your browser settings to receive medicine reminders."
+            ? "Notifications are blocked. Please enable them in your browser settings to receive care log reminders."
             : "Allow notifications so we can remind you when it's time to take your medicines."}
         </p>
         {permission !== "denied" && (
@@ -705,7 +707,7 @@ function HistorySection({ logs, adherenceRate }: { logs: DoseLog[]; adherenceRat
 
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 
-type Tab = "today" | "medicines" | "history";
+type Tab = "today" | "medicines" | "history" | "tests";
 
 export default function MedicineReminder() {
   const { setPhase } = usePhase();
@@ -799,6 +801,7 @@ export default function MedicineReminder() {
     { key: "today", label: "Today", icon: CalendarDays },
     { key: "medicines", label: "Medicines", icon: Pill },
     { key: "history", label: "History", icon: History },
+    { key: "tests", label: "Tests & Scans", icon: FileText },
   ];
 
   return (
@@ -815,10 +818,10 @@ export default function MedicineReminder() {
           {/* Header */}
           <div className="mb-8">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-xs font-semibold mb-3">
-              💊 Medicine Reminder
+              💊 Care Log
             </div>
             <h1 className="text-3xl md:text-4xl font-bold">
-              Medicine <span className="text-gradient-bloom">Reminder</span>
+              Care <span className="text-gradient-bloom">Log</span>
             </h1>
             <p className="mt-3 text-muted-foreground max-w-xl">
               Never miss a dose — smart reminders, snooze options, and complete medicine tracking for your pregnancy journey.
@@ -961,6 +964,11 @@ export default function MedicineReminder() {
             <ScrollReveal delay={80}>
               <HistorySection logs={historyLogs} adherenceRate={adherenceRate} />
             </ScrollReveal>
+          )}
+
+          {/* ─── Tests & Scans Tab ─── */}
+          {activeTab === "tests" && (
+            <MaternalTestsTimeline />
           )}
         </div>
       </div>

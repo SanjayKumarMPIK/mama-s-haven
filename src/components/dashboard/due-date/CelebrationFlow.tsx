@@ -32,9 +32,9 @@ export function CelebrationFlow({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-white/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-500">
+    <div className="fixed inset-0 z-[9999] bg-background/80 backdrop-blur-md flex flex-col items-center justify-center animate-in fade-in duration-500">
       {/* Background radial glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-rose-100/60 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent pointer-events-none" />
 
       {/* Confetti / Burst effect triggers primarily on step 1 */}
       {step === 1 && <CelebrationEffects />}
@@ -48,9 +48,9 @@ export function CelebrationFlow({ onClose }: Props) {
         {/* Minimal Progress indicator */}
         <div className="flex justify-center gap-2 mt-8">
           {[1, 2, 3, 4].map((i) => (
-            <div 
-              key={i} 
-              className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? "w-6 bg-rose-400" : i < step ? "w-2 bg-rose-200" : "w-2 bg-slate-200"}`}
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${i === step ? "w-6 bg-primary" : i < step ? "w-2 bg-primary/40" : "w-2 bg-muted"}`}
             />
           ))}
         </div>

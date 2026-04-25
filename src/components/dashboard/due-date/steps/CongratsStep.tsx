@@ -8,26 +8,26 @@ interface Props {
 
 export function CongratsStep({ onNext, onSkip }: Props) {
   return (
-    <div className="bg-white rounded-[2rem] p-8 text-center shadow-xl shadow-rose-100/50 animate-in zoom-in-95 duration-500 delay-100 fill-mode-both">
-      <div className="w-24 h-24 bg-gradient-to-tr from-amber-200 to-amber-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-4 ring-amber-50">
-        <Trophy className="w-12 h-12 text-amber-500" />
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm text-center animate-in zoom-in-95 duration-500 delay-100 fill-mode-both">
+      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+        <Trophy className="w-6 h-6 text-primary" />
       </div>
-      <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-amber-500 mb-4 font-serif">
+      <h1 className="text-xl font-bold text-foreground mb-2">
         Congratulations!
       </h1>
-      <p className="text-slate-600 mb-8 text-lg leading-relaxed">
+      <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
         You've completed a beautiful and challenging chapter of your journey. Welcome to motherhood!
       </p>
 
-      <div className="space-y-4">
-        <Button 
-          className="w-full bg-rose-500 hover:bg-rose-600 text-white rounded-full py-6 text-lg font-semibold shadow-lg shadow-rose-200 transition-transform active:scale-[0.98]"
+      <div className="space-y-3">
+        <Button
+          className="w-full bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-semibold shadow-sm hover:shadow-md transition-transform active:scale-[0.98]"
           onClick={onNext}
         >
           Continue
         </Button>
-        <button 
-          className="text-slate-400 hover:text-slate-600 font-medium transition-colors"
+        <button
+          className="text-muted-foreground hover:text-foreground text-sm font-medium transition-colors"
           onClick={onSkip}
         >
           Skip for now

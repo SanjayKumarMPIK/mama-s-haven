@@ -15,41 +15,46 @@ export function BabyDetailsStep({ details, onChange, onNext }: Props) {
   const canContinue = details.name.trim().length > 0 && details.weight.trim().length > 0 && details.bloodGroup !== "";
 
   return (
-    <div className="bg-white rounded-[2rem] p-8 shadow-xl shadow-indigo-100/40 animate-in slide-in-from-right-8 duration-500 fill-mode-both">
-      <h2 className="text-2xl font-bold text-slate-800 mb-6 text-center">Baby Details</h2>
-      
-      <div className="space-y-5">
+    <div className="rounded-2xl border border-border bg-card p-6 shadow-sm animate-in slide-in-from-right-8 duration-500 fill-mode-both">
+      <h2 className="text-lg font-bold text-foreground mb-1">Baby Details</h2>
+      <p className="text-sm text-muted-foreground mb-6">Enter your baby's information to personalize the experience.</p>
+
+      <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Baby Name</label>
-          <Input 
-            type="text" 
-            placeholder="e.g. Aarav" 
+          <label className="block text-sm font-medium text-foreground mb-1.5">Baby Name</label>
+          <Input
+            type="text"
+            placeholder="e.g. Aarav"
             value={details.name}
             onChange={(e) => onChange({ name: e.target.value })}
-            className="rounded-xl h-12 text-lg px-4"
+            className="rounded-lg border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Birth Weight (kg)</label>
-          <Input 
-            type="number" 
+          <label className="block text-sm font-medium text-foreground mb-1.5">Birth Weight (kg)</label>
+          <Input
+            type="number"
             step="0.01"
-            placeholder="e.g. 3.2" 
+            placeholder="e.g. 3.2"
             value={details.weight}
             onChange={(e) => onChange({ weight: e.target.value })}
-            className="rounded-xl h-12 text-lg px-4"
+            className="rounded-lg border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">Blood Group</label>
+          <label className="block text-sm font-medium text-foreground mb-2">Blood Group</label>
           <div className="grid grid-cols-3 gap-2">
             {BLOOD_GROUPS.map(bg => (
               <button
                 key={bg}
                 onClick={() => onChange({ bloodGroup: bg })}
-                className={`py-2 rounded-lg border text-sm font-medium transition-all ${details.bloodGroup === bg ? 'bg-indigo-500 text-white border-indigo-500 shadow-md' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                className={`py-2 px-3 rounded-lg border text-xs font-medium transition-all ${
+                  details.bloodGroup === bg
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-background text-foreground border-border hover:bg-muted'
+                }`}
               >
                 {bg}
               </button>
@@ -58,13 +63,13 @@ export function BabyDetailsStep({ details, onChange, onNext }: Props) {
         </div>
       </div>
 
-      <div className="mt-8">
-        <Button 
-          className="w-full bg-indigo-500 hover:bg-indigo-600 text-white rounded-full py-6 text-lg font-semibold shadow-lg shadow-indigo-200 transition-transform active:scale-[0.98] disabled:opacity-50"
+      <div className="mt-6">
+        <Button
+          className="w-full bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-semibold shadow-sm hover:shadow-md transition-all active:scale-[0.98] disabled:opacity-50"
           onClick={onNext}
           disabled={!canContinue}
         >
-          Next
+          Continue
         </Button>
       </div>
     </div>

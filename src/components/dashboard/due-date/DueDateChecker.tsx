@@ -4,7 +4,7 @@ import { DueDateConfirmationModal } from "./DueDateConfirmationModal";
 import { CelebrationFlow } from "./CelebrationFlow";
 
 export function DueDateChecker() {
-  const { activeEDD, mode } = usePregnancyProfile();
+  const { activeEDD, mode, profile } = usePregnancyProfile();
   const [showModal, setShowModal] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
 
@@ -18,13 +18,17 @@ export function DueDateChecker() {
     eddDate.setHours(0, 0, 0, 0);
 
     // Condition: today >= expectedDueDate
-    if (todayDate.getTime() >= eddDate.getTime()) {
-      const hasAsked = sessionStorage.getItem(`due_date_asked_${activeEDD}`);
-      if (!hasAsked) {
-        setShowModal(true);
+    if (eddDate.getTime() <= todayDate.getTime()) {
+      if (profile.userEDD && profile.userEDD === activeEDD) {
+        setShowCelebration(true);
+      } else {
+        const hasAsked = sessionStorage.getItem(`due_date_asked_${activeEDD}`);
+        if (!hasAsked) {
+          setShowModal(true);
+        }
       }
     }
-  }, [activeEDD, mode]);
+  }, [activeEDD, mode, profile.userEDD]);
 
   if (showCelebration) {
     return <CelebrationFlow onClose={() => setShowCelebration(false)} />;

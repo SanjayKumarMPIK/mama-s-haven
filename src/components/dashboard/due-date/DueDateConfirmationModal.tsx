@@ -47,29 +47,29 @@ export function DueDateConfirmationModal({ onClose, onYes }: Props) {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-[2rem] w-full max-w-sm p-8 text-center shadow-2xl animate-in zoom-in-95 duration-300">
-        <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-          <Baby className="w-10 h-10 text-rose-500" />
+      <div className="rounded-2xl border border-border bg-card w-full max-w-sm p-6 text-center shadow-sm animate-in zoom-in-95 duration-300">
+        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+          <Baby className="w-6 h-6 text-primary" />
         </div>
-        <h2 className="text-2xl font-bold text-slate-800 mb-3">Is baby here?</h2>
-        <p className="text-slate-600 mb-8 leading-relaxed">
+        <h2 className="text-lg font-bold text-foreground mb-2">Is baby here?</h2>
+        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">
           Your predicted due date has passed. Has your baby been delivered?
         </p>
-        
-        <div className="space-y-4">
-          <Button 
-            className="w-full bg-rose-500 hover:bg-rose-600 text-white rounded-2xl py-6 text-lg font-semibold shadow-lg shadow-rose-200 transition-transform active:scale-[0.98]"
+
+        <div className="space-y-3">
+          <Button
+            className="w-full bg-primary text-primary-foreground rounded-lg py-2.5 text-sm font-semibold shadow-sm hover:shadow-md transition-transform active:scale-[0.98]"
             onClick={onYes}
           >
             Yes, I've delivered!
           </Button>
-          <Button 
+          <Button
             variant="outline"
-            className="w-full rounded-2xl py-6 text-lg text-slate-600 border-2 border-slate-100 hover:bg-slate-50 transition-transform active:scale-[0.98]"
+            className="w-full rounded-lg py-2.5 text-sm text-foreground border-border hover:bg-muted transition-transform active:scale-[0.98]"
             onClick={handleNotYet}
             disabled={isExtending}
           >
-            <CalendarPlus className="w-5 h-5 mr-3 text-slate-400" />
+            <CalendarPlus className="w-4 h-4 mr-2 text-muted-foreground" />
             Not Yet (Extend 14 Days)
           </Button>
         </div>

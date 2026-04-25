@@ -35,12 +35,37 @@ export interface PubertyAgeGroup {
   key: "early" | "mid" | "late";
 }
 
+export type NutrientPriority = "High" | "Medium" | "Low";
+
+export interface PubertyNutrientRecommendation {
+  nutrient: string;
+  emoji: string;
+  sources: string[];
+  frequency: string;
+  priority: NutrientPriority;
+  reason: string;
+}
+
+export interface PubertySpecialNote {
+  type: "medical" | "puberty_timing";
+  icon: string;
+  title: string;
+  advice: string;
+}
+
 export interface PubertyNutritionResult {
   hasData: boolean;
   ageGroup: PubertyAgeGroup;
   deficiencies: PubertyDeficiencyPrediction[];
   generalTips: string[];
   disclaimer: string;
+  // ─── Intelligent Nutrition Assistant fields ──────────────────
+  nutrientRecommendations: PubertyNutrientRecommendation[];
+  specialNotes: PubertySpecialNote[];
+  analyzedDays: number;
+  pubertyTiming: "Early" | "Normal" | "Late";
+  dietPreference: string;
+  regionLabel: string;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────

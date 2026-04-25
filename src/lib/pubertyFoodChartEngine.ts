@@ -44,6 +44,24 @@ export interface PubertyDailyFoodChart {
   notes: string[];
 }
 
+export type SymptomSeverity = "Low" | "Medium" | "High";
+export type DeficiencyPriority = "High" | "Medium" | "Low";
+
+export interface NutritionDeficiencyItem {
+  deficiency: string;
+  priority: DeficiencyPriority;
+  nutrients: string[];
+  foods: string[];
+  frequency: "2-3 times/day" | "daily" | "alternate days";
+  basedOn: string[];
+}
+
+export interface PubertyDeficiencyPlan {
+  pubertyStatus: PubertyStatus;
+  symptoms: { symptom: PubertySymptom; severity: SymptomSeverity }[];
+  deficiencies: NutritionDeficiencyItem[];
+}
+
 function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -85,6 +103,120 @@ function extractPubertySymptoms(logs: HealthLogs, lookbackDays: number = 14): Se
   }
 
   return out;
+}
+
+function maxSeverity(prev: SymptomSeverity, next: SymptomSeverity): SymptomSeverity {
+  const weight: Record<SymptomSeverity, number> = { Low: 1, Medium: 2, High: 3 };
+  return weight[next] > weight[prev] ? next : prev;
+}
+
+function scoreToSeverity(score: number): SymptomSeverity {
+  if (score >= 7) return "High";
+  if (score >= 4) return "Medium";
+  return "Low";
+}
+
+function frequencyToSeverity(count: number): SymptomSeverity {
+  if (count >= 4) return "High";
+  if (count >= 2) return "Medium";
+  return "Low";
+}
+
+function priorityFromSeverity(sev: SymptomSeverity): DeficiencyPriority {
+  if (sev === "High") return "High";
+  if (sev === "Medium") return "Medium";
+  return "Low";
+}
+
+function frequencyFromPriority(priority: DeficiencyPriority): "2-3 times/day" | "daily" | "alternate days" {
+  if (priority === "High") return "2-3 times/day";
+  if (priority === "Medium") return "daily";
+  return "alternate days";
+}
+
+function extractSymptomSeverity(logs: HealthLogs, lookbackDays: number = 14): Map<PubertySymptom, SymptomSeverity> {
+  const todayISO = toISODate(new Date());
+  const fromISO = getDaysAgoISO(lookbackDays);
+  const symptomIntensity = new Map<PubertySymptom, number[]>();
+  const symptomCount = new Map<PubertySymptom, number>();
+
+  const addCount = (symptom: PubertySymptom) => {
+    symptomCount.set(symptom, (symptomCount.get(symptom) ?? 0) + 1);
+  };
+  const addIntensity = (symptom: PubertySymptom, score?: number) => {
+    if (typeof score !== "number" || Number.isNaN(score)) return;
+    if (!symptomIntensity.has(symptom)) symptomIntensity.set(symptom, []);
+    symptomIntensity.get(symptom)!.push(score);
+  };
+
+  for (const [dateISO, entry] of Object.entries(logs)) {
+    if (dateISO > todayISO || dateISO < fromISO) continue;
+    if (entry.phase !== "puberty") continue;
+    const e = entry as PubertyEntry;
+    const intensities = (e as any).symptomIntensities as Record<string, number> | undefined;
+
+    if (e.symptoms?.cramps) {
+      addCount("Cramps");
+      addIntensity("Cramps", intensities?.cramps);
+    }
+    if (e.symptoms?.fatigue) {
+      addCount("Fatigue");
+      addIntensity("Fatigue", intensities?.fatigue);
+    }
+    if (e.symptoms?.acne) {
+      addCount("Acne");
+      addIntensity("Acne", intensities?.acne);
+    }
+    if (e.symptoms?.moodSwings) {
+      addCount("Mood swings");
+      addIntensity("Mood swings", intensities?.moodSwings);
+    }
+    if (e.flowIntensity === "Heavy") {
+      addCount("Heavy bleeding");
+      // Heavy flow itself implies severe signal; score near upper bound.
+      addIntensity("Heavy bleeding", 8);
+    }
+  }
+
+  const out = new Map<PubertySymptom, SymptomSeverity>();
+  for (const [symptom, count] of symptomCount.entries()) {
+    const scores = symptomIntensity.get(symptom) ?? [];
+    const severityFromIntensity = scores.length > 0 ? scoreToSeverity(Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)) : null;
+    const severityFromFrequency = frequencyToSeverity(count);
+    out.set(symptom, severityFromIntensity ? maxSeverity(severityFromFrequency, severityFromIntensity) : severityFromFrequency);
+  }
+  return out;
+}
+
+function mergeDeficiency(
+  map: Map<string, NutritionDeficiencyItem>,
+  deficiency: string,
+  symptom: string,
+  severity: SymptomSeverity,
+  nutrients: string[],
+  foods: string[],
+) {
+  const existing = map.get(deficiency);
+  const incomingPriority = priorityFromSeverity(severity);
+  if (!existing) {
+    map.set(deficiency, {
+      deficiency,
+      priority: incomingPriority,
+      nutrients,
+      foods,
+      frequency: frequencyFromPriority(incomingPriority),
+      basedOn: [symptom],
+    });
+    return;
+  }
+
+  const priorityWeight: Record<DeficiencyPriority, number> = { Low: 1, Medium: 2, High: 3 };
+  const mergedPriority = priorityWeight[incomingPriority] > priorityWeight[existing.priority] ? incomingPriority : existing.priority;
+  existing.priority = mergedPriority;
+  existing.frequency = frequencyFromPriority(mergedPriority);
+  existing.basedOn = Array.from(new Set([...existing.basedOn, symptom]));
+  existing.nutrients = Array.from(new Set([...existing.nutrients, ...nutrients]));
+  existing.foods = Array.from(new Set([...existing.foods, ...foods]));
 }
 
 function allowedDietsForOption(args: { hasEgg: boolean; hasMeatOrFish: boolean }): DietType[] {
@@ -311,6 +443,89 @@ export function generatePubertyDailyFoodChart(args: {
       "Recommendations update automatically as you log new symptoms in the Calendar.",
       "If you have a medical condition, condition-based guidance takes priority over symptom add-ons.",
     ],
+  };
+}
+
+export function generatePubertyDeficiencyPlan(args: {
+  logs: HealthLogs;
+  profile: ProfileData | null;
+  onboarding: OnboardingConfig | null;
+}): PubertyDeficiencyPlan {
+  const { logs, profile, onboarding } = args;
+  const pubertyStatus = getPubertyStatus(onboarding);
+  const condKeys = new Set((profile?.medicalConditions ?? []).map(conditionKey));
+
+  const symptomSeverity = extractSymptomSeverity(logs, 14);
+  const deficiencies = new Map<string, NutritionDeficiencyItem>();
+
+  // Symptom → deficiency mapping
+  for (const [symptom, severity] of symptomSeverity.entries()) {
+    if (symptom === "Cramps") {
+      mergeDeficiency(deficiencies, "Magnesium deficiency risk", symptom, severity, ["Magnesium", "Potassium"], ["Banana", "Nuts", "Seeds"]);
+    }
+    if (symptom === "Fatigue") {
+      mergeDeficiency(deficiencies, "Iron deficiency risk", symptom, severity, ["Iron", "Protein"], ["Spinach", "Dates", "Lentils/Eggs"]);
+      mergeDeficiency(deficiencies, "Vitamin B12 deficiency risk", symptom, severity, ["Vitamin B12"], ["Eggs", "Milk", "Curd"]);
+    }
+    if (symptom === "Acne") {
+      mergeDeficiency(deficiencies, "Zinc and antioxidant support need", symptom, severity, ["Zinc", "Antioxidants"], ["Pumpkin seeds", "Chickpeas", "Amla"]);
+    }
+    if (symptom === "Mood swings") {
+      mergeDeficiency(deficiencies, "Omega-3 support need", symptom, severity, ["Omega-3", "Magnesium"], ["Walnuts", "Flaxseeds", "Dark chocolate"]);
+    }
+    if (symptom === "Heavy bleeding") {
+      mergeDeficiency(deficiencies, "Iron deficiency risk", symptom, "High", ["Iron", "Vitamin C"], ["Beetroot", "Citrus fruits", "Leafy greens"]);
+    }
+  }
+
+  // Condition-based overrides (high priority)
+  const forceHigh = (
+    deficiency: string,
+    nutrients: string[],
+    foods: string[],
+    basedOn: string,
+  ) => {
+    mergeDeficiency(deficiencies, deficiency, basedOn, "High", nutrients, foods);
+  };
+
+  if (condKeys.has("anemia")) {
+    forceHigh("Iron deficiency risk", ["Iron", "Vitamin C"], ["Spinach", "Beetroot", "Dates", "Jaggery"], "Anemia");
+  }
+  if (condKeys.has("pcos")) {
+    forceHigh("Insulin balance support need", ["Low-GI carbs", "Fiber", "Protein"], ["Millets", "Chana", "Paneer/Eggs"], "PCOS/PCOD");
+  }
+  if (condKeys.has("hypothyroidism")) {
+    forceHigh("Thyroid nutrient support need", ["Selenium", "Iodine (controlled)"], ["Nuts", "Milk", "Curd"], "Hypothyroidism");
+  }
+  if (condKeys.has("hyperthyroidism")) {
+    forceHigh("Energy density support need", ["Protein", "Healthy fats"], ["Paneer", "Nuts", "Dal"], "Hyperthyroidism");
+  }
+  if (condKeys.has("diabetes")) {
+    forceHigh("Blood sugar control support need", ["Fiber", "Protein", "Controlled carbs"], ["Whole grains", "Lentils", "Vegetable salads"], "Diabetes");
+  }
+  if (condKeys.has("osteoporosis")) {
+    forceHigh("Calcium deficiency risk", ["Calcium", "Vitamin D"], ["Milk", "Curd", "Ragi", "Sesame"], "Osteoporosis");
+  }
+
+  // Puberty-stage context adjustment
+  if (pubertyStatus === "Late Puberty") {
+    mergeDeficiency(deficiencies, "Growth protein support need", "Late Puberty", "Medium", ["Protein", "Healthy fats", "Zinc"], ["Eggs", "Paneer", "Lentils", "Pumpkin seeds"]);
+  }
+  if (pubertyStatus === "Early Puberty") {
+    mergeDeficiency(deficiencies, "Hormonal balance support need", "Early Puberty", "Medium", ["Fiber", "Omega-3", "Hydration"], ["Whole grains", "Flaxseeds", "Leafy greens"]);
+  }
+
+  const result = Array.from(deficiencies.values()).sort((a, b) => {
+    const w: Record<DeficiencyPriority, number> = { High: 3, Medium: 2, Low: 1 };
+    return w[b.priority] - w[a.priority];
+  });
+
+  const symptoms = Array.from(symptomSeverity.entries()).map(([symptom, severity]) => ({ symptom, severity }));
+
+  return {
+    pubertyStatus,
+    symptoms,
+    deficiencies: result,
   };
 }
 

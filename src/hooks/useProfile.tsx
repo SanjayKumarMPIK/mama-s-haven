@@ -40,6 +40,10 @@ export interface ProfileData {
   dietType: "veg" | "non-veg" | "mixed" | "eggetarian";
   lifeStage: string;
 
+  // Lifestyle (nutrition engine inputs)
+  activityLevel: "sedentary" | "moderate" | "active";
+  climate: "hot" | "moderate" | "cold";
+
   // Meta
   registeredAt: string;
   isProfileAvailable: boolean;
@@ -71,7 +75,7 @@ function writeExtras(extras: ProfileExtras) {
   } catch {}
 }
 
-function readWellnessProfile(): { weight: number; height: number; region: string; lastWeightUpdate?: number } | null {
+function readWellnessProfile(): { weight: number; height: number; region: string; lastWeightUpdate?: number; activityLevel?: string; climate?: string } | null {
   try {
     const raw = localStorage.getItem(WELLNESS_KEY);
     if (raw) {
@@ -82,7 +86,7 @@ function readWellnessProfile(): { weight: number; height: number; region: string
   return null;
 }
 
-function writeWellnessProfile(data: { weight: number; height: number; region: string; lastWeightUpdate?: number }) {
+function writeWellnessProfile(data: { weight: number; height: number; region: string; lastWeightUpdate?: number; activityLevel?: string; climate?: string }) {
   try {
     localStorage.setItem(WELLNESS_KEY, JSON.stringify({ ...data, lastWeightUpdate: Date.now() }));
   } catch {}
@@ -157,6 +161,9 @@ export function useProfile() {
     const dietType = (health?.dietType ?? "mixed") as ProfileData["dietType"];
     const lifeStage = health?.lifeStage ?? phase;
 
+    const activityLevel = (wellnessProfile?.activityLevel ?? "moderate") as ProfileData["activityLevel"];
+    const climate = (wellnessProfile?.climate ?? "hot") as ProfileData["climate"];
+
     const registeredAt = fullProfile?.registeredAt ?? "";
 
     return {
@@ -179,6 +186,8 @@ export function useProfile() {
       medicalConditions,
       dietType,
       lifeStage,
+      activityLevel,
+      climate,
       registeredAt,
       isProfileAvailable: !!name,
       lastWeightUpdate: wellnessProfile?.lastWeightUpdate ?? null,
@@ -249,11 +258,25 @@ export function useProfile() {
     });
   }, [updateProfile]);
 
+  const updateLifestyle = useCallback((updates: { activityLevel?: ProfileData["activityLevel"]; climate?: ProfileData["climate"] }) => {
+    const current = readWellnessProfile();
+    const updated = {
+      weight: current?.weight ?? 55,
+      height: current?.height ?? 160,
+      region: current?.region ?? "south",
+      activityLevel: updates.activityLevel ?? current?.activityLevel ?? "moderate",
+      climate: updates.climate ?? current?.climate ?? "hot",
+    };
+    writeWellnessProfile(updated);
+    setWellnessProfile(updated);
+  }, []);
+
   return {
     profile,
     updateWeight,
     updateHeight,
     updateCycleConfig,
     updatePersonalInfo,
+    updateLifestyle,
   };
 }

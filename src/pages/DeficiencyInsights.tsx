@@ -1,418 +1,328 @@
-import { useMemo, useState } from "react";
+import { type ReactNode } from "react";
+import { ArrowLeft, Circle, Flame, Info, Leaf, Moon, Shield, Sparkles, Sun } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useHealthLog } from "@/hooks/useHealthLog";
-import { usePhase } from "@/hooks/usePhase";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
-import { predictMaternityDeficiencies, type MaternityPredictionResult } from "@/lib/maternityNutritionEngine";
-import { calculateFoodRestrictions, type FoodRestrictionResult } from "@/lib/nutrition/foodRestrictionEngine";
-import ScrollReveal from "@/components/ScrollReveal";
-import SafetyDisclaimer from "@/components/SafetyDisclaimer";
-import {
-  ChevronRight, AlertTriangle, Info, ChevronDown, ChevronUp,
-  Sun, Heart, Bone, Battery, Droplets, Brain, Pill, Leaf, Zap, XCircle, MinusCircle
-} from "lucide-react";
+import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
+import { useSymptomDerivedRisks } from "@/hooks/useSymptomDerivedRisks";
 
-// ─── Confidence styling ─────────────────────────────────────────────────────
-
-const CONFIDENCE_STYLE: Record<"High" | "Medium" | "Low", { bg: string; text: string; ringColor: string; label: string }> = {
-  High: {
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    ringColor: "border-amber-300",
-    label: "High likelihood",
-  },
-  Medium: {
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-    ringColor: "border-blue-300",
-    label: "Medium likelihood",
-  },
-  Low: {
-    bg: "bg-slate-50",
-    text: "text-slate-600",
-    ringColor: "border-slate-300",
-    label: "Low likelihood",
-  },
-};
-
-const NUTRIENT_ICON: Record<string, typeof Sun> = {
-  iron: Heart,
-  calcium: Bone,
-  b6_folate: Pill,
-  hydration_potassium: Droplets,
-  magnesium: Battery,
-};
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function DeficiencyCard({
-  prediction,
-  accent,
-  index,
-}: {
-  prediction: any;
-  accent: any;
-  index: number;
-}) {
-  const [showWhy, setShowWhy] = useState(false);
-  const [showRecommendations, setShowRecommendations] = useState(index === 0);
-  const confStyle = CONFIDENCE_STYLE[prediction.confidence];
-  const Icon = NUTRIENT_ICON[prediction.id] ?? Leaf;
-
+function Badge({ text }: { text: string }) {
   return (
-    <div
-      className={`rounded-2xl border-2 ${confStyle.ringColor} bg-card overflow-hidden transition-all duration-300 hover:shadow-lg`}
-    >
-      {/* Card Header */}
-      <div className={`px-5 py-4 ${confStyle.bg}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${confStyle.bg} border ${confStyle.ringColor}`}>
-              <Icon className={`w-5 h-5 ${confStyle.text}`} />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">{prediction.title}</h3>
-              <p className={`text-[11px] font-semibold ${confStyle.text} mt-0.5`}>
-                {confStyle.label}
-              </p>
-            </div>
-          </div>
-          <span
-            className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${confStyle.ringColor} ${confStyle.bg} ${confStyle.text}`}
-          >
-            {prediction.confidence}
-          </span>
-        </div>
-      </div>
+    <span className="rounded-xl border border-[#eee8f4] bg-white px-3 py-1 text-xs font-medium text-[#6f6583]">
+      {text}
+    </span>
+  );
+}
 
-      {/* Explanation */}
-      <div className="px-5 py-4 border-t border-border/30">
-        <p className="text-sm text-foreground/85 leading-relaxed">
-          {prediction.whyPredicted}
-        </p>
-
-        {/* Trigger symptoms */}
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {prediction.reasons.map((trigger: string) => (
-            <span
-              key={trigger}
-              className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/50 text-[11px] font-medium text-muted-foreground border border-border/30"
-            >
-              {trigger}
-            </span>
-          ))}
-        </div>
-
-        {/* Why this matters (expandable) */}
-        <button
-          type="button"
-          onClick={() => setShowWhy(!showWhy)}
-          className="flex items-center gap-1.5 mt-3 text-[12px] font-semibold text-primary hover:text-primary/80 transition-colors"
-        >
-          <Info className="w-3.5 h-3.5" />
-          Why this matters
-          {showWhy ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        </button>
-        <div
-          className="transition-all duration-300 ease-in-out overflow-hidden"
-          style={{ maxHeight: showWhy ? "200px" : "0px", opacity: showWhy ? 1 : 0 }}
-        >
-          <p className="text-xs text-muted-foreground leading-relaxed mt-2 bg-muted/20 rounded-lg p-3 border border-border/20">
-            {prediction.whyItMatters}
-          </p>
-        </div>
-      </div>
-
-      {/* Recommendations (expandable) */}
-      <div className="border-t border-border/30">
-        <button
-          type="button"
-          onClick={() => setShowRecommendations(!showRecommendations)}
-          className="w-full flex items-center justify-between px-5 py-3 hover:bg-muted/20 transition-colors"
-        >
-          <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-            🍽️ Recommended Support
-          </span>
-          {showRecommendations ? (
-            <ChevronUp className="w-4 h-4 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-          )}
-        </button>
-        <div
-          className="transition-all duration-300 ease-in-out overflow-hidden"
-          style={{ maxHeight: showRecommendations ? "600px" : "0px", opacity: showRecommendations ? 1 : 0 }}
-        >
-          <div className="px-5 pb-5 space-y-4">
-            {/* Food suggestions */}
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                Foods to include
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {prediction.foods.map((food: string) => (
-                  <span
-                    key={food}
-                    className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-sm"
-                  >
-                    {food}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Habit suggestions */}
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                Healthy habits
-              </p>
-              <ul className="space-y-1.5 ml-4">
-                {prediction.habits.map((habit: string, i: number) => (
-                  <li key={i} className="text-sm text-foreground/85 list-disc leading-relaxed">
-                    {habit}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
+function RiskChip({ label, value, tone }: { label: string; value: number; tone: string }) {
+  return (
+    <div className="rounded-2xl border border-[#eee7f4] bg-white p-3 shadow-[0_4px_18px_rgba(184,164,198,0.1)]">
+      <p className={`text-xs font-semibold ${tone}`}>{label}</p>
+      <p className="mt-1 text-2xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+function DeficiencyItem({
+  icon,
+  title,
+  risk,
+  probability,
+  symptoms,
+  why,
+  bar,
+  tone,
+}: {
+  icon: ReactNode;
+  title: string;
+  risk: string;
+  probability: string;
+  symptoms: string;
+  why: string;
+  bar: string;
+  tone: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#eee7f4] bg-white p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#fff4f8]">{icon}</div>
+          <div>
+            <h3 className="text-base font-semibold text-foreground">{title}</h3>
+            <p className="text-xs text-muted-foreground">Probability</p>
+          </div>
+        </div>
+        <p className={`text-xs font-semibold ${tone}`}>{risk}</p>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <div className="h-2 flex-1 rounded-full bg-[#f2edf6]">
+          <div className={`h-2 rounded-full ${bar}`} style={{ width: probability }} />
+        </div>
+        <span className="text-xs font-semibold text-foreground">{probability}</span>
+      </div>
+      <p className="mt-2 text-xs text-foreground/90"><strong>Common Symptoms:</strong> {symptoms}</p>
+      <p className="mt-1 text-xs text-muted-foreground"><strong>Why it matters:</strong> {why}</p>
+    </div>
+  );
+}
 
 export default function DeficiencyInsights() {
-  const { phase } = usePhase();
-  const { logs } = useHealthLog();
-  const { trimester } = usePregnancyProfile();
+  const insights = useDeficiencyInsights();
+  const symptomPatterns = useSymptomDerivedRisks();
 
-  const accent = {
-    gradient: "from-purple-500 to-violet-400",
-    bg: "bg-purple-50",
-    text: "text-purple-700",
-    border: "border-purple-200/60",
-    cardBg: "bg-gradient-to-br from-purple-50 to-violet-50",
-    badge: "bg-purple-100 text-purple-700",
+  const severityTone: Record<string, string> = {
+    Low: "text-[#41a25f]",
+    Moderate: "text-[#bc8b32]",
+    High: "text-[#dc4f6f]",
+    Critical: "text-[#dc4f6f]",
   };
 
-  // Compute maternity deficiency predictions
-  const data = useMemo<MaternityPredictionResult>(() => {
-    if (phase === "maternity") {
-      return predictMaternityDeficiencies(logs, trimester);
-    }
-    return { hasData: false, predictions: [], fallback: null };
-  }, [logs, phase, trimester]);
+  const severityColor: Record<string, string> = {
+    Low: "text-[#c9862f]",
+    Moderate: "text-[#c9862f]",
+    High: "text-[#d85386]",
+    Critical: "text-[#d85386]",
+  };
 
-  // Compute food restrictions
-  const foodRestrictions = useMemo<FoodRestrictionResult>(() => {
-    if (phase === "maternity") {
-      return calculateFoodRestrictions(logs, trimester as 1 | 2 | 3);
-    }
-    return { avoid: [], reduce: [], explanation: "", hasData: false };
-  }, [logs, phase, trimester]);
+  const nutrientIcon: Record<string, ReactNode> = {
+    Iron: <Flame className="h-5 w-5 text-[#ea527b]" />,
+    "Vitamin D": <Sun className="h-5 w-5 text-[#df9a2c]" />,
+    Magnesium: <Leaf className="h-5 w-5 text-[#4fb069]" />,
+    Calcium: <Shield className="h-5 w-5 text-[#639ac5]" />,
+    Protein: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+    Folate: <Leaf className="h-5 w-5 text-[#4fb069]" />,
+    B12: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+    DHA: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+    Fiber: <Leaf className="h-5 w-5 text-[#4fb069]" />,
+    Zinc: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+    Potassium: <Leaf className="h-5 w-5 text-[#4fb069]" />,
+    "Vitamin C": <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+  };
+
+  const nutrientBarColor: Record<string, string> = {
+    Iron: "bg-gradient-to-r from-[#f25b83] to-[#f896b0]",
+    "Vitamin D": "bg-gradient-to-r from-[#eeb34e] to-[#f5d498]",
+    Magnesium: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
+    Calcium: "bg-gradient-to-r from-[#5a9bc4] to-[#9bc4e8]",
+    Protein: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+    Folate: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
+    B12: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+    DHA: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+    Fiber: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
+    Zinc: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+    Potassium: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
+    "Vitamin C": "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+  };
+
+  const likelyDeficiencies = insights.nutrientRisks.filter(r => r.probability >= 40).length;
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/60 backdrop-blur-sm">
-        <div className="container py-6">
-          <ScrollReveal>
+    <main className="min-h-screen bg-gradient-to-b from-[#fff9fc] via-[#fcfbff] to-[#f9fffc] py-5">
+      <div className="container mx-auto max-w-6xl space-y-5 px-4 md:px-6">
+        <section className="rounded-[28px] border border-[#eee6f2] bg-white p-5 shadow-[0_10px_30px_rgba(191,168,201,0.14)]">
+          <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-lg shadow-primary/10`}>
-                <Zap className="w-5 h-5 text-white" />
-              </div>
+              <Link to="/nutrition" className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#f0e8f5] bg-[#fdfaff] text-[#7d6fbc]">
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Deficiency Insights</h1>
-                <p className="text-sm text-muted-foreground">
-                  Based on your symptom tracking and health patterns
+                <h1 className="text-2xl font-bold tracking-tight">Nutrition Deficiency Insights</h1>
+                <p className="text-sm text-muted-foreground">Understand your nutrient gaps. Nourish your best self.</p>
+              </div>
+            </div>
+            <button type="button" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fff2f8] text-[#bf7ba0]">
+              <Info className="h-4 w-4" />
+            </button>
+          </div>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
+            <div className="grid gap-4 sm:grid-cols-[180px_1fr]">
+              <div className="rounded-2xl border border-[#f0e7f5] bg-[#fffafd] p-4 text-center">
+                <p className="text-xs font-semibold text-muted-foreground">Your Nutrition Risk Score</p>
+                <div className="mx-auto mt-4 grid h-24 w-24 place-content-center rounded-full border-[8px] border-[#f4d9e9] bg-white">
+                  <p className="text-4xl font-bold leading-none text-foreground">{insights.overallRiskScore}</p>
+                  <p className="text-[11px] text-muted-foreground">/100</p>
+                </div>
+                <p className={`mt-2 text-sm font-semibold ${severityColor[insights.overallSeverity]}`}>{insights.overallSeverity} Risk</p>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between rounded-xl border border-[#f2ebf6] bg-[#fefcff] p-3">
+                  <p className="text-sm text-foreground">Likely Deficiencies</p>
+                  <p className="text-sm font-semibold">{likelyDeficiencies}</p>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-[#f2ebf6] bg-[#fefcff] p-3">
+                  <p className="text-sm text-foreground">Priority Nutrient</p>
+                  <p className={`text-sm font-semibold ${severityColor[insights.overallSeverity]}`}>{insights.priorityNutrient || "N/A"}</p>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-[#f2ebf6] bg-[#fefcff] p-3">
+                  <p className="text-sm text-foreground">Energy Impact</p>
+                  <p className="text-sm font-semibold text-[#ba8a35]">{insights.energyImpact}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
+            <h2 className="text-base font-semibold">Deficiency Risk Overview</h2>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <RiskChip label="High Risk" value={insights.riskCounts.high} tone="text-[#dc4f6f]" />
+              <RiskChip label="Moderate Risk" value={insights.riskCounts.moderate} tone="text-[#bc8b32]" />
+              <RiskChip label="Mild Risk" value={insights.riskCounts.low} tone="text-[#41a25f]" />
+              <RiskChip label="Good" value={insights.riskCounts.good} tone="text-[#3b8ed0]" />
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-[1fr_1.35fr]">
+          <div className="space-y-4 rounded-[24px] border border-[#eee7f3] bg-white p-4">
+            <div>
+              <h2 className="text-base font-semibold">Symptom-Based Detection</h2>
+              <p className="text-xs text-muted-foreground">Symptoms detected from your health logs</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {symptomPatterns.frequentSymptoms.length > 0 ? (
+                symptomPatterns.frequentSymptoms.map((symptom) => (
+                  <Badge key={symptom} text={symptom} />
+                ))
+              ) : (
+                <p className="col-span-full text-xs text-muted-foreground">No frequent symptoms detected</p>
+              )}
+            </div>
+            <div className="rounded-2xl border border-[#f0e8f5] bg-[#fffafe] p-3">
+              <p className="text-sm font-semibold">Possible Deficiencies</p>
+              <p className="text-xs text-muted-foreground">Based on your symptoms</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {insights.topDeficiencies.slice(0, 3).map((deficiency) => (
+                  <span key={deficiency.nutrient} className="rounded-lg bg-[#ffeef4] px-2.5 py-1 text-xs font-medium text-[#c85888]">
+                    {deficiency.nutrient}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3 rounded-[24px] border border-[#eee7f3] bg-white p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold">Top Deficiency Insights</h2>
+              <button type="button" className="text-xs font-semibold text-[#b26d95]">View All</button>
+            </div>
+            {insights.topDeficiencies.map((deficiency) => (
+              <DeficiencyItem
+                key={deficiency.nutrient}
+                icon={nutrientIcon[deficiency.nutrient] || <Sparkles className="h-5 w-5 text-[#8d73c7]" />}
+                title={`${deficiency.nutrient} Deficiency`}
+                risk={`${deficiency.severity} Risk`}
+                probability={`${deficiency.probability}%`}
+                symptoms={deficiency.matchedSymptoms.slice(0, 4).join(", ")}
+                why={`Based on your symptoms and phase context. Confidence: ${(deficiency.confidenceScore * 100).toFixed(0)}%`}
+                bar={nutrientBarColor[deficiency.nutrient] || "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]"}
+                tone={severityTone[deficiency.severity]}
+              />
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
+          <h2 className="text-base font-semibold">Your Nutrient Risk Trend</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-[1.4fr_0.8fr]">
+            <div className="rounded-2xl border border-[#efe8f4] bg-[#fefcff] p-4">
+              <div className="mb-2 flex justify-between text-[11px] text-muted-foreground">
+                <span>Week 1</span><span>Week 2</span><span>Week 3</span><span>Week 4</span>
+              </div>
+              <div className="h-28 rounded-xl bg-[linear-gradient(to_bottom,#f9f4fb_1px,transparent_1px)] bg-[size:100%_25%] p-4">
+                <div className="relative h-full">
+                  {insights.topDeficiencies.slice(0, 3).map((deficiency, index) => (
+                    <div
+                      key={deficiency.nutrient}
+                      className={`absolute left-0 h-[2px] rounded ${nutrientBarColor[deficiency.nutrient] || "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]"}`}
+                      style={{
+                        top: `${(index + 1) * 16}px`,
+                        width: `${deficiency.probability}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-[#efe8f4] bg-[#fff8fc] p-4">
+              <div className="space-y-2 text-xs">
+                {insights.topDeficiencies.slice(0, 3).map((deficiency) => (
+                  <p key={deficiency.nutrient} className="flex items-center gap-2">
+                    <Circle className={`h-2.5 w-2.5 fill-${deficiency.nutrient === "Iron" ? "[#e26b98]" : deficiency.nutrient === "Vitamin D" ? "[#e2a43d]" : "[#8b72c8]"} text-${deficiency.nutrient === "Iron" ? "[#e26b98]" : deficiency.nutrient === "Vitamin D" ? "[#e2a43d]" : "[#8b72c8]"}`} /> {deficiency.nutrient}
+                  </p>
+                ))}
+              </div>
+              <div className="mt-5 rounded-xl bg-white p-3">
+                <p className="text-sm font-semibold">
+                  {symptomPatterns.symptomTrend === "improving" ? "You're improving!" : symptomPatterns.symptomTrend === "worsening" ? "Needs attention" : "Stable"}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {symptomPatterns.symptomTrend === "improving"
+                    ? "Your nutrition is getting better. Keep continuing your healthy habits."
+                    : symptomPatterns.symptomTrend === "worsening"
+                    ? "Your symptoms are increasing. Consider adjusting your diet."
+                    : "Your nutrition status is stable. Maintain your current habits."}
                 </p>
               </div>
             </div>
-          </ScrollReveal>
-        </div>
-      </div>
-
-      <div className="container py-6 space-y-6">
-        {/* Safety Banner */}
-        <ScrollReveal>
-          <div className="rounded-xl border border-rose-200/60 bg-gradient-to-r from-rose-50/50 to-pink-50/30 p-4">
-            <p className="text-xs text-rose-800 flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
-              <span>
-                <strong>Important:</strong> This is not a diagnostic tool. The insights below are
-                based on your logged symptoms and profile data. They use probability-based language
-                and are meant for general awareness only. Always consult a healthcare professional for
-                medical advice.
-              </span>
-            </p>
           </div>
-        </ScrollReveal>
+        </section>
 
-        {/* Empty State */}
-        {!data.hasData && (
-          <ScrollReveal>
-            <div className="flex flex-col items-center justify-center text-center py-20 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
-              <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center mb-5 shadow-lg opacity-40`}>
-                <Zap className="w-8 h-8 text-white" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">No symptom history available yet</h3>
-              <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-5">
-                Log your symptoms in the Calendar to get personalized deficiency insights
-                tailored to what your body needs.
-              </p>
-              <Link
-                to="/calendar"
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r ${accent.gradient} text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all active:scale-[0.97]`}
-              >
-                Track Symptoms in Calendar
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </ScrollReveal>
-        )}
-
-        {/* Fallback Recommendation (when no predictions but has data) */}
-        {data.hasData && data.fallback && (
-          <ScrollReveal>
-            <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">🌸</span>
-                <div>
-                  <h2 className="text-lg font-bold">{data.fallback.focusTitle}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">Trimester {data.fallback.trimester} focus</p>
+        <section className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+          <div className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
+            <h2 className="text-base font-semibold">Today&apos;s Missing Nutrients</h2>
+            <p className="text-xs text-muted-foreground">Nutrients your body needs more of today</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+              {insights.topDeficiencies.slice(0, 5).map((deficiency) => (
+                <div key={deficiency.nutrient} className="rounded-xl border border-[#efe8f4] bg-[#fefcff] p-3 text-center">
+                  {nutrientIcon[deficiency.nutrient] || <Sparkles className="mx-auto h-4 w-4 text-[#8d73c7]" />}
+                  <p className="mt-1 text-xs font-semibold">{deficiency.nutrient}</p>
+                  <p className={`text-[11px] text-muted-foreground ${severityTone[deficiency.severity]}`}>{deficiency.severity}</p>
                 </div>
-              </div>
-              <p className="text-sm text-foreground/85 leading-relaxed mb-4">
-                {data.fallback.whyItMatters}
-              </p>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                    Foods to include
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {data.fallback.foods.map((food) => (
-                      <span
-                        key={food}
-                        className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-sm"
-                      >
-                        {food}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                    Healthy habits
-                  </p>
-                  <ul className="space-y-1.5 ml-4">
-                    {data.fallback.habits.map((habit, i) => (
-                      <li key={i} className="text-sm text-foreground/85 list-disc leading-relaxed">
-                        {habit}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </ScrollReveal>
-        )}
-
-        {/* Deficiency Cards */}
-        {data.hasData && data.predictions.length > 0 && (
-          <ScrollReveal>
-            <div className="grid gap-4 md:grid-cols-2">
-              {data.predictions.map((pred, i) => (
-                <DeficiencyCard key={pred.id} prediction={pred} accent={accent} index={i} />
               ))}
             </div>
-          </ScrollReveal>
-        )}
-
-        {/* Foods to Avoid & Reduce Section */}
-        {data.hasData && (
-          <ScrollReveal delay={50}>
-            <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
-              <div className="flex items-center gap-2 mb-4">
-                <XCircle className={`w-5 h-5 ${accent.text}`} />
-                <h2 className="text-base font-bold">Foods to Avoid & Reduce</h2>
+          </div>
+          <div className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
+            <p className="text-sm font-semibold">Nutrient Gap Summary</p>
+            <div className="mt-2 flex items-end gap-3">
+              <div className="grid h-16 w-16 place-content-center rounded-full border-4 border-[#f2dbe8] bg-white text-2xl font-bold">
+                {insights.nutrientRisks.filter(r => r.probability >= 40).length}
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Based on your trimester, symptoms, and current health patterns.
-              </p>
-
-              {foodRestrictions.hasData ? (
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {/* Reduce Foods */}
-                  <div className="bg-background/60 rounded-xl p-4 border border-border/50">
-                    <div className="flex items-center gap-2 mb-3">
-                      <MinusCircle className="w-4 h-4 text-amber-600" />
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Reduce
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {foodRestrictions.reduce.map((item) => (
-                        <span
-                          key={item}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-amber-50 text-amber-800 border-amber-200"
-                        >
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Avoid Foods */}
-                  <div className="bg-background/60 rounded-xl p-4 border border-border/50">
-                    <div className="flex items-center gap-2 mb-3">
-                      <XCircle className="w-4 h-4 text-rose-600" />
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                        Avoid
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {foodRestrictions.avoid.map((item) => (
-                        <span
-                          key={item}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-rose-50 text-rose-800 border-rose-200"
-                        >
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    No specific food restrictions detected yet.
-                  </p>
-                  <Link
-                    to="/calendar"
-                    className="inline-flex items-center gap-2 text-sm text-primary font-medium hover:underline"
-                  >
-                    Track more symptoms for personalized guidance
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              )}
-
-              {foodRestrictions.hasData && foodRestrictions.explanation && (
-                <div className="mt-4 p-3 rounded-lg bg-muted/20 border border-border/30">
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {foodRestrictions.explanation}
-                  </p>
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground">Nutrients at risk</p>
             </div>
-          </ScrollReveal>
-        )}
-      </div>
+            <p className="mt-3 text-sm text-foreground/85">
+              {insights.priorityNutrient
+                ? `Focus on ${insights.priorityNutrient} first. Keep a balanced diet to reduce gaps.`
+                : "Keep a balanced diet to reduce the gaps and fuel your best every day."}
+            </p>
+            <button type="button" className="mt-4 rounded-full bg-[#f7ebf4] px-4 py-2 text-xs font-semibold text-[#9c5f84]">
+              View Full Nutrient Gaps
+            </button>
+          </div>
+        </section>
 
-      <SafetyDisclaimer />
+        <section className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
+          <h2 className="text-base font-semibold">Nutrient Deficiency Severity Guide</h2>
+          <div className="mt-3 grid gap-2 md:grid-cols-4">
+            <div className="rounded-xl border border-[#e7f4ea] bg-[#f4fff6] p-3"><p className="text-sm font-semibold text-[#3f9f58]">Mild</p><p className="mt-1 text-xs text-[#51765c]">Minor deficiency. Manage with diet and lifestyle.</p></div>
+            <div className="rounded-xl border border-[#f8edd9] bg-[#fffaf0] p-3"><p className="text-sm font-semibold text-[#b4852d]">Moderate</p><p className="mt-1 text-xs text-[#7d6943]">Noticeable deficiency. Needs attention and consistency.</p></div>
+            <div className="rounded-xl border border-[#f8e3e6] bg-[#fff5f6] p-3"><p className="text-sm font-semibold text-[#c35a66]">High</p><p className="mt-1 text-xs text-[#865761]">High risk deficiency. Take action and improve your diet.</p></div>
+            <div className="rounded-xl border border-[#f4dde8] bg-[#fff4fb] p-3"><p className="text-sm font-semibold text-[#bf4e91]">Critical</p><p className="mt-1 text-xs text-[#815b72]">Severe deficiency. Consult a healthcare professional.</p></div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-[#efe6f3] bg-white px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Moon className="h-4 w-4 text-[#8f7bbc]" />
+              Insights are based on the information you provide and are not a substitute for medical advice.
+            </p>
+            <button type="button" className="shrink-0 text-xs font-semibold text-[#b16d96]">
+              Know More
+            </button>
+          </div>
+        </section>
+      </div>
     </main>
   );
 }

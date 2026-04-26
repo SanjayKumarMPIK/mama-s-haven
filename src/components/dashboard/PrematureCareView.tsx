@@ -14,18 +14,13 @@ import { Link } from "react-router-dom";
 import {
   usePregnancyProfile,
   getRiskLevel,
-  getCorrectedAge,
   type DeliveryData,
 } from "@/hooks/usePregnancyProfile";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePrematureBabyWeight, type WeightEntry } from "@/hooks/usePrematureBabyWeight";
 import {
-  FEEDING_GUIDANCE,
   TEMPERATURE_CARE,
   INFECTION_PREVENTION,
-  WARNING_SIGNS,
-  DAILY_CHECK_QUESTIONS,
-  type DailyCheckQuestion,
 } from "@/lib/prematureCareData";
 import {
   calculateRecoveryScore,
@@ -40,6 +35,8 @@ import {
 } from "@/lib/premature/recoveryScoreEngine";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
+import HealthSummaryCards from "@/components/shared/HealthSummaryCards";
+import PrematureRecoveryTimeline from "@/components/dashboard/PrematureRecoveryTimeline";
 import {
   Baby, Heart, Thermometer, ShieldCheck, AlertTriangle,
   Scale, ClipboardCheck, Phone, Sparkles, ChevronRight,
@@ -64,15 +61,7 @@ function riskBadge(risk: ReturnType<typeof getRiskLevel>) {
   return null;
 }
 
-// ─── Daily Check State (in-memory per session) ──────────────────────────────
 
-function useDailyCheck() {
-  const [answers, setAnswers] = useState<Record<string, boolean | null>>({});
-  const setAnswer = (id: string, value: boolean) => setAnswers((prev) => ({ ...prev, [id]: value }));
-  const hasNegative = Object.values(answers).some((v) => v === false);
-  const isComplete = DAILY_CHECK_QUESTIONS.every((q) => answers[q.id] !== undefined && answers[q.id] !== null);
-  return { answers, setAnswer, hasNegative, isComplete };
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Main Component
@@ -84,8 +73,6 @@ export default function PrematureCareView() {
   const delivery = profile.delivery;
   const risk = getRiskLevel(delivery.weeksAtBirth);
   const riskInfo = riskBadge(risk);
-  const correctedAge = getCorrectedAge(delivery.birthDate, delivery.weeksAtBirth);
-  const dailyCheck = useDailyCheck();
   const weightTracker = usePrematureBabyWeight();
 
   // ─── Recovery Analytics (memoized) ────────────────────────────────────────
@@ -103,6 +90,53 @@ export default function PrematureCareView() {
   }, [delivery.birthDate]);
 
   const recoveryTimeline = useMemo(() => getRecoveryTimeline(weeksPostDelivery), [weeksPostDelivery]);
+
+  // ─── Health Summary Stats for Premature Dashboard ────────────────────────
+  const healthSummaryStats = useMemo(() => {
+    // Calculate stats from maternity logs (last 7 days)
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Convert object to array and filter by date
+    const recentLogs = Object.values(maternityLogs)
+      .filter(log => {
+        const logDate = new Date(log.date);
+        return logDate >= sevenDaysAgo && logDate <= now;
+      });
+
+    const loggedDays = recentLogs.length;
+    
+    // Count symptoms tracked (symptoms is an object with boolean flags)
+    const symptomsTracked = recentLogs.reduce((count, log) => {
+      if (log.symptoms && typeof log.symptoms === 'object') {
+        const symptomCount = Object.values(log.symptoms as Record<string, boolean>).filter(Boolean).length;
+        return count + symptomCount;
+      }
+      return count;
+    }, 0);
+
+    // Calculate average sleep (property is sleepHours, not sleep)
+    const sleepLogs = recentLogs.map(log => log.sleepHours).filter(s => s !== null && s !== undefined);
+    const avgSleep = sleepLogs.length > 0 
+      ? sleepLogs.reduce((sum, s) => sum + s, 0) / sleepLogs.length 
+      : null;
+
+    // Calculate average mood (convert MoodType to number: Good=3, Okay=2, Low=1)
+    const moodLogs = recentLogs.map(log => log.mood).filter(m => m !== null && m !== undefined);
+    const avgMood = moodLogs.length > 0 
+      ? moodLogs.reduce((sum: number, m) => {
+          const moodValue = m === "Good" ? 3 : m === "Okay" ? 2 : m === "Low" ? 1 : 0;
+          return sum + moodValue;
+        }, 0) / moodLogs.length 
+      : null;
+
+    return {
+      loggedDays,
+      symptomsTracked,
+      avgSleep: avgSleep ? Math.round(avgSleep * 10) / 10 : null,
+      avgMood: avgMood ? Math.round(avgMood * 10) / 10 : null,
+    };
+  }, [maternityLogs]);
 
   const [checkups, setCheckups] = useState<RecoveryCheckup[]>(() => loadCheckups());
   const toggleCheckup = useCallback((id: string) => {
@@ -273,6 +307,16 @@ export default function PrematureCareView() {
           </div>
         </ScrollReveal>
 
+        {/* ═══ Health Summary Analytics Cards ═════════════════════════════ */}
+        <ScrollReveal delay={30}>
+          <HealthSummaryCards
+            loggedDays={healthSummaryStats.loggedDays}
+            symptomsTracked={healthSummaryStats.symptomsTracked}
+            avgSleep={healthSummaryStats.avgSleep}
+            avgMood={healthSummaryStats.avgMood}
+          />
+        </ScrollReveal>
+
         {/* ═══ Recovery Status + Daily Priority (side by side) ══════════════ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Recovery Status */}
@@ -407,32 +451,7 @@ export default function PrematureCareView() {
                 <p className="text-[10px] text-muted-foreground">Week {weeksPostDelivery} post-delivery</p>
               </div>
             </div>
-            <div className="relative pl-6">
-              {/* Vertical line */}
-              <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-border" />
-              <div className="space-y-3">
-                {recoveryTimeline.map(milestone => (
-                  <div key={milestone.weekNumber} className="relative flex items-start gap-3">
-                    <div className={`absolute left-[-16px] w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 z-10 ${
-                      milestone.status === "completed" ? "bg-green-500 border-green-500" :
-                      milestone.status === "current" ? "bg-violet-500 border-violet-500 ring-4 ring-violet-100" :
-                      "bg-background border-border"
-                    }`}>
-                      {milestone.status === "completed" && <CheckCircle2 className="w-3 h-3 text-white" />}
-                      {milestone.status === "current" && <Circle className="w-2 h-2 text-white fill-white" />}
-                    </div>
-                    <div className={`ml-1 ${
-                      milestone.status === "upcoming" ? "opacity-50" : ""
-                    }`}>
-                      <p className="text-xs font-bold text-foreground">
-                        Week {milestone.weekNumber} — {milestone.label}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">{milestone.description}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <PrematureRecoveryTimeline timeline={recoveryTimeline} currentWeek={weeksPostDelivery} />
           </div>
         </ScrollReveal>
 
@@ -483,185 +502,6 @@ export default function PrematureCareView() {
              BABY CARE SECTIONS (existing)
            ═══════════════════════════════════════════════════════════════════ */}
 
-        {/* ═══ Section 1: Corrected Age ═══════════════════════════════════ */}
-        {correctedAge && (
-          <ScrollReveal>
-            <div className="rounded-2xl border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-violet-50 p-5">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-purple-700" />
-                </div>
-                <h2 className="font-bold text-sm">Corrected Age</h2>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/80 rounded-xl p-4 border border-purple-100 text-center">
-                  <p className="text-2xl font-bold text-foreground">
-                    {correctedAge.actualWeeks} <span className="text-sm font-medium text-muted-foreground">weeks</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">Actual Age</p>
-                </div>
-                <div className="bg-white/80 rounded-xl p-4 border border-purple-200 text-center">
-                  <p className="text-2xl font-bold text-purple-700">
-                    {correctedAge.correctedWeeks} <span className="text-sm font-medium text-purple-500">weeks</span>
-                  </p>
-                  <p className="text-xs text-purple-600 mt-1 font-medium">Corrected Age</p>
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
-                Your baby was born <strong>{correctedAge.weeksBornEarly} weeks early</strong>. Corrected age adjusts for prematurity and is used to track developmental milestones.
-              </p>
-            </div>
-          </ScrollReveal>
-        )}
-
-        {/* ═══ Section 2: Warning Signs (Critical) ════════════════════════ */}
-        <ScrollReveal delay={60}>
-          <div className="rounded-2xl border-2 border-red-200 bg-red-50/50 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-red-700" />
-              </div>
-              <div>
-                <h2 className="font-bold text-sm text-red-800">Warning Signs — Seek Help Immediately</h2>
-                <p className="text-[10px] text-red-600">If you notice any of these, contact your doctor or call 104</p>
-              </div>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {WARNING_SIGNS.map((sign) => (
-                <div
-                  key={sign.title}
-                  className={`flex items-start gap-3 rounded-xl p-3 border ${
-                    sign.severity === "critical"
-                      ? "bg-red-100/60 border-red-200"
-                      : "bg-amber-50 border-amber-200"
-                  }`}
-                >
-                  <span className="text-xl shrink-0 mt-0.5">{sign.emoji}</span>
-                  <div>
-                    <p className={`text-xs font-bold ${
-                      sign.severity === "critical" ? "text-red-800" : "text-amber-800"
-                    }`}>
-                      {sign.title}
-                    </p>
-                    <p className="text-[11px] text-foreground/80 leading-relaxed mt-0.5">{sign.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* ═══ Section 3: Daily Check ═════════════════════════════════════ */}
-        <ScrollReveal delay={120}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                <ClipboardCheck className="w-4 h-4 text-blue-700" />
-              </div>
-              <div>
-                <h2 className="font-bold text-sm">Daily Baby Check</h2>
-                <p className="text-[10px] text-muted-foreground">Quick check — answer honestly</p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              {DAILY_CHECK_QUESTIONS.map((q) => {
-                const answer = dailyCheck.answers[q.id];
-                return (
-                  <div key={q.id} className="rounded-xl border border-border/60 bg-background p-4">
-                    <p className="text-sm font-medium mb-3">
-                      <span className="mr-2">{q.emoji}</span>{q.question}
-                    </p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => dailyCheck.setAnswer(q.id, true)}
-                        className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                          answer === true
-                            ? "bg-green-500 text-white shadow-sm"
-                            : "bg-muted text-muted-foreground hover:bg-green-50 hover:text-green-700"
-                        }`}
-                      >
-                        ✓ {q.positiveLabel}
-                      </button>
-                      <button
-                        onClick={() => dailyCheck.setAnswer(q.id, false)}
-                        className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
-                          answer === false
-                            ? "bg-red-500 text-white shadow-sm"
-                            : "bg-muted text-muted-foreground hover:bg-red-50 hover:text-red-700"
-                        }`}
-                      >
-                        ✗ {q.negativeLabel}
-                      </button>
-                    </div>
-                    {answer === false && (
-                      <div className="mt-2 p-2.5 rounded-lg bg-red-50 border border-red-200 animate-fadeIn">
-                        <p className="text-[11px] text-red-700 flex items-start gap-1.5">
-                          <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
-                          {q.alertMessage}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {dailyCheck.hasNegative && dailyCheck.isComplete && (
-              <div className="mt-4 p-3 rounded-xl bg-red-100 border-2 border-red-300 animate-fadeIn">
-                <p className="text-sm font-bold text-red-800 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Monitor closely or consult your doctor today
-                </p>
-              </div>
-            )}
-
-            {dailyCheck.isComplete && !dailyCheck.hasNegative && (
-              <div className="mt-4 p-3 rounded-xl bg-green-50 border border-green-200 animate-fadeIn">
-                <p className="text-sm font-semibold text-green-700 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  All checks passed! Your baby seems to be doing well today 💚
-                </p>
-              </div>
-            )}
-          </div>
-        </ScrollReveal>
-
-        {/* ═══ Section 4: Feeding Guidance ═════════════════════════════════ */}
-        <ScrollReveal delay={180}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-                <Heart className="w-4 h-4 text-amber-700" />
-              </div>
-              <h2 className="font-bold text-sm">Feeding Guidance</h2>
-            </div>
-
-            <div className="bg-amber-50 rounded-xl border border-amber-200 p-3 mb-4">
-              <p className="text-sm font-semibold text-amber-800">⏰ {FEEDING_GUIDANCE.schedule}</p>
-            </div>
-
-            <div className="space-y-2 mb-4">
-              {FEEDING_GUIDANCE.tips.map((tip, i) => (
-                <div key={i} className="flex items-start gap-2 p-2">
-                  <span className="text-base shrink-0">{tip.emoji}</span>
-                  <p className="text-sm text-foreground/90 leading-relaxed">{tip.text}</p>
-                </div>
-              ))}
-            </div>
-
-            <div className="rounded-xl border border-red-200 bg-red-50/50 p-4">
-              <p className="text-xs font-bold text-red-800 mb-2">⚠️ Signs of Poor Feeding</p>
-              <ul className="space-y-1.5">
-                {FEEDING_GUIDANCE.poorFeedingSigns.map((sign, i) => (
-                  <li key={i} className="text-[11px] text-red-700 flex items-start gap-2">
-                    <span className="text-red-400 mt-0.5">•</span>{sign}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </ScrollReveal>
 
         {/* ═══ Section 5: Weight Tracker ═══════════════════════════════════ */}
         <ScrollReveal delay={240}>

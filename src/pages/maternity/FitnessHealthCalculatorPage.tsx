@@ -1,255 +1,215 @@
-import { useMemo } from "react";
+import { type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { useProfile } from "@/hooks/useProfile";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
-import { calculateHealthMetrics, type HealthCalculationResult, type UserProfile } from "@/lib/nutrition/healthCalculator";
-import ScrollReveal from "@/components/ScrollReveal";
-import SafetyDisclaimer from "@/components/SafetyDisclaimer";
+import { useFitnessMetrics } from "@/hooks/useFitnessMetrics";
 import {
-  Flame, Droplets, Dumbbell, ChevronRight, Info, ArrowLeft, TrendingUp,
+  Activity,
+  ArrowLeft,
+  Droplets,
+  Dumbbell,
+  Flame,
+  Gauge,
+  Info,
+  Scale,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function AnalyticsMetricCard({
+function RequirementCard({
   icon: Icon,
   title,
   value,
-  unit,
-  insight,
-  accent,
+  explanation,
+  cta,
+  gradient,
 }: {
   icon: any;
   title: string;
-  value: string | number;
-  unit: string;
-  insight: string;
-  accent: any;
+  value: string;
+  explanation: string;
+  cta: string;
+  gradient: string;
 }) {
   return (
-    <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-5 hover:shadow-md transition-all`}>
-      <div className="flex items-center gap-3 mb-4">
-        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-md shrink-0`}>
-          <Icon className="w-5 h-5 text-white" />
+    <div className={`rounded-[26px] border border-white/70 bg-gradient-to-br ${gradient} p-6 shadow-[0_12px_30px_rgba(200,146,170,0.12)]`}>
+      <div className="mb-5 flex items-center gap-3">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/75 shadow-sm">
+          <Icon className="w-5 h-5 text-[#9f79be]" />
         </div>
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-        </div>
+        <h3 className="text-sm font-semibold text-foreground/90">{title}</h3>
       </div>
-
-      <div className="mb-3">
-        <div className="flex items-baseline gap-2">
-          <span className="text-3xl font-bold text-foreground">{value}</span>
-          <span className="text-sm text-muted-foreground">{unit}</span>
-        </div>
-      </div>
-
-      <p className="text-xs text-foreground/70 leading-relaxed">
-        {insight}
-      </p>
+      <p className="mb-2 text-[28px] font-bold leading-tight text-foreground">{value}</p>
+      <p className="mb-5 text-xs leading-relaxed text-foreground/70">{explanation}</p>
+      <button
+        type="button"
+        className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-foreground shadow-sm transition hover:shadow"
+      >
+        {cta}
+      </button>
     </div>
   );
 }
 
-function ProfileStatChip({ label, value, accent }: { label: string; value: string; accent: any }) {
+function CalculatorCard({
+  icon: Icon,
+  title,
+  result,
+  explanation,
+  cta,
+  children,
+}: {
+  icon: any;
+  title: string;
+  result: string;
+  explanation: string;
+  cta: string;
+  children?: ReactNode;
+}) {
   return (
-    <div className={`px-3 py-2 rounded-lg border ${accent.border} ${accent.bg} flex flex-col items-center min-w-[70px]`}>
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">{label}</span>
-      <span className="text-sm font-bold text-foreground">{value}</span>
+    <div className="rounded-[24px] border border-[#f0e9f3] bg-white p-5 shadow-[0_8px_22px_rgba(188,174,203,0.13)]">
+      <div className="mb-4 flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#f4efff] text-[#8b75d2]">
+          <Icon className="h-5 w-5" />
+        </div>
+        <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+      </div>
+      <p className="text-2xl font-bold text-foreground">{result}</p>
+      <p className="mt-2 text-xs text-muted-foreground">{explanation}</p>
+      {children}
+      <button type="button" className="mt-4 rounded-full bg-[#f6f2fb] px-3.5 py-1.5 text-xs font-semibold text-[#7f6ebf]">
+        {cta}
+      </button>
     </div>
   );
 }
-
-// ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function FitnessHealthCalculatorPage() {
-  const { profile } = useProfile();
-  const { currentWeek, trimester } = usePregnancyProfile();
-
-  const accent = {
-    gradient: "from-purple-500 to-violet-400",
-    bg: "bg-purple-50",
-    text: "text-purple-700",
-    border: "border-purple-200/60",
-    cardBg: "bg-gradient-to-br from-purple-50 to-violet-50",
-    badge: "bg-purple-100 text-purple-700",
-  };
-
-  // Build user profile for calculations
-  const userProfile: UserProfile = useMemo(() => {
-    return {
-      age: profile?.age || 28,
-      height: profile?.height || 160,
-      weight: profile?.weight || 65,
-      trimester: (trimester || 2) as 1 | 2 | 3,
-      activityLevel: "moderate", // Default to moderate if not available
-      healthConditions: [],
-    };
-  }, [profile, trimester]);
-
-  // Calculate health metrics
-  const metrics = useMemo<HealthCalculationResult>(() => {
-    return calculateHealthMetrics(userProfile);
-  }, [userProfile]);
+  const { metrics, profile, healthSignals } = useFitnessMetrics();
+  const bmiProgress = Math.min(100, Math.max(12, (metrics.bmi.score / 40) * 100));
+  const activityLabel = metrics.activity.level === "light" ? "Light" : metrics.activity.level === "moderate" ? "Moderate" : metrics.activity.level === "active" ? "Active" : "Sedentary";
 
   return (
-    <main className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card/60 backdrop-blur-sm">
-        <div className="container py-6">
-          <ScrollReveal>
+    <main className="min-h-screen bg-gradient-to-b from-[#fff8fb] via-[#fbfbff] to-[#f9fffc] py-6 md:py-8">
+      <div className="container mx-auto max-w-6xl space-y-7 px-4 md:px-6">
+        <div className="rounded-[28px] border border-[#f0e6f3] bg-white/80 p-5 shadow-[0_12px_30px_rgba(195,171,192,0.13)] backdrop-blur-sm md:p-6">
+          <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-lg shadow-primary/10`}>
-                <Dumbbell className="w-5 h-5 text-white" />
-              </div>
+              <Link
+                to="/nutrition"
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#f1e9f4] bg-[#fdf9ff] text-[#7f70bb]"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Link>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Fitness & Health Calculator</h1>
-                <p className="text-sm text-muted-foreground">
-                  Personalized nutrition recommendations for women's health and pregnancy
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">Fitness Health Calculator</h1>
+                <p className="text-sm text-muted-foreground">Calculate your body's needs. Plan your fitness better.</p>
+                <p className="mt-1 text-xs text-[#8e7a9e]">
+                  Personalized from profile, calendar symptoms, health logs, and phase context.
                 </p>
               </div>
             </div>
-          </ScrollReveal>
+            <button type="button" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#fff3f8] text-[#be7ca0]">
+              <Info className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="container py-6 space-y-6">
-        {/* Profile Snapshot Bar */}
-        <ScrollReveal>
-          <div className={`rounded-2xl border ${accent.border} ${accent.bg} p-4`}>
-            <div className="flex items-center gap-2 mb-3">
-              <TrendingUp className={`w-4 h-4 ${accent.text}`} />
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Profile Analytics
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <ProfileStatChip label="Age" value={`${userProfile.age}y`} accent={accent} />
-              <ProfileStatChip label="Height" value={`${userProfile.height}cm`} accent={accent} />
-              <ProfileStatChip label="Weight" value={`${userProfile.weight}kg`} accent={accent} />
-              {userProfile.trimester && (
-                <ProfileStatChip label="Trimester" value={`T${userProfile.trimester}`} accent={accent} />
-              )}
-              <ProfileStatChip label="Activity" value={userProfile.activityLevel} accent={accent} />
-            </div>
+        <section className="space-y-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#b18cab]">Daily Requirements</p>
+            <h2 className="mt-1 text-lg font-bold text-foreground">What your body needs today</h2>
           </div>
-        </ScrollReveal>
-
-        {/* Primary Analytics Grid */}
-        <ScrollReveal delay={50}>
           <div className="grid gap-4 md:grid-cols-3">
-            <AnalyticsMetricCard
-              icon={Flame}
-              title="Daily Calorie Intake"
-              value={metrics.calories.dailyCalories.toLocaleString()}
-              unit="kcal"
-              insight="Energy adjusted for pregnancy trimester and activity level"
-              accent={accent}
-            />
-            <AnalyticsMetricCard
-              icon={Dumbbell}
-              title="Daily Protein Goal"
-              value={metrics.protein.dailyProtein}
-              unit="grams"
-              insight="Supports baby's tissue development and body repair"
-              accent={accent}
-            />
-            <AnalyticsMetricCard
-              icon={Droplets}
-              title="Daily Water Intake"
-              value={metrics.water.dailyWaterLiters}
-              unit="liters"
-              insight="Hydration for amniotic fluid and blood volume"
-              accent={accent}
-            />
+          <RequirementCard
+            icon={Flame}
+            title="Calories You Need"
+            value={`${metrics.caloriesNeeded} kcal/day`}
+            explanation="Mifflin-St Jeor + activity, goal preference, and health phase adjustments."
+            cta="Auto from profile"
+            gradient="from-[#ffdfe9] to-[#ffeede]"
+          />
+          <RequirementCard
+            icon={Dumbbell}
+            title="Protein You Need"
+            value={`${metrics.proteinNeededG} g/day`}
+            explanation="Adjusted by weight, activity level, phase-specific recovery demand, and goal."
+            cta="Auto from logs"
+            gradient="from-[#efe2ff] to-[#f5efff]"
+          />
+          <RequirementCard
+            icon={Droplets}
+            title="Water You Need"
+            value={`${metrics.waterNeeded.liters} L/day`}
+            explanation="Influenced by body weight, climate, activity, and hydration-related symptoms."
+            cta="Signal-aware target"
+            gradient="from-[#dff4ff] to-[#ebf8ff]"
+          />
           </div>
-        </ScrollReveal>
+        </section>
 
-        {/* Visual Health Summary */}
-        <ScrollReveal delay={100}>
-          <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
-            <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className={`w-5 h-5 ${accent.text}`} />
-              <h2 className="text-base font-bold">Nutrition Balance Snapshot</h2>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-xs font-semibold text-muted-foreground">Calories</span>
-                  <span className="text-xs font-bold text-foreground">{metrics.calories.dailyCalories} kcal</span>
-                </div>
-                <div className="h-2 rounded-full bg-background/60 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-500"
-                    style={{ width: "85%" }}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-xs font-semibold text-muted-foreground">Protein</span>
-                  <span className="text-xs font-bold text-foreground">{metrics.protein.dailyProtein}g</span>
-                </div>
-                <div className="h-2 rounded-full bg-background/60 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-blue-400 to-indigo-500"
-                    style={{ width: "78%" }}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-xs font-semibold text-muted-foreground">Hydration</span>
-                  <span className="text-xs font-bold text-foreground">{metrics.water.dailyWaterLiters}L</span>
-                </div>
-                <div className="h-2 rounded-full bg-background/60 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500"
-                    style={{ width: "90%" }}
-                  />
-                </div>
-              </div>
-            </div>
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-[#9f78b0]" />
+            <h2 className="text-base font-bold">Health Calculators</h2>
           </div>
-        </ScrollReveal>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <CalculatorCard
+              icon={Scale}
+              title="BMI Calculator"
+              result={`${metrics.bmi.score} -> ${metrics.bmi.category}`}
+              explanation="BMI reflects body mass status using height and current body weight."
+              cta="Auto recalculated"
+            >
+              <div className="mt-3">
+                <div className="mb-1 flex justify-between text-[11px] text-muted-foreground">
+                  <span>Low</span>
+                  <span>Healthy</span>
+                  <span>High</span>
+                </div>
+                <div className="h-2 rounded-full bg-[#f3ecf8]">
+                  <div className="h-2 rounded-full bg-gradient-to-r from-[#8bd3dd] via-[#f8cf7a] to-[#f39c9c]" style={{ width: `${bmiProgress}%` }} />
+                </div>
+              </div>
+            </CalculatorCard>
 
-        {/* Daily Target Snapshot */}
-        <ScrollReveal delay={150}>
-          <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
-            <div className="flex items-center gap-2 mb-4">
-              <Dumbbell className={`w-5 h-5 ${accent.text}`} />
-              <h2 className="text-base font-bold">Today's Recommended Targets</h2>
-            </div>
-            <div className="grid sm:grid-cols-3 gap-4">
-              <div className="bg-background/60 rounded-xl p-4 border border-border/50">
-                <p className="text-xs font-semibold text-muted-foreground mb-1">Calories</p>
-                <p className="text-2xl font-bold text-foreground">{metrics.calories.dailyCalories} kcal</p>
+            <CalculatorCard
+              icon={Zap}
+              title="TDEE Calculator"
+              result={`${metrics.tdee.maintenance} kcal`}
+              explanation="Daily expenditure insights for maintenance, fat-loss mode, and muscle-gain mode."
+              cta="Live requirement"
+            >
+              <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                  <p>Maintenance -&gt; {metrics.tdee.maintenance} kcal</p>
+                  <p>Weight loss -&gt; {metrics.tdee.weightLoss} kcal</p>
+                  <p>Muscle gain -&gt; {metrics.tdee.muscleGain} kcal</p>
               </div>
-              <div className="bg-background/60 rounded-xl p-4 border border-border/50">
-                <p className="text-xs font-semibold text-muted-foreground mb-1">Protein</p>
-                <p className="text-2xl font-bold text-foreground">{metrics.protein.dailyProtein}g</p>
-              </div>
-              <div className="bg-background/60 rounded-xl p-4 border border-border/50">
-                <p className="text-xs font-semibold text-muted-foreground mb-1">Water</p>
-                <p className="text-2xl font-bold text-foreground">{metrics.water.dailyWaterLiters}L</p>
-              </div>
-            </div>
+            </CalculatorCard>
+
+            <CalculatorCard
+              icon={Gauge}
+              title="Metabolism Score"
+              result={metrics.metabolism.label}
+              explanation="Derived from age, BMI, TDEE, activity signal, and weight trend stability."
+              cta={`Score ${metrics.metabolism.score}/100`}
+            >
+              <p className="mt-2 text-xs text-muted-foreground">{metrics.metabolism.estimatedBurn} kcal/day estimated burn</p>
+            </CalculatorCard>
+
+            <CalculatorCard
+              icon={Activity}
+              title="Activity Level"
+              result={activityLabel}
+              explanation="Inferred from profile lifestyle context, goals, and movement consistency in logs."
+              cta="Context-derived"
+            >
+              <p className="mt-2 text-xs text-muted-foreground">{metrics.activity.score.toFixed(1)} / 10</p>
+            </CalculatorCard>
           </div>
-        </ScrollReveal>
-
-        {/* Back to Nutrition Guide */}
-        <ScrollReveal delay={200}>
-          <Link
-            to="/nutrition"
-            className="inline-flex items-center gap-2 text-sm text-primary font-medium hover:underline"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Nutrition Guide
-          </Link>
-        </ScrollReveal>
+        </section>
+        <section className="rounded-[24px] border border-[#efe7f3] bg-white/80 p-4 text-xs text-[#7f7391]">
+          Auto-updating signals: sleep {healthSignals.avgSleepHours ?? "N/A"}h avg, fatigue {(healthSignals.fatigueFrequency * 100).toFixed(0)}%, hydration-risk {(healthSignals.hydrationLowFrequency * 100).toFixed(0)}%, phase {profile.phase}.
+        </section>
       </div>
-
-      <SafetyDisclaimer />
     </main>
   );
 }

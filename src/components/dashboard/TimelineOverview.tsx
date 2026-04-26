@@ -60,7 +60,7 @@ function WeekNode({
         <span
           className={cn(
             "text-[10px] font-bold z-10",
-            isActive || isCompleted ? "text-white" : trimesterBorderColor.replace("border-", "text-")
+            isActive || isCompleted ? "text-white" : (trimesterBorderColor || "border-gray-500").replace("border-", "text-")
           )}
         >
           {week}
@@ -100,8 +100,8 @@ export function TimelineOverview({ currentWeek, selectedWeek, onSelectWeek }: Ti
 
   // Map week -> best test status for that week
   const weekTestStatusMap = useMemo(() => {
-    const map: Record<number, TestReminderStatus> = {};
-    const priority: Record<TestReminderStatus, number> = {
+    const map: Record<number, string> = {};
+    const priority: Record<string, number> = {
       "due-today": 0,
       "due-soon": 1,
       "recommended": 2,
@@ -112,10 +112,14 @@ export function TimelineOverview({ currentWeek, selectedWeek, onSelectWeek }: Ti
       "past": 7,
     };
     for (const test of testsWithStatus) {
+      if (typeof test.weekStart !== 'number' || typeof test.weekEnd !== 'number') continue;
       for (let w = test.weekStart; w <= test.weekEnd; w++) {
         const current = map[w];
-        if (!current || priority[test.status] < priority[current]) {
-          map[w] = test.status;
+        const currentPrio = current ? (priority[current] ?? 99) : 999;
+        const testPrio = test.status ? (priority[test.status] ?? 99) : 99;
+        
+        if (!current || testPrio < currentPrio) {
+          map[w] = test.status || "upcoming";
         }
       }
     }

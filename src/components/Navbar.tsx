@@ -7,6 +7,8 @@ import { useAuth } from "@/hooks/useAuth";
 import HamburgerMenu from "@/components/navigation/HamburgerMenu";
 import NavItem from "@/components/navigation/NavItem";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import NotificationBell from "@/components/NotificationBell";
+import CalendarNavButton from "@/components/navigation/CalendarNavButton";
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -43,10 +45,6 @@ export default function Navbar() {
         </nav>
 
         <div className="ml-auto hidden items-center gap-2 lg:flex">
-          {/* Phase badge (read-only — change via Settings) */}
-          <span className="text-xs font-medium text-muted-foreground whitespace-nowrap px-2 py-1 rounded-full bg-muted/50 border border-border/60">
-            Phase: <span className="font-semibold text-foreground">{phaseName}</span>
-          </span>
           <LanguageSwitcher />
 
           {/* Auth buttons */}
@@ -58,14 +56,8 @@ export default function Navbar() {
               >
                 {user.name}
               </Link>
-              <button
-                onClick={logout}
-                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-white px-3 text-xs font-semibold shadow-sm transition-colors hover:bg-slate-50 text-slate-600"
-                aria-label="Logout"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                Logout
-              </button>
+              <CalendarNavButton />
+              <NotificationBell />
             </div>
           ) : (
             <div className="flex items-center gap-2 border-l pl-2 border-border/50">
@@ -105,6 +97,7 @@ export default function Navbar() {
 
         {/* Mobile: emergency + hamburger */}
         <div className="ml-auto flex items-center gap-2 lg:hidden">
+          <CalendarNavButton />
           <Link
             to="/emergency"
             className="inline-flex h-9 items-center rounded-md bg-red-600 px-3 text-xs font-semibold text-white shadow-sm"
@@ -120,15 +113,6 @@ export default function Navbar() {
           >
             <Menu className="h-4 w-4" />
           </button>
-        </div>
-      </div>
-
-      {/* Mobile phase badge (read-only) */}
-      <div className="border-t border-border/60 bg-background lg:hidden">
-        <div className="container flex items-center justify-center py-1.5">
-          <span className="text-xs font-medium text-muted-foreground">
-            Phase: <span className="font-semibold text-foreground">{phaseName}</span>
-          </span>
         </div>
       </div>
 

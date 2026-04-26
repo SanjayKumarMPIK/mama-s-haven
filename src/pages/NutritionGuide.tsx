@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -9,28 +9,26 @@ import ScrollReveal from "@/components/ScrollReveal";
 import { Link } from "react-router-dom";
 import {
   Apple, Calendar, ChevronRight, ArrowRight, Activity,
-  Zap, Sparkles, ShieldCheck, Leaf, ChevronDown, ChevronUp,
-  AlertTriangle, Info, Heart, Sun, Droplets, Brain,
-  Bone, Battery, Pill, Utensils, CheckSquare
+  Zap, Sparkles, ShieldCheck, Leaf,
+  AlertTriangle, Heart, Droplets, Utensils, CheckSquare
 } from "lucide-react";
 import {
   computeNutritionInsights,
   type NutrientNeed,
 } from "@/lib/nutritionInsightsEngine";
 import { predictMaternityDeficiencies, type MaternityPredictionResult, type MaternityFallbackRecommendation } from "@/lib/maternityNutritionEngine";
-import { predictPubertyDeficiencies, type PubertyNutritionResult, type PubertyDeficiencyPrediction, type Confidence } from "@/lib/pubertyNutritionEngine";
+import { predictPubertyDeficiencies, type PubertyNutritionResult } from "@/lib/pubertyNutritionEngine";
 import { predictFamilyPlanningDeficiencies, type FamilyPlanningPredictionResult } from "@/lib/familyPlanningNutritionEngine";
 import {
   generatePubertyDailyFoodChart,
   generatePubertyDeficiencyPlan,
   type PubertyDailyFoodChart,
   type PubertyDeficiencyPlan,
-  type MealSlot,
 } from "@/lib/pubertyFoodChartEngine";
 import { computeIntelligentNutrition, type IntelligentNutritionResult } from "@/lib/pubertyIntelligentNutritionEngine";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 
-// ─── Phase accent map ─────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Phase accent map Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 const phaseAccent: Record<string, {
   gradient: string; bg: string; text: string; border: string;
@@ -58,7 +56,7 @@ const phaseAccent: Record<string, {
   },
 };
 
-// ─── Priority color ────────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Priority color Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function priorityStyle(priority: NutrientNeed["priority"]) {
   return priority === "high"
@@ -66,9 +64,9 @@ function priorityStyle(priority: NutrientNeed["priority"]) {
     : "border-border/40 bg-card";
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ─── Main Component ───────────────────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Main Component Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 export default function NutritionGuide() {
   const { simpleMode } = useLanguage();
@@ -80,16 +78,16 @@ export default function NutritionGuide() {
 
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
 
-  // ── Compute generic nutrition insights (memoized) ──
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Compute generic nutrition insights (memoized) Ã¢â€â‚¬Ã¢â€â‚¬
   const data = useMemo(() => computeNutritionInsights(logs, phase), [logs, phase]);
 
-  // ── Compute maternity specific insights (memoized) ──
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Compute maternity specific insights (memoized) Ã¢â€â‚¬Ã¢â€â‚¬
   const maternityData = useMemo(() => {
     if (phase === "maternity") return predictMaternityDeficiencies(logs, trimester);
     return null;
   }, [logs, phase, trimester]);
 
-  // ── Compute puberty specific insights (memoized) ──
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Compute puberty specific insights (memoized) Ã¢â€â‚¬Ã¢â€â‚¬
   const pubertyData = useMemo(() => {
     if (phase === "puberty") return predictPubertyDeficiencies(logs, profile, onboardingConfig);
     return null;
@@ -104,7 +102,7 @@ export default function NutritionGuide() {
     });
   }, [logs, phase, profile, onboardingConfig]);
 
-  // ── Compute intelligent puberty nutrition analysis (memoized) ──
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Compute intelligent puberty nutrition analysis (memoized) Ã¢â€â‚¬Ã¢â€â‚¬
   const intelligentNutrition = useMemo<IntelligentNutritionResult | null>(() => {
     if (phase !== "puberty") return null;
     return computeIntelligentNutrition(logs, profile, onboardingConfig);
@@ -119,17 +117,17 @@ export default function NutritionGuide() {
     });
   }, [logs, phase, profile, onboardingConfig]);
 
-  // ── Compute family planning specific insights (memoized) ──
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Compute family planning specific insights (memoized) Ã¢â€â‚¬Ã¢â€â‚¬
   const familyPlanningData = useMemo(() => {
     if (phase === "family-planning") return predictFamilyPlanningDeficiencies(logs);
     return null;
   }, [logs, phase]);
 
-  // ═══ Render ═════════════════════════════════════════════════════════════════
+  // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Render Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
-      {/* ─── Header ──────────────────────────────────────────────────────── */}
+      {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Header Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
       <div className="border-b border-border bg-card/60 backdrop-blur-sm">
         <div className="container py-6">
           <ScrollReveal>
@@ -140,7 +138,7 @@ export default function NutritionGuide() {
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Nutrition Guide</h1>
                 <p className="text-sm text-muted-foreground">
-                  Personalized for <strong>{phaseName}</strong> • Based on your symptoms
+                  Personalized for <strong>{phaseName}</strong> Ã¢â‚¬Â¢ Based on your symptoms
                 </p>
               </div>
             </div>
@@ -149,7 +147,7 @@ export default function NutritionGuide() {
       </div>
 
       <div className="container py-6 space-y-6">
-        {/* ─── PUBERTY PHASE ─────────────────────────────────────────────── */}
+        {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ PUBERTY PHASE Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
         {phase === "puberty" && pubertyData ? (
           <PubertyNutritionView
             data={pubertyData}
@@ -163,7 +161,7 @@ export default function NutritionGuide() {
         ) : phase === "maternity" && maternityData ? (
           <MaternityNutritionView data={maternityData} accent={accent} />
         ) : !data.hasData ? (
-          /* ─── Empty State ──────────────────────────────────────────────── */
+          /* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Empty State Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
           <ScrollReveal>
             <div className="flex flex-col items-center justify-center text-center py-20 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
               <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center mb-5 shadow-lg opacity-40`}>
@@ -186,7 +184,7 @@ export default function NutritionGuide() {
           </ScrollReveal>
         ) : (
           <>
-            {/* ─── Section 1: Today's Nutrition Focus ─────────────────────── */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Section 1: Today's Nutrition Focus Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <ScrollReveal>
               <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6 relative overflow-hidden`}>
                 <div className="absolute top-0 right-0 w-32 h-32 rounded-bl-[80px] opacity-10 bg-gradient-to-br from-current to-transparent" />
@@ -216,10 +214,10 @@ export default function NutritionGuide() {
               </div>
             </ScrollReveal>
 
-            {/* ─── Section 2: Key Nutrients You Need ──────────────────────── */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Section 2: Key Nutrients You Need Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             {data.nutrients.length > 0 && (
               <ScrollReveal>
-                <SectionHeader title="Key Nutrients You Need" emoji="🧠" />
+                <SectionHeader title="Key Nutrients You Need" emoji="Ã°Å¸Â§Â " />
                 <div className="grid gap-3 sm:grid-cols-2">
                   {data.nutrients.map((nutrient) => (
                     <div
@@ -258,10 +256,10 @@ export default function NutritionGuide() {
               </ScrollReveal>
             )}
 
-            {/* ─── Section 3: Smart Suggestions ──────────────────────────── */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Section 3: Smart Suggestions Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             {data.suggestions.length > 0 && (
               <ScrollReveal>
-                <SectionHeader title="Smart Suggestions" emoji="🎯" />
+                <SectionHeader title="Smart Suggestions" emoji="Ã°Å¸Å½Â¯" />
                 <div className="grid gap-2.5 sm:grid-cols-2">
                   {data.suggestions.map((sug, i) => (
                     <div
@@ -276,10 +274,10 @@ export default function NutritionGuide() {
               </ScrollReveal>
             )}
 
-            {/* ─── Section 4: Quick Tips ──────────────────────────────────── */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Section 4: Quick Tips Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             {data.tips.length > 0 && (
               <ScrollReveal>
-                <SectionHeader title="Quick Tips" emoji="⚡" />
+                <SectionHeader title="Quick Tips" emoji="Ã¢Å¡Â¡" />
                 <div className="rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
                   {data.tips.map((tip, i) => (
                     <div key={i} className="flex items-start gap-3 px-5 py-3.5">
@@ -291,7 +289,7 @@ export default function NutritionGuide() {
               </ScrollReveal>
             )}
 
-            {/* ─── Inferred Deficiencies Badge Row ───────────────────────── */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Inferred Deficiencies Badge Row Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             {data.state.deficiencies.length > 0 && (
               <ScrollReveal>
                 <div className={`rounded-2xl border ${accent.border} ${accent.bg} p-4`}>
@@ -318,7 +316,7 @@ export default function NutritionGuide() {
               </ScrollReveal>
             )}
 
-            {/* ─── Integration Links ─────────────────────────────────────── */}
+            {/* Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Integration Links Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */}
             <ScrollReveal>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <Link
@@ -376,7 +374,7 @@ export default function NutritionGuide() {
   );
 }
 
-// ─── Sub-Components ───────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Sub-Components Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 function SectionHeader({ title, emoji }: { title: string; emoji: string }) {
   return (
@@ -387,746 +385,226 @@ function SectionHeader({ title, emoji }: { title: string; emoji: string }) {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ─── PUBERTY NUTRITION VIEW ───────────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ PUBERTY NUTRITION VIEW Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
-const NUTRIENT_ICON: Record<string, typeof Sun> = {
-  iron: Heart,
-  vitamin_d: Sun,
-  calcium: Bone,
-  energy: Battery,
-  electrolyte: Droplets,
-  omega3: Brain,
-  b12: Pill,
-};
 
-const CONFIDENCE_STYLE: Record<Confidence, { bg: string; text: string; ringColor: string; label: string }> = {
-  High: {
-    bg: "bg-amber-50",
-    text: "text-amber-700",
-    ringColor: "border-amber-300",
-    label: "High likelihood",
-  },
-  Medium: {
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-    ringColor: "border-blue-300",
-    label: "Medium likelihood",
-  },
-  Low: {
-    bg: "bg-slate-50",
-    text: "text-slate-600",
-    ringColor: "border-slate-300",
-    label: "Low likelihood",
-  },
-};
 
-function DeficiencyCard({
-  prediction,
-  accent,
-  index,
-}: {
-  prediction: PubertyDeficiencyPrediction;
-  accent: any;
-  index: number;
-}) {
-  const [showWhy, setShowWhy] = useState(false);
-  const [showRecommendations, setShowRecommendations] = useState(index === 0);
-  const confStyle = CONFIDENCE_STYLE[prediction.confidence];
-  const Icon = NUTRIENT_ICON[prediction.id] ?? Leaf;
 
-  return (
-    <div
-      className={`rounded-2xl border-2 ${confStyle.ringColor} bg-card overflow-hidden transition-all duration-300 hover:shadow-lg`}
-    >
-      {/* ── Card Header ── */}
-      <div className={`px-5 py-4 ${confStyle.bg}`}>
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${confStyle.bg} border ${confStyle.ringColor}`}>
-              <span className="text-xl">{prediction.emoji}</span>
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-foreground">{prediction.nutrient}</h3>
-              <p className={`text-[11px] font-semibold ${confStyle.text} mt-0.5`}>
-                {confStyle.label}
-              </p>
-            </div>
-          </div>
-          <span
-            className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${confStyle.ringColor} ${confStyle.bg} ${confStyle.text}`}
-          >
-            {prediction.confidence}
-          </span>
-        </div>
-      </div>
-
-      {/* ── Explanation ── */}
-      <div className="px-5 py-4 border-t border-border/30">
-        <p className="text-sm text-foreground/85 leading-relaxed">
-          {prediction.explanation}
-        </p>
-
-        {/* Trigger symptoms */}
-        <div className="flex flex-wrap gap-1.5 mt-3">
-          {prediction.triggers.map((trigger) => (
-            <span
-              key={trigger}
-              className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/50 text-[11px] font-medium text-muted-foreground border border-border/30"
-            >
-              {trigger}
-            </span>
-          ))}
-        </div>
-
-        {/* ── Why this suggestion (expandable) ── */}
-        <button
-          type="button"
-          onClick={() => setShowWhy(!showWhy)}
-          className="flex items-center gap-1.5 mt-3 text-[12px] font-semibold text-primary hover:text-primary/80 transition-colors"
-        >
-          <Info className="w-3.5 h-3.5" />
-          Why this suggestion?
-          {showWhy ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        </button>
-        <div
-          className="transition-all duration-300 ease-in-out overflow-hidden"
-          style={{ maxHeight: showWhy ? "200px" : "0px", opacity: showWhy ? 1 : 0 }}
-        >
-          <p className="text-xs text-muted-foreground leading-relaxed mt-2 bg-muted/20 rounded-lg p-3 border border-border/20">
-            {prediction.whyThisSuggestion}
-          </p>
-        </div>
-      </div>
-
-      {/* ── Recommendations (expandable) ── */}
-      <div className="border-t border-border/30">
-        <button
-          type="button"
-          onClick={() => setShowRecommendations(!showRecommendations)}
-          className="w-full flex items-center justify-between px-5 py-3 hover:bg-muted/20 transition-colors"
-        >
-          <span className="text-sm font-semibold text-foreground flex items-center gap-2">
-            🍽️ Recommended Support
-          </span>
-          {showRecommendations ? (
-            <ChevronUp className="w-4 h-4 text-muted-foreground" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-muted-foreground" />
-          )}
-        </button>
-        <div
-          className="transition-all duration-300 ease-in-out overflow-hidden"
-          style={{ maxHeight: showRecommendations ? "600px" : "0px", opacity: showRecommendations ? 1 : 0 }}
-        >
-          <div className="px-5 pb-5 space-y-4">
-            {/* Food suggestions */}
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                Foods to include
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {prediction.foods.map((food) => (
-                  <span
-                    key={food}
-                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border bg-gradient-to-r ${accent.gradient} text-white shadow-sm`}
-                  >
-                    {food}
-                  </span>
-                ))}
-              </div>
-            </div>
-
-            {/* Habit suggestions */}
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                Healthy habits
-              </p>
-              <ul className="space-y-1.5 ml-4">
-                {prediction.habits.map((habit, i) => (
-                  <li key={i} className="text-sm text-foreground/85 list-disc leading-relaxed">
-                    {habit}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Daily tip */}
-            <div className={`rounded-xl ${accent.bg} border ${accent.border} p-3 flex items-start gap-2.5`}>
-              <Zap className={`w-4 h-4 ${accent.text} shrink-0 mt-0.5`} />
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">
-                  Daily Tip
-                </p>
-                <p className="text-sm font-medium text-foreground/90">{prediction.dailyTip}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PubertyNutritionView({
-  data,
-  chart,
-  plan,
-  accent,
-  intelligent,
-}: {
-  data: PubertyNutritionResult;
-  chart: PubertyDailyFoodChart | null;
-  plan: PubertyDeficiencyPlan | null;
-  accent: any;
-  intelligent: IntelligentNutritionResult | null;
-}) {
-  const [selectedBySlot, setSelectedBySlot] = useState<Record<string, string>>(() => {
-    const init: Record<string, string> = {};
-    if (!chart) return init;
-    for (const slot of Object.keys(chart.meals) as MealSlot[]) {
-      init[slot] = chart.meals[slot].selectedOptionId;
-    }
-    return init;
-  });
-
-  const [expandedWhy, setExpandedWhy] = useState<Record<string, boolean>>({});
-
-  const effectiveSelectedBySlot = useMemo(() => {
-    if (!chart) return selectedBySlot;
-    const next = { ...selectedBySlot };
-    for (const slot of Object.keys(chart.meals) as MealSlot[]) {
-      if (!next[slot]) next[slot] = chart.meals[slot].selectedOptionId;
-    }
-    return next;
-  }, [chart, selectedBySlot]);
-
+function PubertyNutritionView({ data, chart, plan, accent, intelligent }: { data: PubertyNutritionResult; chart: PubertyDailyFoodChart | null; plan: PubertyDeficiencyPlan | null; accent: any; intelligent: IntelligentNutritionResult | null }) {
   return (
     <>
-      {/* ── Safety Banner ──────────────────────────────────────────────── */}
+      {/* Safety Banner */}
       <ScrollReveal>
-        <div className="rounded-xl border border-rose-200/60 bg-gradient-to-r from-rose-50/50 to-pink-50/30 p-4">
-          <p className="text-xs text-rose-800 flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
-            <span>
-              <strong>Important:</strong> This is not a diagnostic tool. The insights below are
-              based on your logged symptoms and profile data. They use probability-based language
-              and are meant for general awareness only. Always consult a healthcare professional for
-              medical advice.
-            </span>
+        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4">
+          <p className="text-xs text-blue-800 flex items-start gap-2">
+            <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
+            <span><strong>Note:</strong> This is a dynamic prediction based on your recent calendar symptoms and profile data. It is not a medical diagnosis. Always consult your doctor for medical advice.</span>
           </p>
         </div>
       </ScrollReveal>
 
-      {/* ── Smart Nutrition Assistant (requested output format) ───────────── */}
-      {plan && plan.deficiencies.length > 0 && (
-        <ScrollReveal delay={20}>
-          <div className="rounded-2xl border border-border/40 bg-card p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <CheckSquare className="w-4 h-4 text-primary" />
-              <h2 className="text-base font-bold tracking-tight">Smart Nutrition Assistant</h2>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Uses medical conditions, calendar symptoms with severity, and {plan.pubertyStatus.toLowerCase()} status.
-            </p>
-
-            {plan.symptoms.length > 0 && (
-              <div className="mb-4">
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Symptoms</p>
-                <div className="flex flex-wrap gap-2">
-                  {plan.symptoms.map((s) => (
-                    <span key={`${s.symptom}-${s.severity}`} className="text-[11px] px-2.5 py-1 rounded-full border border-border/30 bg-muted/30">
-                      {s.symptom} ({s.severity})
-                    </span>
-                  ))}
+      {/* 1. Identified Deficiencies â€” Inline (like maternity) */}
+      {intelligent && intelligent.hasData && intelligent.deficiencyList.length > 0 && (
+        <ScrollReveal delay={10}>
+          <SectionHeader title="Identified Deficiencies" emoji="âš¡" />
+          <div className="grid gap-3 sm:grid-cols-2 mb-2">
+            {intelligent.deficiencyList.map((d) => (
+              <div
+                key={d.nutrient}
+                className={`flex items-center gap-3 p-4 rounded-2xl border-2 hover:shadow-md transition-all ${
+                  d.priority === "High" ? "border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50"
+                  : d.priority === "Medium" ? "border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50"
+                  : "border-border/40 bg-muted/10"
+                }`}
+              >
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${
+                  d.priority === "High" ? "bg-amber-100 border border-amber-300"
+                  : d.priority === "Medium" ? "bg-blue-100 border border-blue-300"
+                  : "bg-muted/40 border border-border/30"
+                }`}>
+                  <span className="text-xl">{d.emoji}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-foreground">{d.nutrient}</p>
+                    <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
+                      d.priority === "High" ? "bg-amber-200/70 text-amber-800"
+                      : d.priority === "Medium" ? "bg-blue-200/70 text-blue-800"
+                      : "bg-slate-200/70 text-slate-700"
+                    }`}>{d.priority}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">{d.reason}</p>
                 </div>
               </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Deficiencies</p>
-                <ul className="space-y-1">
-                  {plan.deficiencies.map((d) => (
-                    <li key={d.deficiency} className="text-sm">
-                      - {d.deficiency} ({d.priority})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Recommended nutrients</p>
-                <ul className="space-y-1.5">
-                  {plan.deficiencies.map((d) => (
-                    <li key={`rec-${d.deficiency}`} className="text-sm leading-relaxed">
-                      - {d.nutrients.join(" + ")} {"->"} {d.foods.slice(0, 5).join(", ")} ({d.frequency})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
+            ))}
           </div>
-        </ScrollReveal>
-      )}
-
-      {/* ═══ INTELLIGENT NUTRITION ASSISTANT ═══════════════════════════════ */}
-      {intelligent && intelligent.hasData && (
-        <>
-          {/* ── Analysis Summary Banner ────────────────────────────────── */}
-          <ScrollReveal delay={30}>
-            <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6 relative overflow-hidden`}>
-              <div className="absolute top-0 right-0 w-40 h-40 rounded-bl-[100px] opacity-[0.07] bg-gradient-to-br from-pink-400 to-rose-600" />
-              <div className="flex items-center gap-3 mb-4">
-                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-lg`}>
-                  <Sparkles className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold">Intelligent Nutrition Analysis</h2>
-                  <p className="text-xs text-muted-foreground">Personalized based on your symptoms, conditions & profile</p>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-background/80 border border-border/30">
-                  📊 {intelligent.analyzedDays} days analyzed
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-background/80 border border-border/30">
-                  🕐 {intelligent.pubertyTiming} Puberty
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-background/80 border border-border/30">
-                  🥗 {intelligent.dietPreference}
-                </span>
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full bg-background/80 border border-border/30">
-                  📍 {intelligent.regionLabel}
-                </span>
-              </div>
-            </div>
-          </ScrollReveal>
-
-          {/* ── Deficiency Summary ─────────────────────────────────────── */}
-          {intelligent.deficiencyList.length > 0 && (
-            <ScrollReveal delay={50}>
-              <div className="rounded-2xl border border-border/40 bg-card p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="text-lg">🔬</span>
-                  <h2 className="text-base font-bold tracking-tight">Identified Deficiencies</h2>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {intelligent.deficiencyList.map((d) => (
-                    <div key={d.nutrient} className={`flex items-center gap-3 p-3 rounded-xl border transition-shadow hover:shadow-sm ${
-                      d.priority === "High" ? "border-amber-200 bg-amber-50/50" :
-                      d.priority === "Medium" ? "border-blue-200 bg-blue-50/30" :
-                      "border-border/40 bg-muted/20"
-                    }`}>
-                      <span className="text-xl shrink-0">{d.emoji}</span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold">{d.nutrient}</p>
-                          <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
-                            d.priority === "High" ? "bg-amber-200/70 text-amber-800" :
-                            d.priority === "Medium" ? "bg-blue-200/70 text-blue-800" :
-                            "bg-slate-200/70 text-slate-700"
-                          }`}>{d.priority}</span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{d.reason}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </ScrollReveal>
-          )}
-
-          {/* ── Nutrient Recommendations with Frequency ───────────────── */}
-          {intelligent.nutrientRecommendations.length > 0 && (
-            <ScrollReveal delay={70}>
-              <div className="flex items-center gap-2 mb-3 mt-1">
-                <span className="text-base">🍽️</span>
-                <h2 className="text-base font-bold tracking-tight">Recommended Nutrients & Foods</h2>
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                {intelligent.nutrientRecommendations.map((rec) => (
-                  <div key={rec.id} className={`rounded-2xl border-2 p-5 transition-all hover:shadow-lg ${
-                    rec.priority === "High" ? "border-amber-200 bg-gradient-to-br from-amber-50/80 to-orange-50/40" :
-                    rec.priority === "Medium" ? "border-blue-200 bg-gradient-to-br from-blue-50/60 to-sky-50/30" :
-                    "border-border/40 bg-card"
-                  }`}>
-                    {/* Header */}
-                    <div className="flex items-start justify-between gap-2 mb-3">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-2xl">{rec.emoji}</span>
-                        <div>
-                          <h3 className="text-sm font-bold">{rec.nutrient}</h3>
-                          <p className={`text-[10px] font-semibold mt-0.5 ${
-                            rec.priority === "High" ? "text-amber-700" :
-                            rec.priority === "Medium" ? "text-blue-700" :
-                            "text-slate-600"
-                          }`}>{rec.severityLabel}</p>
-                        </div>
-                      </div>
-                      <span className={`shrink-0 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
-                        rec.priority === "High" ? "border-amber-300 bg-amber-100 text-amber-800" :
-                        rec.priority === "Medium" ? "border-blue-300 bg-blue-100 text-blue-800" :
-                        "border-slate-300 bg-slate-100 text-slate-700"
-                      }`}>{rec.priority}</span>
-                    </div>
-
-                    {/* Reason */}
-                    <p className="text-xs text-muted-foreground leading-relaxed mb-3">{rec.reason}</p>
-
-                    {/* Food sources */}
-                    <div className="mb-3">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">Food Sources</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {rec.sources.map((food) => (
-                          <span key={food} className={`px-2 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r ${accent.gradient} text-white shadow-sm`}>
-                            {food}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Frequency badge */}
-                    <div className={`flex items-center gap-2 p-2.5 rounded-lg border ${
-                      rec.priority === "High" ? "border-amber-200/60 bg-amber-50/50" :
-                      rec.priority === "Medium" ? "border-blue-200/60 bg-blue-50/50" :
-                      "border-border/30 bg-muted/20"
-                    }`}>
-                      <Zap className={`w-3.5 h-3.5 shrink-0 ${
-                        rec.priority === "High" ? "text-amber-600" :
-                        rec.priority === "Medium" ? "text-blue-600" :
-                        "text-slate-500"
-                      }`} />
-                      <p className="text-[11px] font-semibold">
-                        Frequency: <span className="font-bold">{rec.frequency}</span>
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollReveal>
-          )}
-
-          {/* ── Special Notes ─────────────────────────────────────────── */}
-          {intelligent.specialNotes.length > 0 && (
-            <ScrollReveal delay={90}>
-              <div className="flex items-center gap-2 mb-3 mt-1">
-                <span className="text-base">📋</span>
-                <h2 className="text-base font-bold tracking-tight">Special Notes</h2>
-              </div>
-              <div className="space-y-3">
-                {intelligent.specialNotes.map((note, i) => (
-                  <div key={i} className={`rounded-xl p-4 border ${
-                    note.type === "medical"
-                      ? "border-rose-200/60 bg-gradient-to-r from-rose-50/40 to-pink-50/30"
-                      : "border-violet-200/60 bg-gradient-to-r from-violet-50/40 to-purple-50/30"
-                  }`}>
-                    <div className="flex items-start gap-3">
-                      <span className="text-xl shrink-0 mt-0.5">{note.icon}</span>
-                      <div>
-                        <p className={`text-sm font-bold mb-1 ${
-                          note.type === "medical" ? "text-rose-900" : "text-violet-900"
-                        }`}>{note.title}</p>
-                        <p className={`text-xs leading-relaxed ${
-                          note.type === "medical" ? "text-rose-800/80" : "text-violet-800/80"
-                        }`}>{note.advice}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollReveal>
-          )}
-        </>
-      )}
-
-      {/* ── Dynamic Daily Food Chart ─────────────────────────────────────── */}
-      {chart && (
-        <ScrollReveal delay={60}>
-          <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
-                Daily Food Chart
-              </p>
-              <h2 className="text-lg font-bold leading-snug">Personalized meals for today</h2>
-              <p className="text-xs text-muted-foreground mt-1">
-                Puberty status: <strong>{chart.pubertyStatus}</strong> • Diet: <strong>{chart.dietType}</strong>
-              </p>
-            </div>
-
-            {(chart.medicalConditions.length > 0 || chart.detectedSymptoms.length > 0) && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {chart.medicalConditions.slice(0, 6).map((c) => (
-                  <span key={c} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-border/30">
-                    🩺 {c}
-                  </span>
-                ))}
-                {chart.detectedSymptoms.slice(0, 6).map((s) => (
-                  <span key={s} className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-border/30">
-                    ⚡ {s}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-5 space-y-3">
-              {(Object.keys(chart.meals) as MealSlot[]).map((slot) => {
-                const meal = chart.meals[slot];
-                const selectedId = effectiveSelectedBySlot[slot] ?? meal.selectedOptionId;
-                const selectedOpt = meal.options.find((o) => o.id === selectedId) ?? meal.options[0];
-                const isOpen = !!expandedWhy[slot];
-
-                return (
-                  <div key={slot} className="rounded-xl border border-border/40 bg-background/70 p-4">
-                    <div className="flex items-start gap-3 flex-wrap">
-                      <div className="flex-1 min-w-[220px]">
-                        <p className="text-xs font-semibold text-muted-foreground">{slot}</p>
-                        <p className="text-sm font-bold mt-1">{selectedOpt?.label}</p>
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {(selectedOpt?.tags ?? []).slice(0, 6).map((t) => (
-                            <span
-                              key={t}
-                              className="text-[10px] px-2 py-0.5 rounded-full bg-muted/40 border border-border/30 text-muted-foreground font-semibold"
-                            >
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="min-w-[220px] flex-1">
-                        <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
-                          Swap option
-                        </label>
-                        <select
-                          value={selectedId}
-                          onChange={(e) => setSelectedBySlot((prev) => ({ ...prev, [slot]: e.target.value }))}
-                          className="w-full h-10 rounded-lg border border-border bg-background px-3 text-sm"
-                        >
-                          {meal.options.map((opt) => (
-                            <option key={opt.id} value={opt.id}>
-                              {opt.label}
-                            </option>
-                          ))}
-                        </select>
-
-                        <button
-                          type="button"
-                          onClick={() => setExpandedWhy((prev) => ({ ...prev, [slot]: !prev[slot] }))}
-                          className="mt-2 text-xs font-semibold text-primary hover:text-primary/80 transition-colors inline-flex items-center gap-1.5"
-                        >
-                          <Info className="w-3.5 h-3.5" />
-                          Why this food?
-                          {isOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <div
-                      className="transition-all duration-300 ease-in-out overflow-hidden"
-                      style={{ maxHeight: isOpen ? "220px" : "0px", opacity: isOpen ? 1 : 0 }}
-                    >
-                      <div className="mt-3 rounded-lg bg-muted/20 border border-border/30 p-3 space-y-2">
-                        {(selectedOpt?.why ?? []).length > 0 && (
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                              Food reason
-                            </p>
-                            <ul className="space-y-1">
-                              {selectedOpt.why.map((w) => (
-                                <li key={w} className="text-xs text-foreground/80 leading-relaxed">
-                                  • {w}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                        {(meal.slotWhy ?? []).length > 0 && (
-                          <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">
-                              Personalization
-                            </p>
-                            <ul className="space-y-1">
-                              {meal.slotWhy.map((w) => (
-                                <li key={w} className="text-xs text-foreground/80 leading-relaxed">
-                                  • {w}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {chart.avoidOrLimit.length > 0 && (
-              <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50/50 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 mb-2">
-                  Avoid / Limit
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {chart.avoidOrLimit.slice(0, 10).map((x) => (
-                    <span
-                      key={x}
-                      className="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-amber-200 text-amber-900"
-                    >
-                      {x}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </ScrollReveal>
-      )}
-
-      {/* ── Age Group Badge ──────────────────────────────────────────── */}
-      <ScrollReveal delay={50}>
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full border ${accent.border} ${accent.bg} ${accent.text} px-3 py-1`}>
-            🌸 {data.ageGroup.label}
-          </span>
-          <span className="text-[11px] text-muted-foreground">
-            Recommendations tuned for your age group
-          </span>
-        </div>
-      </ScrollReveal>
-
-      {data.hasData && data.deficiencies.length > 0 ? (
-        <div className="space-y-6">
-          {/* ── Section 1: Deficiency Cards ─────────────────────────────── */}
-          <ScrollReveal delay={100}>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">🔍</span>
-              <h2 className="text-lg font-bold tracking-tight">Your Nutritional Insights</h2>
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              Based on your recent symptoms and health data, here are areas where your body may need extra support:
-            </p>
-            <div className="grid gap-4 md:grid-cols-2">
-              {data.deficiencies.map((pred, i) => (
-                <DeficiencyCard key={pred.id} prediction={pred} accent={accent} index={i} />
-              ))}
-            </div>
-          </ScrollReveal>
-
-          {/* ── Section 2: General Tips ─────────────────────────────────── */}
-          <ScrollReveal delay={150}>
-            <SectionHeader title="General Daily Tips" emoji="⚡" />
-            <div className="rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
-              {data.generalTips.map((tip, i) => (
-                <div key={i} className="flex items-start gap-3 px-5 py-3.5">
-                  <span className="text-base mt-0.5 shrink-0">✅</span>
-                  <p className="text-sm leading-relaxed text-foreground/85">{tip}</p>
-                </div>
-              ))}
-            </div>
-          </ScrollReveal>
-
-          {/* ── Log More CTA ─────────────────────────────────────────────── */}
-          <ScrollReveal delay={200}>
-            <div className="flex justify-center">
-              <Link
-                to="/calendar"
-                className="inline-flex items-center gap-2 text-sm text-primary font-medium hover:underline"
-              >
-                <Calendar className="w-4 h-4" /> Log more symptoms for better accuracy
-              </Link>
-            </div>
-          </ScrollReveal>
-
-          {/* ── Integration Links ─────────────────────────────────────── */}
-          <ScrollReveal delay={250}>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Link
-                to="/symptom-checker"
-                className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
-              >
-                <Activity className={`w-5 h-5 ${accent.text}`} />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">Symptom Insights</p>
-                  <p className="text-[11px] text-muted-foreground">See your patterns</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-              <Link
-                to="/wellness"
-                className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
-              >
-                <Sparkles className={`w-5 h-5 ${accent.text}`} />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">Wellness Dashboard</p>
-                  <p className="text-[11px] text-muted-foreground">Full health overview</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-              <Link
-                to="/calendar"
-                className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
-              >
-                <Calendar className={`w-5 h-5 ${accent.text}`} />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">Log Symptoms</p>
-                  <p className="text-[11px] text-muted-foreground">Keep data fresh</p>
-                </div>
-                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-            </div>
-          </ScrollReveal>
-        </div>
-      ) : (
-        /* ─── No Deficiencies / Empty State ──────────────────────────── */
-        <ScrollReveal delay={100}>
-          <div className="flex flex-col items-center justify-center text-center py-12 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
-            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center mb-5 shadow-lg`}>
-              <Apple className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-lg font-bold text-foreground mb-1">
-              {data.hasData ? "Looking Good! 🌟" : "Log Your Symptoms to Get Started"}
-            </h3>
-            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mb-4">
-              {data.hasData
-                ? "Based on your current data, no significant nutritional gaps were detected. Keep maintaining your healthy habits!"
-                : "Log your daily symptoms in the Calendar to get personalized nutritional insights tailored to your body's needs."}
-            </p>
-
-            {/* General tips always shown */}
-            <div className="w-full max-w-lg text-left mb-6">
-              <SectionHeader title="General Daily Tips" emoji="⚡" />
-              <div className="rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
-                {data.generalTips.map((tip, i) => (
-                  <div key={i} className="flex items-start gap-3 px-5 py-3.5">
-                    <span className="text-base mt-0.5 shrink-0">✅</span>
-                    <p className="text-sm leading-relaxed text-foreground/85">{tip}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
+          <div className="flex justify-end">
             <Link
-              to="/calendar"
-              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r ${accent.gradient} text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all active:scale-[0.97]`}
+              to="/puberty/nutrition/deficiency-insights"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-pink-600 hover:text-pink-800 transition-colors"
             >
-              <Calendar className="w-4 h-4" />
-              {data.hasData ? "Log More Symptoms" : "Go to Calendar"}
-              <ArrowRight className="w-4 h-4" />
+              View full deficiency analysis <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </ScrollReveal>
       )}
 
-      {/* ── Extended Disclaimer ──────────────────────────────────────── */}
-      <ScrollReveal delay={300}>
-        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4 mt-2">
+      {/* 2. Recommended Nutrients & Foods */}
+      {intelligent && intelligent.hasData && intelligent.nutrientRecommendations.length > 0 && (
+        <ScrollReveal delay={20}>
+          <Link
+            to="/puberty/nutrition/nutrient-recommendations"
+            className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-400 flex items-center justify-center shadow-md shrink-0">
+              <Apple className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-foreground">Recommended Nutrients & Foods</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                {intelligent.nutrientRecommendations.length} prioritized nutrients with food sources & frequency guidance.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </ScrollReveal>
+      )}
+
+      {/* 3. Hydration */}
+      {intelligent?.hydration && (
+        <ScrollReveal delay={30}>
+          <Link
+            to="/puberty/nutrition/hydration"
+            className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center shadow-md shrink-0">
+              <Droplets className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-foreground">Hydration Tracking</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                Daily goal: <strong>{intelligent.hydration.dailyGoalLiters}L</strong> â€” based on weight, climate & activity level.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </ScrollReveal>
+      )}
+
+      {/* 4. Food Restrictions */}
+      {intelligent && intelligent.foodRestrictions.length > 0 && (
+        <ScrollReveal delay={40}>
+          <Link
+            to="/puberty/nutrition/food-restrictions"
+            className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-red-500 flex items-center justify-center shadow-md shrink-0">
+              <AlertTriangle className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-foreground">Foods to Avoid / Reduce</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                {intelligent.foodRestrictions.filter(f => f.category === "avoid").length} to avoid â€¢ {intelligent.foodRestrictions.filter(f => f.category === "reduce").length} to reduce â€” based on symptoms & conditions.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </ScrollReveal>
+      )}
+
+      {/* 5. Calorie Intake */}
+      {intelligent?.calories && (
+        <ScrollReveal delay={50}>
+          <Link
+            to="/puberty/nutrition/calories"
+            className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center shadow-md shrink-0">
+              <Zap className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-foreground">Calorie Intake</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                <strong>{intelligent.calories.dailyKcal} kcal/day</strong> â€” {intelligent.calories.activityLabel} activity level. Personalized for your body.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </ScrollReveal>
+      )}
+
+      {/* 6. Protein Intake */}
+      {intelligent?.protein && (
+        <ScrollReveal delay={60}>
+          <Link
+            to="/puberty/nutrition/protein"
+            className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-md shrink-0">
+              <Activity className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-foreground">Protein Intake</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                <strong>{intelligent.protein.dailyGrams}g/day</strong> â€” {intelligent.protein.tier === "fitness" ? "Fitness" : "Normal"} tier. Food sources included.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </ScrollReveal>
+      )}
+
+      {/* 7. Personalized Meals */}
+      {chart && (
+        <ScrollReveal delay={70}>
+          <Link
+            to="/puberty/nutrition/meal-plan"
+            className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-md shrink-0">
+              <Utensils className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-foreground">Personalized Meals for Today</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                {chart.pubertyStatus} â€¢ {chart.dietType} diet â€¢ Region-based recommendations with swap options.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </ScrollReveal>
+      )}
+
+      {/* 8. Nutritional Insights */}
+      {data.hasData && data.deficiencies.length > 0 && (
+        <ScrollReveal delay={80}>
+          <Link
+            to="/puberty/nutrition/insights"
+            className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+          >
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-rose-500 to-pink-500 flex items-center justify-center shadow-md shrink-0">
+              <Heart className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-base font-bold text-foreground">Your Nutritional Insights</h3>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                Detailed deficiency analysis â€” {data.deficiencies.length} nutrient gaps with foods, habits & daily tips.
+              </p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </ScrollReveal>
+      )}
+
+      {/* Disclaimer */}
+      <ScrollReveal delay={100}>
+        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4">
           <div className="flex items-start gap-2">
             <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <p className="text-[11px] text-amber-800 leading-relaxed">
-              <strong>Disclaimer:</strong> {data.disclaimer} Do not start any supplements without
-              consulting a doctor. These suggestions focus on food-based nutrition and healthy habits only.
+              <strong>Disclaimer:</strong> {data.disclaimer} Do not start any supplements without consulting a doctor. These suggestions focus on food-based nutrition and healthy habits only.
             </p>
           </div>
         </div>
@@ -1135,9 +613,9 @@ function PubertyNutritionView({
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ─── MATERNITY NUTRITION VIEW (unchanged) ─────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ MATERNITY NUTRITION VIEW (unchanged) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 function MaternityNutritionView({
   data,
@@ -1238,7 +716,7 @@ function MaternityNutritionView({
       {data.hasData && data.predictions.length > 0 ? (
         <div className="space-y-6">
           <ScrollReveal>
-            <SectionHeader title="Possible Nutritional Gaps" emoji="🔍" />
+            <SectionHeader title="Possible Nutritional Gaps" emoji="Ã°Å¸â€Â" />
             <div className="grid gap-4 md:grid-cols-2">
               {data.predictions.map((pred) => (
                 <div
@@ -1368,9 +846,9 @@ function MaternityNutritionView({
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// ─── FAMILY PLANNING NUTRITION VIEW ────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ FAMILY PLANNING NUTRITION VIEW Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
 function FamilyPlanningNutritionView({
   data,
@@ -1395,7 +873,7 @@ function FamilyPlanningNutritionView({
       {data.hasData && data.predictions.length > 0 ? (
         <div className="space-y-6">
           <ScrollReveal>
-            <SectionHeader title="Your Preconception Nutrient Gaps" emoji="🔍" />
+            <SectionHeader title="Your Preconception Nutrient Gaps" emoji="Ã°Å¸â€Â" />
             <div className="grid gap-4 md:grid-cols-2">
               {data.predictions.map((pred) => (
                 <div
@@ -1484,7 +962,7 @@ function FamilyPlanningNutritionView({
             </p>
 
             <div className="w-full max-w-lg text-left mb-6">
-               <SectionHeader title="Preconception Focus" emoji="📌" />
+               <SectionHeader title="Preconception Focus" emoji="Ã°Å¸â€œÅ’" />
                <div className="rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
                   <div className="px-5 py-3.5 border-b border-border/30">
                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Base Foods</p>

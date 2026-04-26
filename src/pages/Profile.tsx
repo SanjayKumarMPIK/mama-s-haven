@@ -222,7 +222,7 @@ function InfoRow({
 // ─── Main Profile Page ────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const { profile, updateWeight, updateHeight, updateCycleConfig, updatePersonalInfo } = useProfile();
+  const { profile, updateWeight, updateHeight, updateCycleConfig, updatePersonalInfo, updateLifestyle } = useProfile();
   const { phase, phaseName, phaseEmoji, phaseColor } = usePhase();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -481,6 +481,90 @@ export default function ProfilePage() {
                 </p>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* ── Lifestyle Settings ────────────────────────────────── */}
+        <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-border/60 bg-muted/20">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <Activity className="w-4 h-4 text-teal-600" />
+              Lifestyle Settings
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Used for hydration, calorie, and protein recommendations
+            </p>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="rounded-xl border border-border bg-background p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                  <Activity className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Activity Level</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {(["sedentary", "moderate", "active"] as const).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => updateLifestyle({ activityLevel: level })}
+                    className={cn(
+                      "py-2.5 px-3 rounded-xl text-sm font-medium border-2 transition-all active:scale-[0.97] capitalize",
+                      profile.activityLevel === level
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-transparent bg-muted/50 hover:bg-muted"
+                    )}
+                  >
+                    {level === "sedentary" ? "🪑 Sedentary" : level === "moderate" ? "🚶 Moderate" : "🏃 Active"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                {profile.activityLevel === "sedentary"
+                  ? "Mostly sitting, minimal physical activity"
+                  : profile.activityLevel === "active"
+                  ? "Regular exercise, sports, or physical work"
+                  : "Light walks, some physical activity"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-background p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+                  <MapPin className="w-4 h-4 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Climate</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {(["hot", "moderate", "cold"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => updateLifestyle({ climate: c })}
+                    className={cn(
+                      "py-2.5 px-3 rounded-xl text-sm font-medium border-2 transition-all active:scale-[0.97] capitalize",
+                      profile.climate === c
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-transparent bg-muted/50 hover:bg-muted"
+                    )}
+                  >
+                    {c === "hot" ? "🌡️ Hot" : c === "moderate" ? "🌤️ Moderate" : "❄️ Cold"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                {profile.climate === "hot"
+                  ? "Tropical / summer climate — higher hydration needs"
+                  : profile.climate === "cold"
+                  ? "Cold / winter climate — lower sweat loss"
+                  : "Temperate climate — moderate hydration needs"}
+              </p>
+            </div>
           </div>
         </section>
 

@@ -50,6 +50,64 @@ export interface IntelligentNutritionResult {
   deficiencyList: IntelligentDeficiency[];
   nutrientRecommendations: IntelligentNutrientRecommendation[];
   specialNotes: IntelligentSpecialNote[];
+  // ── New intelligent modules ──
+  hydration: HydrationResult | null;
+  foodRestrictions: FoodRestriction[];
+  calories: CalorieResult | null;
+  protein: ProteinResult | null;
+}
+
+// ─── Hydration Types ──────────────────────────────────────────────────────────
+
+export interface HydrationSlot {
+  slot: string;
+  amount: string;
+  tip: string;
+}
+
+export interface HydrationAlert {
+  emoji: string;
+  text: string;
+}
+
+export interface HydrationResult {
+  dailyGoalLiters: number;
+  baseMl: number;
+  climateAddMl: number;
+  activityAddMl: number;
+  distribution: HydrationSlot[];
+  alerts: HydrationAlert[];
+}
+
+// ─── Food Restriction Types ───────────────────────────────────────────────────
+
+export interface FoodRestriction {
+  food: string;
+  category: "avoid" | "reduce";
+  reason: string;
+}
+
+// ─── Calorie Types ────────────────────────────────────────────────────────────
+
+export interface CalorieResult {
+  dailyKcal: number;
+  range: [number, number];
+  activityLabel: string;
+  adjustmentNote: string | null;
+}
+
+// ─── Protein Types ────────────────────────────────────────────────────────────
+
+export interface ProteinSource {
+  name: string;
+  grams: string;
+}
+
+export interface ProteinResult {
+  dailyGrams: number;
+  range: [number, number];
+  tier: "normal" | "fitness";
+  sources: ProteinSource[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -305,6 +363,7 @@ export function computeIntelligentNutrition(
     return {
       hasData: false, analyzedDays: 0, pubertyTiming, dietPreference: dietLabel,
       regionLabel, deficiencyList: [], nutrientRecommendations: [], specialNotes: [],
+      hydration: null, foodRestrictions: [], calories: null, protein: null,
     };
   }
 
@@ -468,6 +527,185 @@ export function computeIntelligentNutrition(
     });
   }
 
+  // ─── Hydration Module ───────────────────────────────────────────────
+  const activityLevel = profile?.activityLevel ?? "moderate";
+  const climate = profile?.climate ?? "hot";
+  const weight = profile?.weight ?? null;
+
+  let hydration: HydrationResult | null = null;
+  if (weight !== null && weight > 0) {
+    const baseMl = Math.round(35 * weight);
+    const climateAddMl = climate === "hot" ? 750 : climate === "cold" ? 0 : 300;
+    const activityAddMl = activityLevel === "active" ? 600 : activityLevel === "moderate" ? 400 : 0;
+    const totalMl = baseMl + climateAddMl + activityAddMl;
+    const dailyGoalLiters = Math.round((totalMl / 1000) * 10) / 10;
+
+    // Distribute across day
+    const morningMl = Math.round(totalMl * 0.3);
+    const afternoonMl = Math.round(totalMl * 0.4);
+    const eveningMl = totalMl - morningMl - afternoonMl;
+
+    const distribution: HydrationSlot[] = [
+      { slot: "🌅 Morning (6 AM – 11 AM)", amount: `${Math.round(morningMl / 250)} glasses (~${morningMl} ml)`, tip: "Start with 1–2 glasses on waking up. Have a glass before breakfast." },
+      { slot: "☀️ Afternoon (11 AM – 4 PM)", amount: `${Math.round(afternoonMl / 250)} glasses (~${afternoonMl} ml)`, tip: "Sip water between meals. Coconut water or buttermilk count too." },
+      { slot: "🌙 Evening (4 PM – 10 PM)", amount: `${Math.round(eveningMl / 250)} glasses (~${eveningMl} ml)`, tip: "Avoid heavy water 1 hour before sleep. A warm glass of milk is fine." },
+    ];
+
+    // Smart alerts based on symptoms
+    const alerts: HydrationAlert[] = [];
+    const hasHeadache = (analysis.counts["headache"] ?? 0) > 0;
+    const hasFatigue = (analysis.counts["fatigue"] ?? 0) > 0;
+    if (hasHeadache || hasFatigue) {
+      alerts.push({ emoji: "⚠️", text: "Headache or fatigue detected — this could be a sign of dehydration. Increase water intake and monitor." });
+    }
+    if (climate === "hot") {
+      alerts.push({ emoji: "🌡️", text: "Hot climate: you lose more water through sweat. Add lemon water, buttermilk (chaas), or coconut water for electrolytes." });
+    }
+    if (activityLevel === "active") {
+      alerts.push({ emoji: "🏃", text: "Active lifestyle: drink 200 ml water before exercise and sip regularly during activity." });
+    }
+    alerts.push({ emoji: "💧", text: "Dark urine? Increase your water intake immediately. Pale yellow urine indicates good hydration." });
+
+    hydration = { dailyGoalLiters, baseMl, climateAddMl, activityAddMl, distribution, alerts };
+  }
+
+  // ─── Foods to Avoid / Reduce Module ─────────────────────────────────
+  const foodRestrictions: FoodRestriction[] = [];
+  const addedFoods = new Set<string>();
+
+  function addRestriction(food: string, category: "avoid" | "reduce", reason: string) {
+    const key = `${food}::${category}`;
+    if (!addedFoods.has(key)) {
+      addedFoods.add(key);
+      foodRestrictions.push({ food, category, reason });
+    }
+  }
+
+  // Condition-based rules
+  for (const cond of conditions) {
+    switch (cond) {
+      case "anemia":
+        addRestriction("Tea / Coffee with meals", "reduce", "Tannins in tea/coffee block iron absorption. Drink 1 hour before or after meals.");
+        addRestriction("Excess milk with iron-rich food", "reduce", "Calcium can inhibit iron absorption when consumed together.");
+        break;
+      case "pcos":
+      case "pcod":
+        addRestriction("Refined sugar (sweets, mithai)", "avoid", "Sugar spikes insulin, worsening hormonal imbalance in PCOS/PCOD.");
+        addRestriction("Refined carbs (maida, white bread)", "reduce", "Refined carbs cause rapid blood sugar spikes. Prefer whole grains.");
+        addRestriction("Processed / packaged snacks", "reduce", "High in trans-fats and hidden sugars that worsen PCOS symptoms.");
+        addRestriction("Sugary drinks (cold drinks, packaged juice)", "avoid", "Liquid sugar causes sharp insulin spikes. Choose water, buttermilk or nimbu pani.");
+        break;
+      case "diabetes":
+        addRestriction("Sugary drinks & sweets", "avoid", "Direct sugar intake causes rapid blood glucose spikes.");
+        addRestriction("White rice (large portions)", "reduce", "High glycemic index. Prefer brown rice or millets in smaller portions.");
+        addRestriction("Refined flour (maida) products", "avoid", "Maida has high GI and minimal fiber. Choose atta or millet flour.");
+        break;
+      case "hypothyroidism":
+        addRestriction("Raw cruciferous vegetables (excess)", "reduce", "Raw cabbage, cauliflower in excess may interfere with thyroid function. Cooking is fine.");
+        addRestriction("Soy products (excess)", "reduce", "Excessive soy may interfere with thyroid hormone absorption.");
+        break;
+      case "hyperthyroidism":
+        addRestriction("Excess iodine (iodized salt overuse)", "reduce", "Too much iodine can worsen hyperthyroid symptoms.");
+        addRestriction("Caffeine", "reduce", "Caffeine can increase heart rate and anxiety, worsening hyperthyroid symptoms.");
+        break;
+      case "osteoporosis":
+        addRestriction("Excess caffeine", "reduce", "Caffeine may reduce calcium absorption. Limit to 1–2 cups/day.");
+        addRestriction("Excess salt", "reduce", "High sodium increases calcium loss through urine.");
+        break;
+    }
+  }
+
+  // Symptom-based rules
+  const hasAcne = (analysis.counts["acne"] ?? 0) >= 2;
+  const hasBloating = (analysis.counts["bloating"] ?? 0) >= 1;
+  const hasCramps = (analysis.counts["cramps"] ?? 0) >= 2;
+
+  if (hasAcne) {
+    addRestriction("Fried / oily foods", "reduce", "Excess oil can trigger acne flare-ups. Choose steamed, baked, or air-fried options.");
+    addRestriction("Dairy (if acne persists)", "reduce", "Some individuals find dairy worsens acne. Monitor and reduce if needed.");
+  }
+  if (hasBloating) {
+    addRestriction("Carbonated drinks", "reduce", "Fizzy drinks increase gas and bloating. Choose still water or herbal tea.");
+    addRestriction("Beans / lentils (soak before cooking)", "reduce", "Soaking reduces gas-causing compounds. Don't eliminate — they're nutritious.");
+  }
+  if (hasCramps) {
+    addRestriction("Excess caffeine during periods", "reduce", "Caffeine constricts blood vessels and may worsen cramps.");
+  }
+
+  // ─── Calorie Intake Module ──────────────────────────────────────────
+  let calories: CalorieResult | null = null;
+  if (weight !== null && weight > 0) {
+    let low: number, high: number;
+    let actLabel: string;
+    if (activityLevel === "sedentary") {
+      low = weight * 25; high = weight * 30; actLabel = "Sedentary";
+    } else if (activityLevel === "active") {
+      low = weight * 35; high = weight * 40; actLabel = "Active";
+    } else {
+      low = weight * 30; high = weight * 35; actLabel = "Moderate";
+    }
+
+    const midKcal = Math.round((low + high) / 2);
+    let adjustmentNote: string | null = null;
+    const bmiCat = profile?.bmiCategory ?? "Normal";
+    let adjustedKcal = midKcal;
+
+    if (bmiCat === "Underweight") {
+      adjustedKcal = midKcal + 400;
+      adjustmentNote = "BMI indicates underweight — added +400 kcal to support healthy weight gain. Focus on calorie-dense, nutritious foods.";
+    } else if (bmiCat === "Overweight" || bmiCat === "Obese") {
+      adjustedKcal = midKcal - 400;
+      adjustmentNote = "BMI indicates overweight — reduced by 400 kcal. Focus on nutrient-dense foods, avoid empty calories. Never go below 1200 kcal/day.";
+      adjustedKcal = Math.max(1200, adjustedKcal);
+    }
+
+    // Puberty needs: don't let teens go too low
+    adjustedKcal = Math.max(1400, adjustedKcal);
+
+    calories = {
+      dailyKcal: adjustedKcal,
+      range: [Math.round(low), Math.round(high)],
+      activityLabel: actLabel,
+      adjustmentNote,
+    };
+  }
+
+  // ─── Protein Intake Module ──────────────────────────────────────────
+  let protein: ProteinResult | null = null;
+  if (weight !== null && weight > 0) {
+    const tier = activityLevel === "active" ? "fitness" : "normal";
+    const lowG = tier === "fitness" ? weight * 1.2 : weight * 0.8;
+    const highG = tier === "fitness" ? weight * 1.5 : weight * 1.0;
+    const dailyGrams = Math.round((lowG + highG) / 2);
+
+    const vegSources: ProteinSource[] = [
+      { name: "Paneer (100g)", grams: "18g" },
+      { name: "Dal / Lentils (1 bowl)", grams: "9g" },
+      { name: "Curd / Yogurt (1 cup)", grams: "11g" },
+      { name: "Soy chunks (50g)", grams: "26g" },
+      { name: "Chickpeas / Chana (1 cup)", grams: "15g" },
+      { name: "Milk (1 glass)", grams: "8g" },
+      { name: "Peanuts (30g)", grams: "7g" },
+      { name: "Sprouts (1 cup)", grams: "13g" },
+    ];
+    const mixedSources: ProteinSource[] = [
+      { name: "Egg (1 whole)", grams: "6g" },
+      { name: "Chicken breast (100g)", grams: "31g" },
+      { name: "Fish / Rohu (100g)", grams: "20g" },
+      { name: "Egg whites (3)", grams: "11g" },
+    ];
+
+    const isVeg = dietType === "veg";
+    const sources = isVeg ? vegSources : [...vegSources.slice(0, 5), ...mixedSources];
+
+    protein = {
+      dailyGrams,
+      range: [Math.round(lowG), Math.round(highG)],
+      tier,
+      sources,
+    };
+  }
+
   return {
     hasData: true,
     analyzedDays: analysis.totalDays,
@@ -477,5 +715,9 @@ export function computeIntelligentNutrition(
     deficiencyList,
     nutrientRecommendations,
     specialNotes,
+    hydration,
+    foodRestrictions,
+    calories,
+    protein,
   };
 }

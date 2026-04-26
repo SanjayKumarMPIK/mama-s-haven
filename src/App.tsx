@@ -58,6 +58,14 @@ import FitnessHealthCalculatorPage from "./pages/maternity/FitnessHealthCalculat
 import PersonalizedDietPage from "./pages/nutrition/PersonalizedDietPage";
 import NutritionChecklistPage from "./pages/nutrition/NutritionChecklistPage";
 import PostpartumDashboard from "./modules/postpartum/pages/PostpartumDashboard";
+import PubertyDeficiencyPage from "./pages/puberty/PubertyDeficiencyPage";
+import PubertyNutrientRecommendationsPage from "./pages/puberty/PubertyNutrientRecommendationsPage";
+import PubertyHydrationPage from "./pages/puberty/PubertyHydrationPage";
+import PubertyFoodRestrictionsPage from "./pages/puberty/PubertyFoodRestrictionsPage";
+import PubertyCaloriePage from "./pages/puberty/PubertyCaloriePage";
+import PubertyProteinPage from "./pages/puberty/PubertyProteinPage";
+import PubertyMealPlanPage from "./pages/puberty/PubertyMealPlanPage";
+import PubertyNutritionalInsightsPage from "./pages/puberty/PubertyNutritionalInsightsPage";
 import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
 
 
@@ -112,6 +120,15 @@ const router = createBrowserRouter(
         { path: "maternity/nutrition/personalized-diet", element: <PersonalizedDietPage /> },
         { path: "maternity/nutrition/checklist", element: <NutritionChecklistPage /> },
         { path: "postpartum-dashboard", element: <PostpartumDashboard /> },
+        // Puberty nutrition sub-pages
+        { path: "puberty/nutrition/deficiency-insights", element: <PubertyDeficiencyPage /> },
+        { path: "puberty/nutrition/nutrient-recommendations", element: <PubertyNutrientRecommendationsPage /> },
+        { path: "puberty/nutrition/hydration", element: <PubertyHydrationPage /> },
+        { path: "puberty/nutrition/food-restrictions", element: <PubertyFoodRestrictionsPage /> },
+        { path: "puberty/nutrition/calories", element: <PubertyCaloriePage /> },
+        { path: "puberty/nutrition/protein", element: <PubertyProteinPage /> },
+        { path: "puberty/nutrition/meal-plan", element: <PubertyMealPlanPage /> },
+        { path: "puberty/nutrition/insights", element: <PubertyNutritionalInsightsPage /> },
 
         // Menopause phase routes
         { path: "menopause/onboarding", element: <MenopauseOnboarding /> },
@@ -183,6 +200,15 @@ const App = () => (
                         <Route path="/maternity/nutrition/personalized-diet" element={<PersonalizedDietPage />} />
                         <Route path="/maternity/nutrition/checklist" element={<NutritionChecklistPage />} />
                         <Route path="/postpartum-dashboard" element={<PostpartumDashboard />} />
+                        {/* Puberty nutrition sub-pages */}
+                        <Route path="/puberty/nutrition/deficiency-insights" element={<PubertyDeficiencyPage />} />
+                        <Route path="/puberty/nutrition/nutrient-recommendations" element={<PubertyNutrientRecommendationsPage />} />
+                        <Route path="/puberty/nutrition/hydration" element={<PubertyHydrationPage />} />
+                        <Route path="/puberty/nutrition/food-restrictions" element={<PubertyFoodRestrictionsPage />} />
+                        <Route path="/puberty/nutrition/calories" element={<PubertyCaloriePage />} />
+                        <Route path="/puberty/nutrition/protein" element={<PubertyProteinPage />} />
+                        <Route path="/puberty/nutrition/meal-plan" element={<PubertyMealPlanPage />} />
+                        <Route path="/puberty/nutrition/insights" element={<PubertyNutritionalInsightsPage />} />
 
                         {/* Menopause phase routes */}
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />

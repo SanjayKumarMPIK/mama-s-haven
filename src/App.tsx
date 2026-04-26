@@ -45,7 +45,7 @@ import MedicineAlertPopup from "@/components/MedicineAlertPopup";
 import MaternalTestRecommendationPopup from "@/components/MaternalTestRecommendationPopup";
 import { GTTQuestionPopup } from "@/components/GTTQuestionPopup";
 import MenopauseOnboarding from "./pages/menopause/MenopauseOnboarding";
-import MenopauseCalendar from "./pages/menopause/MenopauseCalendar";
+import MenopauseCalendar from "./components/calendar/MenopauseCalendar";
 import SymptomAnalytics from "./pages/menopause/SymptomAnalytics";
 import WellnessPlan from "./pages/menopause/WellnessPlan";
 import DailyGoals from "./pages/menopause/DailyGoals";

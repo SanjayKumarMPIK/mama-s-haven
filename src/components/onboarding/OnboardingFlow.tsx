@@ -43,10 +43,19 @@ const FAMILY_PLANNING_GOALS: GoalOption[] = [
   { id: "fertility_education", emoji: "🧠", label: "Fertility education" },
 ];
 
+const MENOPAUSE_GOALS: GoalOption[] = [
+  { id: "track_symptoms", emoji: "📊", label: "Track symptoms" },
+  { id: "wellness_support", emoji: "🧘", label: "Wellness support" },
+  { id: "understand_changes", emoji: "🧠", label: "Understand body changes" },
+  { id: "nutrition_guidance", emoji: "🥗", label: "Nutrition guidance" },
+  { id: "just_exploring", emoji: "❓", label: "Just exploring" },
+];
+
 const GOALS_MAP: Partial<Record<Phase, GoalOption[]>> = {
   puberty: PUBERTY_GOALS,
   maternity: MATERNITY_GOALS,
   "family-planning": FAMILY_PLANNING_GOALS,
+  menopause: MENOPAUSE_GOALS,
 };
 
 // ─── Phase card data ─────────────────────────────────────────────────────────
@@ -88,6 +97,15 @@ const PHASE_OPTIONS: PhaseOption[] = [
     gradient: "from-teal-50 to-emerald-50",
     border: "border-teal-200 hover:border-teal-400",
     iconBg: "bg-teal-100",
+  },
+  {
+    phase: "menopause",
+    emoji: "🌺",
+    title: "Menopause",
+    description: "Track symptoms, manage wellness, and navigate your transition with support",
+    gradient: "from-amber-50 to-orange-50",
+    border: "border-amber-200 hover:border-amber-400",
+    iconBg: "bg-amber-100",
   },
 ];
 
@@ -294,6 +312,20 @@ export default function OnboardingFlow() {
     
     if (selectedPhase === "puberty") {
       setStep(4); // Progress to the Puberty specific questionnaire
+      return;
+    }
+
+    if (selectedPhase === "menopause") {
+      // Navigate to menopause onboarding page
+      navigate("/menopause/onboarding");
+      const cfg: Partial<OnboardingConfig> = {
+        phase: selectedPhase,
+        goals: Array.from(selectedGoals),
+        age: userAge,
+        onboardingCompleted: true,
+      };
+      saveConfig(cfg);
+      setShowOnboarding(false);
       return;
     }
 

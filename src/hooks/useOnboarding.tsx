@@ -25,7 +25,14 @@ export type FamilyPlanningGoal =
   | "prediction_accuracy"
   | "fertility_education";
 
-export type Goal = PubertyGoal | MaternityGoal | FamilyPlanningGoal;
+export type MenopauseGoal =
+  | "track_symptoms"
+  | "wellness_support"
+  | "understand_changes"
+  | "nutrition_guidance"
+  | "just_exploring";
+
+export type Goal = PubertyGoal | MaternityGoal | FamilyPlanningGoal | MenopauseGoal;
 
 export interface PubertyOnboardingData {
   period_awareness?: "Yes" | "No";

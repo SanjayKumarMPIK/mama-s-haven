@@ -27,10 +27,10 @@ export default function MoodTrendChart({ data }: MoodTrendChartProps) {
       );
     }
 
-    const chartHeight = 130;
+    const chartHeight = 140;
     const chartWidth = 300;
-    const paddingLeft = 35;
-    const paddingRight = 15;
+    const paddingLeft = 30;
+    const paddingRight = 10;
     const paddingTop = 15;
     const paddingBottom = 25;
 
@@ -53,11 +53,12 @@ export default function MoodTrendChart({ data }: MoodTrendChartProps) {
       pathD += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
     }
 
-    // Gradient fill
     const gradientId = "moodGradient";
+    // Using a green theme for mood trend based on the reference image
+    const moodColor = "hsl(142, 76%, 36%)";
 
     return (
-      <div className="w-full h-40 relative">
+      <div className="w-full h-44 relative">
         <svg
           width="100%"
           height="100%"
@@ -67,56 +68,16 @@ export default function MoodTrendChart({ data }: MoodTrendChartProps) {
         >
           <defs>
             <linearGradient id={gradientId} x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor="hsl(340, 82%, 52%)" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="hsl(340, 82%, 52%)" stopOpacity="0" />
+              <stop offset="0%" stopColor={moodColor} stopOpacity="0.3" />
+              <stop offset="100%" stopColor={moodColor} stopOpacity="0" />
             </linearGradient>
           </defs>
 
-          {/* Grid lines & Y-axis labels */}
-          {[0, 0.5, 1].map((ratio) => {
-            const y = chartHeight - paddingBottom - ratio * (chartHeight - paddingTop - paddingBottom);
-            // 0 = Low (value 1), 0.5 = Okay (value 2), 1 = Good (value 3)
-            const label = ratio === 0 ? "Low" : ratio === 0.5 ? "Okay" : "Good";
-            
-            return (
-              <g key={ratio}>
-                <line
-                  x1={paddingLeft}
-                  y1={y}
-                  x2={chartWidth - paddingRight}
-                  y2={y}
-                  stroke="hsl(var(--muted))"
-                  strokeWidth="0.5"
-                  strokeDasharray="2 2"
-                  opacity="0.3"
-                />
-                <text
-                  x={paddingLeft - 5}
-                  y={y + 3}
-                  textAnchor="end"
-                  fontSize="9"
-                  fill="hsl(var(--muted-foreground))"
-                  fontWeight="500"
-                >
-                  {label}
-                </text>
-              </g>
-            );
-          })}
-
-          {/* Y-axis Title */}
-          <text
-            x={10}
-            y={chartHeight / 2}
-            transform={`rotate(-90 10 ${chartHeight / 2})`}
-            textAnchor="middle"
-            fontSize="9"
-            fill="hsl(var(--muted-foreground))"
-            fontWeight="bold"
-            letterSpacing="0.5"
-          >
-            MOOD
-          </text>
+          {/* Y-axis Labels (Emojis) */}
+          {/* Note: SVG text with emojis works well in modern browsers */}
+          <text x={0} y={paddingTop + 5} fontSize="14" fill="hsl(var(--muted-foreground))" textAnchor="start">😃</text>
+          <text x={0} y={paddingTop + (chartHeight - paddingTop - paddingBottom) / 2 + 5} fontSize="14" fill="hsl(var(--muted-foreground))" textAnchor="start">😐</text>
+          <text x={0} y={chartHeight - paddingBottom + 5} fontSize="14" fill="hsl(var(--muted-foreground))" textAnchor="start">☹️</text>
 
           {/* Fill area under curve */}
           <path
@@ -128,7 +89,7 @@ export default function MoodTrendChart({ data }: MoodTrendChartProps) {
           <path
             d={pathD}
             fill="none"
-            stroke="hsl(340, 82%, 52%)" // pink/rose
+            stroke={moodColor}
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -140,10 +101,10 @@ export default function MoodTrendChart({ data }: MoodTrendChartProps) {
               key={i}
               cx={p.x}
               cy={p.y}
-              r={4}
-              fill="hsl(340, 82%, 52%)"
+              r={3.5}
+              fill={moodColor}
               stroke="white"
-              strokeWidth="2"
+              strokeWidth="1.5"
               className="hover:scale-150 transition-transform origin-center cursor-pointer"
               style={{ transformOrigin: `${p.x}px ${p.y}px` }}
             />
@@ -151,18 +112,19 @@ export default function MoodTrendChart({ data }: MoodTrendChartProps) {
 
           {/* X-axis labels */}
           {data.map((d, i) => {
-            const x = paddingLeft + (i / (data.length - 1)) * (chartWidth - paddingLeft - paddingRight);
+            const x = points[i].x;
+            const letter = d.dayLabel.charAt(0).toUpperCase();
             return (
               <text
                 key={i}
                 x={x}
                 y={chartHeight - 5}
                 textAnchor="middle"
-                fontSize="9"
+                fontSize="10"
                 fill="hsl(var(--muted-foreground))"
-                fontWeight="500"
+                fontWeight="600"
               >
-                {d.dayLabel}
+                {letter}
               </text>
             );
           })}

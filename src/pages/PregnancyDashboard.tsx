@@ -871,7 +871,7 @@ function DashboardView({
         <ScrollReveal delay={300}>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
-              { to: "/weekly-guide", label: "Weekly Guide", emoji: "📅" },
+              { to: "/dashboard", label: "Dashboard", emoji: "📅" },
               { to: "/nutrition", label: "Nutrition", emoji: "🍎" },
               { to: "/vaccine-tracker", label: "Vaccines", emoji: "💉" },
               { to: "/symptom-checker", label: "Symptoms", emoji: "🔍" },

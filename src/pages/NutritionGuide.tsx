@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -18,7 +18,13 @@ import {
 } from "@/lib/nutritionInsightsEngine";
 import { predictMaternityDeficiencies, type MaternityPredictionResult, type MaternityFallbackRecommendation } from "@/lib/maternityNutritionEngine";
 import { predictPubertyDeficiencies, type PubertyNutritionResult } from "@/lib/pubertyNutritionEngine";
-import { predictFamilyPlanningDeficiencies, type FamilyPlanningPredictionResult } from "@/lib/familyPlanningNutritionEngine";
+import {
+  predictFamilyPlanningDeficiencies,
+  computeNutritionSummary,
+  type FamilyPlanningPredictionResult,
+  type NutritionSummary,
+} from "@/lib/familyPlanningNutritionEngine";
+import { useFamilyPlanningProfile } from "@/hooks/useFamilyPlanningProfile";
 import {
   generatePubertyDailyFoodChart,
   generatePubertyDeficiencyPlan,
@@ -118,10 +124,11 @@ export default function NutritionGuide() {
   }, [logs, phase, profile, onboardingConfig]);
 
   // Ã¢â€â‚¬Ã¢â€â‚¬ Compute family planning specific insights (memoized) Ã¢â€â‚¬Ã¢â€â‚¬
+  const { profile: fpProfile } = useFamilyPlanningProfile();
   const familyPlanningData = useMemo(() => {
-    if (phase === "family-planning") return predictFamilyPlanningDeficiencies(logs);
+    if (phase === "family-planning") return predictFamilyPlanningDeficiencies(logs, fpProfile.intent);
     return null;
-  }, [logs, phase]);
+  }, [logs, phase, fpProfile.intent]);
 
   // Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â Render Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
 
@@ -157,7 +164,7 @@ export default function NutritionGuide() {
             intelligent={intelligentNutrition}
           />
         ) : phase === "family-planning" && familyPlanningData ? (
-          <FamilyPlanningNutritionView data={familyPlanningData} accent={accent} />
+          <FamilyPlanningNutritionView data={familyPlanningData} accent={accent} userProfile={profile} fpProfile={fpProfile} />
         ) : phase === "maternity" && maternityData ? (
           <MaternityNutritionView data={maternityData} accent={accent} />
         ) : !data.hasData ? (
@@ -853,147 +860,182 @@ function MaternityNutritionView({
 function FamilyPlanningNutritionView({
   data,
   accent,
+  userProfile,
+  fpProfile,
 }: {
   data: FamilyPlanningPredictionResult;
   accent: any;
+  userProfile: any;
+  fpProfile: any;
 }) {
+  const { logs } = useHealthLog();
+  const intent = fpProfile?.intent ?? "tracking";
+
+  const summary = useMemo(
+    () => computeNutritionSummary(logs, intent, userProfile?.lastPeriodDate ?? "", userProfile?.cycleLength ?? 28),
+    [logs, intent, userProfile?.lastPeriodDate, userProfile?.cycleLength],
+  );
+
+  const intentLabel = intent === "ttc" ? "Trying to Conceive" : intent === "avoid" ? "Avoiding Pregnancy" : "Cycle Tracking";
+  const intentEmoji = intent === "ttc" ? "💕" : intent === "avoid" ? "🛡️" : "📊";
+
+  const riskColor = summary.risk.color === "red" ? "text-red-600" : summary.risk.color === "amber" ? "text-amber-600" : "text-emerald-600";
+  const riskBg = summary.risk.color === "red" ? "bg-red-100" : summary.risk.color === "amber" ? "bg-amber-100" : "bg-emerald-100";
+
+  const moduleCards = [
+    {
+      to: "/family-planning/nutrition/deficiency-insights",
+      icon: <Zap className="w-6 h-6 text-white" />,
+      gradient: "from-teal-500 to-emerald-500",
+      title: "Deficiency Insights",
+      description: data.hasData && data.predictions.length > 0
+        ? `${data.predictions.length} nutrient gap${data.predictions.length > 1 ? "s" : ""} • Risk ${summary.risk.overallScore}/100`
+        : "Analyze your symptoms for nutrient gaps",
+      badge: data.predictions.length > 0 ? `${data.predictions.length} gaps` : null,
+      badgeColor: data.predictions.length > 0 ? "bg-amber-100 text-amber-700" : "",
+    },
+    {
+      to: "/family-planning/nutrition/hormonal-balance",
+      icon: <Heart className="w-6 h-6 text-white" />,
+      gradient: "from-teal-500 to-emerald-400",
+      title: intent === "ttc" ? "Fertility Nutrition" : intent === "avoid" ? "Hormonal Balance" : "Hormonal Nutrition",
+      description: intent === "ttc" ? "Fertility-boosting foods and pre-conception nutrients" : intent === "avoid" ? "Hormone regulation diet for cycle predictability" : "Support your body's natural hormonal rhythms",
+      badge: null,
+      badgeColor: "",
+    },
+    {
+      to: "/family-planning/nutrition/cycle-plan",
+      icon: <Calendar className="w-6 h-6 text-white" />,
+      gradient: "from-violet-500 to-purple-500",
+      title: "Cycle-Based Plan",
+      description: summary.cyclePhaseLabel
+        ? `Day ${summary.cycleDay} — ${summary.cyclePhaseLabel}`
+        : "Log your period for phase-specific nutrition",
+      badge: summary.cyclePhaseLabel ? "Live" : null,
+      badgeColor: "bg-emerald-100 text-emerald-700",
+    },
+    {
+      to: "/family-planning/nutrition/lifestyle",
+      icon: <Activity className="w-6 h-6 text-white" />,
+      gradient: "from-orange-400 to-red-500",
+      title: "Lifestyle & Metabolism",
+      description: userProfile?.bmi
+        ? `BMI ${userProfile.bmi} • ${userProfile.bmiCategory}`
+        : "BMI, hydration, activity, and sleep impact",
+      badge: null,
+      badgeColor: "",
+    },
+    {
+      to: "/family-planning/nutrition/foods-to-avoid",
+      icon: <AlertTriangle className="w-6 h-6 text-white" />,
+      gradient: "from-amber-400 to-red-500",
+      title: "Foods to Avoid",
+      description: "Hormone disruptors, caffeine limits, and personalized warnings",
+      badge: null,
+      badgeColor: "",
+    },
+  ];
+
   return (
     <>
+      {/* Intent-Aware Header Banner */}
       <ScrollReveal>
-        <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4 mb-2">
+        <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6 relative overflow-hidden`}>
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-bl-[80px] opacity-10 bg-gradient-to-br from-current to-transparent" />
+          <div className="flex items-start gap-4">
+            <span className="text-4xl shrink-0">{intentEmoji}</span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">Your Nutrition Goal</p>
+              <h2 className="text-lg font-bold leading-snug">{intentLabel}</h2>
+              <div className="flex items-center gap-3 mt-3 flex-wrap">
+                {summary.cycleDay !== null && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-border/30">
+                    <Calendar className="w-3 h-3" /> Day {summary.cycleDay}
+                  </span>
+                )}
+                {summary.cyclePhaseLabel && (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-border/30">
+                    <Activity className="w-3 h-3" /> {summary.cyclePhaseLabel}
+                  </span>
+                )}
+                <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full ${riskBg} ${riskColor}`}>
+                  <Sparkles className="w-3 h-3" /> {summary.risk.label} • {summary.risk.overallScore}/100
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ScrollReveal>
+
+      {/* Safety Banner */}
+      <ScrollReveal>
+        <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-4">
           <p className="text-xs text-teal-800 flex items-start gap-2">
             <Sparkles className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>
-              <strong>Note:</strong> These suggestions aim to align your dietary habits optimally for fertility and preconception health.
-            </span>
+            <span><strong>Data-driven:</strong> All recommendations are generated from your last 30 days of symptom logs, cycle data, and profile. <Link to="/calendar" className="underline font-semibold">Log more →</Link></span>
           </p>
         </div>
       </ScrollReveal>
 
-      {data.hasData && data.predictions.length > 0 ? (
-        <div className="space-y-6">
-          <ScrollReveal>
-            <SectionHeader title="Your Preconception Nutrient Gaps" emoji="Ã°Å¸â€Â" />
-            <div className="grid gap-4 md:grid-cols-2">
-              {data.predictions.map((pred) => (
-                <div
-                  key={pred.id}
-                  className={`rounded-2xl border-2 p-5 bg-card hover:shadow-md transition-all ${
-                    pred.confidence === "High" ? "border-amber-200" : "border-border/60"
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <h3 className="text-lg font-bold text-foreground">{pred.title}</h3>
-                      <p className="text-sm text-primary font-semibold mt-0.5">{pred.nutrient}</p>
-                    </div>
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
-                        pred.confidence === "High"
-                          ? "bg-amber-100 text-amber-800"
-                          : pred.confidence === "Medium"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {pred.confidence} Confidence
-                    </span>
-                  </div>
-
-                  <div className="mt-4 space-y-4">
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Why we predict this</p>
-                      <p className="text-sm bg-muted/30 p-2.5 rounded-lg border border-border/50 text-foreground/90">
-                        {pred.whyPredicted}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Why it matters for preconception</p>
-                      <p className="text-sm text-foreground/90 leading-relaxed">{pred.whyItMatters}</p>
-                    </div>
-
-                    <div className="pt-2 border-t border-border/40">
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">Recommended Sources</p>
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {pred.foods.map((food) => (
-                          <span
-                            key={food}
-                            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r ${accent.gradient} text-white shadow-sm`}
-                          >
-                            {food}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">Healthy Habits</p>
-                      <ul className="space-y-1.5 ml-4">
-                        {pred.habits.map((habit, i) => (
-                          <li key={i} className="text-sm text-foreground/85 list-disc">
-                            {habit}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                </div>
-              ))}
+      {/* Module Link Cards */}
+      {moduleCards.map((card, idx) => (
+        <ScrollReveal key={card.to} delay={10 + idx * 10}>
+          <Link
+            to={card.to}
+            className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
+          >
+            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${card.gradient} flex items-center justify-center shadow-md shrink-0`}>
+              {card.icon}
             </div>
-          </ScrollReveal>
-
-          <ScrollReveal delay={100}>
-            <div className="flex justify-center mt-4">
-              <Link
-                to="/calendar"
-                className="inline-flex items-center gap-2 text-sm text-primary font-medium hover:underline"
-              >
-                <Calendar className="w-4 h-4" /> Log more symptoms for better accuracy
-              </Link>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-foreground">{card.title}</h3>
+                {card.badge && (
+                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${card.badgeColor}`}>
+                    {card.badge}
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed truncate">{card.description}</p>
             </div>
-          </ScrollReveal>
-        </div>
-      ) : data.fallback ? (
-        <ScrollReveal>
-          <div className="flex flex-col items-center justify-center text-center py-12 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
-            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center mb-5 shadow-lg`}>
-              <Apple className="w-8 h-8 text-white" />
-            </div>
-            <h3 className="text-lg font-bold text-foreground mb-1">{data.fallback.focusTitle}</h3>
-            <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mb-4">
-              {data.fallback.whyItMatters}
-            </p>
-
-            <div className="w-full max-w-lg text-left mb-6">
-               <SectionHeader title="Preconception Focus" emoji="Ã°Å¸â€œÅ’" />
-               <div className="rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
-                  <div className="px-5 py-3.5 border-b border-border/30">
-                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Base Foods</p>
-                     <div className="flex flex-wrap gap-2">
-                        {data.fallback.foods.map((food) => (
-                           <span key={food} className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r ${accent.gradient} text-white shadow-sm`}>{food}</span>
-                        ))}
-                     </div>
-                  </div>
-                  <div className="px-5 py-3.5">
-                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Base Habits</p>
-                     <ul className="space-y-1.5 ml-4">
-                        {data.fallback.habits.map((habit, i) => (
-                           <li key={i} className="text-sm text-foreground/85 list-disc">{habit}</li>
-                        ))}
-                     </ul>
-                  </div>
-               </div>
-            </div>
-
-            <Link
-              to="/calendar"
-              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r ${accent.gradient} text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all active:scale-[0.97]`}
-            >
-              <Calendar className="w-4 h-4" />
-              Go to Calendar
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
         </ScrollReveal>
-      ) : null}
+      ))}
+
+      {/* Quick Links */}
+      <ScrollReveal delay={70}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Link to="/calendar" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98]`}>
+            <Calendar className={`w-5 h-5 ${accent.text}`} />
+            <div className="flex-1"><p className="text-sm font-semibold">Log Symptoms</p><p className="text-[11px] text-muted-foreground">Improve accuracy</p></div>
+          </Link>
+          <Link to="/wellness" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98]`}>
+            <Sparkles className={`w-5 h-5 ${accent.text}`} />
+            <div className="flex-1"><p className="text-sm font-semibold">Wellness</p><p className="text-[11px] text-muted-foreground">Full overview</p></div>
+          </Link>
+          <Link to="/symptom-checker" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98]`}>
+            <Activity className={`w-5 h-5 ${accent.text}`} />
+            <div className="flex-1"><p className="text-sm font-semibold">Symptoms</p><p className="text-[11px] text-muted-foreground">Check patterns</p></div>
+          </Link>
+          <Link to="/tools" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98]`}>
+            <Leaf className={`w-5 h-5 ${accent.text}`} />
+            <div className="flex-1"><p className="text-sm font-semibold">FP Tools</p><p className="text-[11px] text-muted-foreground">All tools</p></div>
+          </Link>
+        </div>
+      </ScrollReveal>
+
+      {/* Medical Disclaimer */}
+      <ScrollReveal delay={80}>
+        <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4">
+          <div className="flex items-start gap-2">
+            <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <p className="text-[11px] text-amber-800 leading-relaxed">
+              <strong>Disclaimer:</strong> These nutrition suggestions are generated from your logged symptoms and profile data. They are for informational purposes only.
+            </p>
+          </div>
+        </div>
+      </ScrollReveal>
     </>
   );
 }

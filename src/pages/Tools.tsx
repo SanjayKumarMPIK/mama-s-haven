@@ -408,24 +408,6 @@ export default function Tools() {
         </ScrollReveal>
 
         <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Weekly Body Report — always visible */}
-          <ScrollReveal>
-            <Link
-              to="/weekly-report"
-              className="flex items-start gap-4 rounded-xl border border-border/60 bg-card p-6 md:p-8 hover:shadow-md hover:border-primary/20 transition-all duration-200 group"
-            >
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 group-hover:bg-primary/20 transition-colors">
-                <BarChart3 className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold mb-1">Weekly Body Report</h2>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Analytics, patterns, and action plans generated purely from your calendar logs.
-                </p>
-                <span className="inline-block mt-3 text-xs font-semibold text-primary group-hover:underline">View Report →</span>
-              </div>
-            </Link>
-          </ScrollReveal>
           {phase === "puberty" && (
             <ScrollReveal>
               <CycleTracker onResultChange={() => {}} />

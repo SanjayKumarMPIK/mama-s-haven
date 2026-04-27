@@ -54,7 +54,7 @@ export default function Index() {
             <ScrollReveal>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 w-full sm:w-auto">
                 <Link
-                  to="/weekly-guide"
+                  to="/dashboard"
                   className="group flex flex-1 sm:flex-none items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-slate-900 text-white font-semibold text-lg shadow-lg hover:shadow-xl hover:bg-slate-800 hover:-translate-y-0.5 transition-all duration-300"
                 >
                   {t("getStarted")}

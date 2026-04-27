@@ -467,12 +467,12 @@ export default function SymptomChecker() {
                     <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                   </Link>
                   <Link
-                    to="/weekly-guide"
+                    to="/dashboard"
                     className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
                   >
                     <Calendar className={`w-5 h-5 ${accent.text}`} />
                     <div className="flex-1">
-                      <p className="text-sm font-semibold">Weekly Guide</p>
+                      <p className="text-sm font-semibold">Dashboard</p>
                       <p className="text-[11px] text-muted-foreground">Phase-specific advice</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />

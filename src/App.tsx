@@ -37,7 +37,6 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import HealthLog from "./pages/HealthLog";
 import Calendar from "./pages/Calendar";
-import WeeklyBodyReport from "./pages/WeeklyBodyReport";
 import Profile from "./pages/Profile";
 import MedicineReminder from "./pages/MedicineReminder";
 import MissedLogReminder from "@/components/MissedLogReminder";
@@ -65,6 +64,11 @@ import PubertyCaloriePage from "./pages/puberty/PubertyCaloriePage";
 import PubertyProteinPage from "./pages/puberty/PubertyProteinPage";
 import PubertyMealPlanPage from "./pages/puberty/PubertyMealPlanPage";
 import PubertyNutritionalInsightsPage from "./pages/puberty/PubertyNutritionalInsightsPage";
+import FPDeficiencyInsightsPage from "./pages/familyplanning/FPDeficiencyInsightsPage";
+import FPHormonalNutritionPage from "./pages/familyplanning/FPHormonalNutritionPage";
+import FPCycleNutritionPage from "./pages/familyplanning/FPCycleNutritionPage";
+import FPLifestyleMetabolismPage from "./pages/familyplanning/FPLifestyleMetabolismPage";
+import FPFoodsToAvoidPage from "./pages/familyplanning/FPFoodsToAvoidPage";
 import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
 
 
@@ -98,7 +102,7 @@ const router = createBrowserRouter(
         { path: "articles", element: <Articles /> },
         { path: "postpartum-guide", element: <Postpartum /> },
         { path: "assistant", element: <Assistant /> },
-        { path: "weekly-guide", element: <WeeklyGuide /> },
+        { path: "dashboard", element: <WeeklyGuide /> },
         { path: "nutrition", element: <NutritionGuide /> },
         { path: "symptom-checker", element: <SymptomChecker /> },
         { path: "emergency", element: <EmergencyGuidance /> },
@@ -111,7 +115,6 @@ const router = createBrowserRouter(
         { path: "pregnancy-dashboard", element: <PregnancyDashboard /> },
         { path: "health-log", element: <HealthLog /> },
         { path: "calendar", element: <Calendar /> },
-        { path: "weekly-report", element: <WeeklyBodyReport /> },
         { path: "profile", element: <Profile /> },
         { path: "medicine-reminder", element: <MedicineReminder /> },
         { path: "deficiency-insights", element: <DeficiencyInsights /> },
@@ -128,6 +131,13 @@ const router = createBrowserRouter(
         { path: "puberty/nutrition/protein", element: <PubertyProteinPage /> },
         { path: "puberty/nutrition/meal-plan", element: <PubertyMealPlanPage /> },
         { path: "puberty/nutrition/insights", element: <PubertyNutritionalInsightsPage /> },
+
+        // Family Planning nutrition sub-pages
+        { path: "family-planning/nutrition/deficiency-insights", element: <FPDeficiencyInsightsPage /> },
+        { path: "family-planning/nutrition/hormonal-balance", element: <FPHormonalNutritionPage /> },
+        { path: "family-planning/nutrition/cycle-plan", element: <FPCycleNutritionPage /> },
+        { path: "family-planning/nutrition/lifestyle", element: <FPLifestyleMetabolismPage /> },
+        { path: "family-planning/nutrition/foods-to-avoid", element: <FPFoodsToAvoidPage /> },
 
         // Menopause phase routes
         { path: "menopause/onboarding", element: <MenopauseOnboarding /> },
@@ -177,7 +187,7 @@ const App = () => (
                         <Route path="/articles" element={<Articles />} />
                         <Route path="/postpartum-guide" element={<Postpartum />} />
                         <Route path="/assistant" element={<Assistant />} />
-                        <Route path="/weekly-guide" element={<WeeklyGuide />} />
+                        <Route path="/dashboard" element={<WeeklyGuide />} />
                         <Route path="/nutrition" element={<NutritionGuide />} />
                         <Route path="/symptom-checker" element={<SymptomChecker />} />
                         <Route path="/emergency" element={<EmergencyGuidance />} />
@@ -190,7 +200,6 @@ const App = () => (
                         <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
                         <Route path="/health-log" element={<HealthLog />} />
                         <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/weekly-report" element={<WeeklyBodyReport />} />
                         <Route path="/profile" element={<Profile />} />
                         <Route path="/medicine-reminder" element={<MedicineReminder />} />
                         <Route path="/baby-supportive-helper" element={<BabySupportiveHelper />} />
@@ -208,6 +217,12 @@ const App = () => (
                         <Route path="/puberty/nutrition/protein" element={<PubertyProteinPage />} />
                         <Route path="/puberty/nutrition/meal-plan" element={<PubertyMealPlanPage />} />
                         <Route path="/puberty/nutrition/insights" element={<PubertyNutritionalInsightsPage />} />
+                        {/* Family Planning nutrition sub-pages */}
+                        <Route path="/family-planning/nutrition/deficiency-insights" element={<FPDeficiencyInsightsPage />} />
+                        <Route path="/family-planning/nutrition/hormonal-balance" element={<FPHormonalNutritionPage />} />
+                        <Route path="/family-planning/nutrition/cycle-plan" element={<FPCycleNutritionPage />} />
+                        <Route path="/family-planning/nutrition/lifestyle" element={<FPLifestyleMetabolismPage />} />
+                        <Route path="/family-planning/nutrition/foods-to-avoid" element={<FPFoodsToAvoidPage />} />
 
                         {/* Menopause phase routes */}
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />

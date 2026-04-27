@@ -31,7 +31,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/wellness", labelKey: "wellness" as const, icon: Trophy },
   { to: "/tools", label: "Tools", icon: Wrench },
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
-  { to: "/weekly-guide", label: "Menstrual Guide", icon: Calendar },
+  { to: "/dashboard", label: "Dashboard", icon: Calendar },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
   { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
   { to: "/medicine-reminder", label: "Care Log", icon: Pill },
@@ -40,7 +40,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
 // Routes to hide when phase is menopause (menopause has its own dedicated pages)
 const MENOPAUSE_HIDDEN_ROUTES = new Set([
   "/calendar", "/nutrition", "/symptom-checker", "/wellness",
-  "/tools", "/shopping", "/weekly-guide", "/pregnancy-dashboard",
+  "/tools", "/shopping", "/dashboard", "/pregnancy-dashboard",
   "/medicine-reminder",
 ]);
 

@@ -10,7 +10,7 @@
  * Data is stored in localStorage under "ss-fp-profile".
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,6 +65,7 @@ function readProfile(): FPProfile {
 function writeProfile(profile: FPProfile): void {
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(profile));
+    window.dispatchEvent(new Event("ss-fp-profile-updated"));
   } catch {}
 }
 
@@ -72,6 +73,14 @@ function writeProfile(profile: FPProfile): void {
 
 export function useFamilyPlanningProfile() {
   const [profile, setProfile] = useState<FPProfile>(() => readProfile());
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setProfile(readProfile());
+    };
+    window.addEventListener("ss-fp-profile-updated", handleUpdate);
+    return () => window.removeEventListener("ss-fp-profile-updated", handleUpdate);
+  }, []);
 
   const isOnboarded = useMemo(() => profile.onboardingComplete, [profile]);
 

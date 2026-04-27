@@ -35,7 +35,7 @@ export default function Footer() {
             <h4 className="font-semibold text-sm mb-3">Quick Links</h4>
             <div className="grid grid-cols-2 gap-1.5">
               {[
-                { label: t("weeklyGuide"), path: "/weekly-guide" },
+                { label: "Dashboard", path: "/dashboard" },
                 { label: t("nutritionGuide"), path: "/nutrition" },
                 { label: t("symptomChecker"), path: "/symptom-checker" },
                 { label: t("aiAssistant"), path: "/assistant" },

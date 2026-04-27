@@ -3,17 +3,21 @@ import { calculateDeficiencyInsights, type DeficiencyInsightInput } from "@/serv
 import { useProfileDerivedStats } from "@/hooks/useProfileDerivedStats";
 import { useHealthSignals } from "@/hooks/useHealthSignals";
 import { usePhase } from "@/hooks/usePhase";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 
 export function useDeficiencyInsights() {
   const profile = useProfileDerivedStats();
   const healthSignals = useHealthSignals();
   const { phase } = usePhase();
+  const pregnancyProfile = usePregnancyProfile();
 
   const insights = useMemo(() => {
     const input: DeficiencyInsightInput = {
       phase: phase as any,
       age: profile.age,
       gender: profile.sex,
+      pregnancyWeek: pregnancyProfile.currentWeek,
+      trimester: pregnancyProfile.trimester,
       symptoms: {
         fatigue: healthSignals.fatigueFrequency,
         headaches: healthSignals.headacheFrequency,
@@ -37,7 +41,7 @@ export function useDeficiencyInsights() {
     };
 
     return calculateDeficiencyInsights(input);
-  }, [phase, profile, healthSignals]);
+  }, [phase, profile, healthSignals, pregnancyProfile]);
 
   return insights;
 }

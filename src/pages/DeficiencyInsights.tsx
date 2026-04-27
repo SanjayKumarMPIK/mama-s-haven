@@ -1,8 +1,9 @@
 import { type ReactNode } from "react";
-import { ArrowLeft, Circle, Flame, Info, Leaf, Moon, Shield, Sparkles, Sun } from "lucide-react";
+import { ArrowLeft, Circle, Flame, Info, Leaf, Moon, Shield, Sparkles, Sun, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import { useSymptomDerivedRisks } from "@/hooks/useSymptomDerivedRisks";
+import { usePhase } from "@/hooks/usePhase";
 
 function Badge({ text }: { text: string }) {
   return (
@@ -30,6 +31,7 @@ function DeficiencyItem({
   why,
   bar,
   tone,
+  recommendations,
 }: {
   icon: ReactNode;
   title: string;
@@ -39,6 +41,7 @@ function DeficiencyItem({
   why: string;
   bar: string;
   tone: string;
+  recommendations: string[];
 }) {
   return (
     <div className="rounded-2xl border border-[#eee7f4] bg-white p-4">
@@ -60,13 +63,52 @@ function DeficiencyItem({
       </div>
       <p className="mt-2 text-xs text-foreground/90"><strong>Common Symptoms:</strong> {symptoms}</p>
       <p className="mt-1 text-xs text-muted-foreground"><strong>Why it matters:</strong> {why}</p>
+      {recommendations.length > 0 && (
+        <div className="mt-3 rounded-xl bg-[#fff4f8] p-3">
+          <p className="text-xs font-semibold text-[#9c5f84] mb-2">Recommended Foods:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {recommendations.slice(0, 4).map((rec, idx) => (
+              <span key={idx} className="rounded-lg bg-white px-2 py-1 text-[11px] font-medium text-[#7d6fbc] border border-[#f0e7f5]">
+                {rec}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default function DeficiencyInsights() {
+  const { phase } = usePhase();
   const insights = useDeficiencyInsights();
   const symptomPatterns = useSymptomDerivedRisks();
+
+  // Phase gate: only allow access in maternity phase
+  if (phase !== "maternity") {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-[#fff9fc] via-[#fcfbff] to-[#f9fffc] py-5">
+        <div className="container mx-auto max-w-6xl px-4 md:px-6">
+          <div className="flex flex-col items-center justify-center py-32 text-center">
+            <div className="w-20 h-20 rounded-2xl bg-amber-50 flex items-center justify-center mb-6">
+              <AlertTriangle className="w-10 h-10 text-amber-500" />
+            </div>
+            <h2 className="text-2xl font-bold mb-3">Feature Not Available</h2>
+            <p className="text-sm text-muted-foreground mb-8 max-w-md">
+              Deficiency Insights are only available during the Maternity phase.
+            </p>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Go to Home
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   const severityTone: Record<string, string> = {
     Low: "text-[#41a25f]",
@@ -113,6 +155,47 @@ export default function DeficiencyInsights() {
   };
 
   const likelyDeficiencies = insights.nutrientRisks.filter(r => r.probability >= 40).length;
+
+  // Empty state: insufficient data
+  const hasInsufficientData = symptomPatterns.frequentSymptoms.length === 0 && insights.overallRiskScore < 30;
+
+  if (hasInsufficientData) {
+    return (
+      <main className="min-h-screen bg-gradient-to-b from-[#fff9fc] via-[#fcfbff] to-[#f9fffc] py-5">
+        <div className="container mx-auto max-w-6xl space-y-5 px-4 md:px-6">
+          <section className="rounded-[28px] border border-[#eee6f2] bg-white p-5 shadow-[0_10px_30px_rgba(191,168,201,0.14)]">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <Link to="/nutrition" className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#f0e8f5] bg-[#fdfaff] text-[#7d6fbc]">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight">Nutrition Deficiency Insights</h1>
+                  <p className="text-sm text-muted-foreground">Understand your nutrient gaps. Nourish your best self.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-[24px] border border-[#eee7f3] bg-white p-8 text-center">
+            <div className="w-20 h-20 rounded-2xl bg-purple-50 flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="w-10 h-10 text-purple-400" />
+            </div>
+            <h2 className="text-xl font-bold mb-3">Log More Symptoms to Unlock Insights</h2>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+              Deficiency insights are generated from your health log entries. Start tracking your symptoms in the calendar to receive personalized deficiency analysis.
+            </p>
+            <Link
+              to="/calendar"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+            >
+              Go to Calendar
+            </Link>
+          </section>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#fff9fc] via-[#fcfbff] to-[#f9fffc] py-5">
@@ -217,6 +300,7 @@ export default function DeficiencyInsights() {
                 why={`Based on your symptoms and phase context. Confidence: ${(deficiency.confidenceScore * 100).toFixed(0)}%`}
                 bar={nutrientBarColor[deficiency.nutrient] || "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]"}
                 tone={severityTone[deficiency.severity]}
+                recommendations={deficiency.recommendations || []}
               />
             ))}
           </div>

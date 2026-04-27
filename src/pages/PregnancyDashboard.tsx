@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
+import MaternityRouteGuard from "@/components/MaternityRouteGuard";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePregnancyProfile, isValidLMP, isValidUserEDD, getEDDRange, calcWeeksAtBirth, type DeliveryData } from "@/hooks/usePregnancyProfile";
 import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyDashboard } from "@/hooks/usePregnancyDashboard";
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/hooks/useAuth";
+import { useHealthLog } from "@/hooks/useHealthLog";
 import { WEEK_DATA } from "@/lib/pregnancyData";
 import { DAILY_CHECKLIST } from "@/lib/pregnancyDashboardData";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -15,6 +17,15 @@ import PrematureCareView from "@/components/dashboard/PrematureCareView";
 import { DiabetesDashboardWidget } from "@/components/dashboard/DiabetesDashboardWidget";
 import { DueDateChecker } from "@/components/dashboard/due-date/DueDateChecker";
 import { CelebrationFlow } from "@/components/dashboard/due-date/CelebrationFlow";
+import TodayTipCard from "@/modules/maternity/dashboard/todayTip/TodayTipCard";
+import { AnalyticsCarousel } from "@/modules/maternity/analytics";
+import WeeklyProgressCard from "@/modules/maternity/dashboard/weeklyProgress/WeeklyProgressCard";
+import UpcomingAppointmentsCard from "@/modules/maternity/dashboard/upcomingAppointments/UpcomingAppointmentsCard";
+import SymptomsOverviewCard from "@/modules/maternity/dashboard/symptomsOverview/SymptomsOverviewCard";
+import VisualAnalyticsSplitPanel from "@/modules/maternity/dashboard/visualAnalyticsMenu/VisualAnalyticsSplitPanel";
+import HealthSummaryCards from "@/components/shared/HealthSummaryCards";
+import { phaseAccent } from "@/components/shared/StatCard";
+import { getMaternityDashboardMetrics } from "@/modules/maternity/dashboard/adapters/maternityDashboardMetricsAdapter";
 import {
   Calendar, ChevronRight, CheckCircle2, Circle, Clock,
   Baby, Heart, Apple, Droplets, Activity, AlertTriangle,
@@ -395,36 +406,23 @@ export default function PregnancyDashboard() {
     return <SetupScreen simpleMode={simpleMode} />;
   }
 
-  // Auto-redirect to Postpartum Dashboard if due date has arrived AND transition is completed
-  if (activeEDD) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const dueDate = new Date(activeEDD + "T00:00:00");
-    dueDate.setHours(0, 0, 0, 0);
-
-    if (dueDate.getTime() <= today.getTime()) {
-      // If transition not completed, let DueDateChecker show celebration flow
-      // If completed, redirect to postpartum dashboard
-      if (profile.deliveryTransitionCompleted) {
-        return <Navigate to="/postpartum-dashboard" replace />;
-      }
-      // Otherwise, continue to render dashboard with DueDateChecker which will show celebration
-    }
-  }
-
   // Mode-based rendering
   if (mode === "premature") {
     return <PrematureCareView />;
   }
 
-  return <DashboardView
-    currentWeek={currentWeek}
-    daysLeft={daysLeft}
-    trimester={trimester}
-    progress={progress}
-    profileName={profile.name}
-    simpleMode={simpleMode}
-  />;
+  return (
+    <MaternityRouteGuard expectedState="pregnancy">
+      <DashboardView
+        currentWeek={currentWeek}
+        daysLeft={daysLeft}
+        trimester={trimester}
+        progress={progress}
+        profileName={profile.name}
+        simpleMode={simpleMode}
+      />
+    </MaternityRouteGuard>
+  );
 }
 
 function DashboardView({
@@ -435,6 +433,13 @@ function DashboardView({
 }) {
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
   const dash = usePregnancyDashboard(currentWeek);
+  const { getPhaseLogs } = useHealthLog();
+  const maternityLogs = getPhaseLogs("maternity");
+
+  // Calculate health summary metrics using maternity dashboard adapter
+  const healthMetrics = useMemo(() => {
+    return getMaternityDashboardMetrics(maternityLogs);
+  }, [maternityLogs]);
   const { profile, clearProfile, openGTTPopup } = usePregnancyProfile();
   const weekData = WEEK_DATA[Math.min(selectedWeek, 40) - 1];
   const babyVisual = getBabyVisual(selectedWeek);
@@ -447,8 +452,8 @@ function DashboardView({
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
       <DueDateChecker />
       {/* ─── Hero Header ──────────────────────────────────────────────── */}
-      <div className="bg-tricolor-gradient border-b border-border">
-        <div className="container py-6">
+      <div className="bg-gradient-to-br from-purple-50/80 via-white to-pink-50/50 border-b border-border shadow-sm">
+        <div className="container py-8 sm:py-10">
           <ScrollReveal>
             <div className="flex items-center justify-between mb-4">
               <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -539,351 +544,127 @@ function DashboardView({
         </div>
       </div>
 
-      {/* ─── Helpline strip ───────────────────────────────────────────── */}
-      <div className="bg-red-600 text-white">
-        <div className="container py-2 flex items-center justify-center gap-6 text-xs">
-          <a href="tel:104" className="flex items-center gap-1.5 font-semibold hover:underline">
-            <Phone className="w-3.5 h-3.5" /> 104 — Health Helpline
-          </a>
-          <a href="tel:108" className="flex items-center gap-1.5 font-semibold hover:underline">
-            <Phone className="w-3.5 h-3.5" /> 108 — Ambulance
-          </a>
-        </div>
-      </div>
-
-      <div className="container py-6 space-y-6">
-        {/* ─── Section 1: Baby Development ──────────────────────────── */}
-        <ScrollReveal>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-peach flex items-center justify-center">
-                <Baby className="w-4 h-4 text-peach-foreground" />
-              </div>
-              <h2 className="font-bold text-sm">Baby Development — Week {selectedWeek}</h2>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4">
-              {/* Baby size visual */}
-              <div className="flex items-center sm:flex-col gap-3 sm:gap-1 sm:w-32 shrink-0">
-                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-peach to-lavender flex items-center justify-center text-4xl animate-float">
-                  {babyVisual.emoji}
+      <div className="container py-8 space-y-8">
+        {/* ─── Section 1: Baby Development & Today's Tip ─────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Baby Development (Left - 2 columns) */}
+          <ScrollReveal className="lg:col-span-2 h-full">
+            <div className="rounded-2xl border border-border/60 bg-card p-6 sm:p-8 shadow-sm hover:shadow-md transition-all h-full">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-peach flex items-center justify-center">
+                  <Baby className="w-4 h-4 text-peach-foreground" />
                 </div>
-                <div className="sm:text-center">
-                  <p className="text-sm font-semibold">{babyVisual.size}</p>
-                  <p className="text-[10px] text-muted-foreground">{babyVisual.compare}</p>
-                </div>
+                <h2 className="font-bold text-sm">Baby Development — Week {selectedWeek}</h2>
               </div>
-              {/* Development details */}
-              <div className="flex-1 space-y-3">
-                {weekData && (
-                  <>
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1">Development</p>
-                      <p className="text-sm text-foreground/90 leading-relaxed">{weekData.development}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1 flex items-center gap-1">
-                        <Heart className="w-3 h-3 text-pink-500" /> How Mom Feels
-                      </p>
-                      <p className="text-sm text-foreground/90 leading-relaxed">{weekData.momFeels}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* ─── Section 2: Daily Health Checklist ────────────────────── */}
-        <ScrollReveal delay={60}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-mint flex items-center justify-center">
-                  <ClipboardList className="w-4 h-4 text-mint-foreground" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-sm">Today's Health Checklist</h2>
-                  <p className="text-[10px] text-muted-foreground">{dash.checklistCompleted}/{dash.checklistTotal} completed</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                {dash.checklistStreak > 0 && (
-                  <div className="flex items-center gap-1 text-xs font-semibold text-amber-600">
-                    <Flame className="w-3.5 h-3.5" /> {dash.checklistStreak}d
+              <div className="flex flex-col sm:flex-row gap-6 mt-2">
+                {/* Baby size visual */}
+                <div className="flex items-center sm:flex-col gap-4 sm:w-40 shrink-0">
+                  <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-peach to-pink-100 flex items-center justify-center text-5xl shadow-sm border border-white/50 animate-float">
+                    {babyVisual.emoji}
                   </div>
-                )}
-                {/* Mini completion ring */}
-                <div className="relative w-10 h-10">
-                  <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--muted))" strokeWidth="4" />
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none"
-                      stroke={dash.checklistPct === 100 ? "hsl(140,60%,40%)" : "hsl(var(--primary))"}
-                      strokeWidth="4" strokeDasharray={`${dash.checklistPct}, 100`} strokeLinecap="round" />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center text-[9px] font-bold">
-                    {dash.checklistPct}%
+                  <div className="sm:text-center flex-1">
+                    <p className="text-sm font-bold text-foreground/90">{babyVisual.size}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">{babyVisual.compare}</p>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {dash.checklistPct === 100 && (
-              <div className="mb-3 rounded-lg bg-green-50 border border-green-200 p-2.5 text-center">
-                <p className="text-xs font-semibold text-green-700 flex items-center justify-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5" /> All done for today! Great job! 🎉
-                </p>
-              </div>
-            )}
-
-            <div className="grid gap-2 sm:grid-cols-2">
-              {DAILY_CHECKLIST.map((item) => {
-                const done = !!dash.todayItems[item.id];
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => dash.toggleChecklistItem(item.id)}
-                    className={`flex items-center gap-3 rounded-xl border p-3 text-left transition-all duration-200 active:scale-[0.98] ${
-                      done
-                        ? "bg-green-50/80 border-green-200 shadow-sm"
-                        : "bg-background border-border/60 hover:border-primary/20 hover:shadow-sm"
-                    }`}
-                  >
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all ${
-                      done ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"
-                    }`}>
-                      {done ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-xs font-medium leading-tight ${done ? "line-through text-muted-foreground" : ""}`}>
-                        {item.emoji} {item.label}
-                      </p>
-                    </div>
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium shrink-0 ${getCategoryColor(item.category)}`}>
-                      {getCategoryIcon(item.category)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* ─── Section 3: ANC Appointment Timeline ─────────────────── */}
-        <ScrollReveal delay={120}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-lavender flex items-center justify-center">
-                  <Calendar className="w-4 h-4 text-lavender-foreground" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-sm">Antenatal Care Visits</h2>
-                  <p className="text-[10px] text-muted-foreground">{dash.ancCompletedCount}/8 visits completed • NHM Guidelines</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Next visit highlight */}
-            {dash.nextANC && !dash.nextANC.completed && (
-              <div className="mb-4 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                  <p className="text-xs font-semibold text-primary">Next Visit — Week {dash.nextANC.week}</p>
-                </div>
-                <p className="text-sm font-semibold">{dash.nextANC.title}</p>
-                <p className="text-xs text-muted-foreground mt-1">{dash.nextANC.description}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {dash.nextANC.tests.slice(0, 4).map((t, i) => (
-                    <span key={i} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{t}</span>
-                  ))}
-                  {dash.nextANC.tests.length > 4 && (
-                    <span className="text-[10px] text-muted-foreground">+{dash.nextANC.tests.length - 4} more</span>
+                {/* Development details */}
+                <div className="flex-1 space-y-4">
+                  {weekData && (
+                    <>
+                      <div>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">Development</p>
+                        <p className="text-[15px] text-foreground/90 leading-relaxed font-medium">{weekData.development}</p>
+                      </div>
+                      <div className="bg-pink-50/50 border border-pink-100/50 rounded-xl p-4 mt-2">
+                        <p className="text-[11px] font-bold text-pink-600 mb-1.5 flex items-center gap-1.5 uppercase tracking-wider">
+                          <Heart className="w-3.5 h-3.5 fill-pink-500" /> How Mom Feels
+                        </p>
+                        <p className="text-sm text-foreground/80 leading-relaxed">{weekData.momFeels}</p>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
-            )}
-
-            {/* Timeline */}
-            <div className="space-y-0">
-              {dash.ancWithStatus.map((visit, i) => (
-                <div key={visit.id} className="flex gap-3">
-                  {/* Timeline line */}
-                  <div className="flex flex-col items-center">
-                    <button
-                      onClick={() => dash.toggleANC(visit.id)}
-                      className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 border-2 transition-all ${
-                        visit.completed
-                          ? "bg-green-500 border-green-500 text-white"
-                          : visit.isCurrent
-                          ? "bg-primary/10 border-primary text-primary animate-pulse-glow"
-                          : "bg-muted border-border text-muted-foreground"
-                      }`}
-                      title={visit.completed ? "Mark incomplete" : "Mark complete"}
-                    >
-                      {visit.completed ? (
-                        <CheckCircle2 className="w-4 h-4" />
-                      ) : (
-                        <span className="text-[10px] font-bold">{i + 1}</span>
-                      )}
-                    </button>
-                    {i < dash.ancWithStatus.length - 1 && (
-                      <div className={`w-0.5 flex-1 min-h-[2rem] ${visit.completed ? "bg-green-300" : "bg-border"}`} />
-                    )}
-                  </div>
-                  {/* Visit card */}
-                  <div className={`flex-1 pb-4 ${i === dash.ancWithStatus.length - 1 ? "" : ""}`}>
-                    <div className="flex items-center gap-2">
-                      <p className={`text-xs font-semibold ${visit.completed ? "text-green-600" : visit.isCurrent ? "text-primary" : "text-foreground"}`}>
-                        {visit.title}
-                      </p>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
-                        visit.completed ? "bg-green-100 text-green-700" : visit.isCurrent ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
-                      }`}>
-                        Wk {visit.week}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{visit.description}</p>
-                  </div>
-                </div>
-              ))}
             </div>
-          </div>
+          </ScrollReveal>
+
+          {/* Today's Tip (Right - 1 column) */}
+          <ScrollReveal delay={60} className="lg:col-span-1">
+            <TodayTipCard />
+          </ScrollReveal>
+        </div>
+
+        {/* ─── Section 2: Health Summary Metrics ─────────────────────── */}
+        <ScrollReveal delay={100}>
+          <HealthSummaryCards
+            loggedDays={healthMetrics.loggedDays}
+            symptomsTracked={healthMetrics.symptomsTracked}
+            avgSleep={healthMetrics.avgSleep}
+            avgMood={healthMetrics.avgMood}
+            accent={phaseAccent.maternity}
+          />
         </ScrollReveal>
 
-        {/* ─── Section 4: Milestones & Alerts ──────────────────────── */}
-        <ScrollReveal delay={180}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-baby-blue flex items-center justify-center">
-                <AlertTriangle className="w-4 h-4 text-baby-blue-foreground" />
-              </div>
-              <div>
-                <h2 className="font-bold text-sm">Milestones & Alerts</h2>
-                <p className="text-[10px] text-muted-foreground">Vaccinations, screenings, and preparation steps</p>
-              </div>
-            </div>
+        {/* ─── Section 3: Visual Analytics ─────────────────────────── */}
+        <ScrollReveal delay={120}>
+          <VisualAnalyticsSplitPanel />
+        </ScrollReveal>
 
-            {/* Active milestones — attention-grabbing */}
-            {dash.activeMilestones.length > 0 && (
-              <div className="space-y-2 mb-4">
-                <p className="text-xs font-semibold text-primary flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" /> Action Required Now
-                </p>
-                {dash.activeMilestones.map((ms) => (
-                  <button
-                    key={ms.id}
-                    onClick={() => dash.toggleMilestone(ms.id)}
-                    className="w-full flex items-center gap-3 rounded-xl border-2 border-primary/30 bg-primary/5 p-3 text-left transition-all hover:shadow-md active:scale-[0.98]"
-                  >
-                    <span className="text-2xl shrink-0">{ms.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold">{ms.title}</p>
-                      <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">{ms.description}</p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-medium ${getMilestoneTypeColor(ms.type)}`}>
-                        {ms.type}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">Wk {ms.week}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Upcoming milestones */}
-            {dash.upcomingMilestones.length > 0 && (
-              <div className="space-y-2 mb-4">
-                <p className="text-xs font-semibold text-muted-foreground">Upcoming</p>
-                {dash.upcomingMilestones.slice(0, 4).map((ms) => (
-                  <div key={ms.id} className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-3">
-                    <span className="text-lg shrink-0">{ms.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium">{ms.title}</p>
-                      <p className="text-[10px] text-muted-foreground">{ms.description}</p>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground shrink-0">Wk {ms.week}</span>
-                  </div>
-                ))}
-                {dash.upcomingMilestones.length > 4 && (
-                  <p className="text-[10px] text-muted-foreground text-center">+{dash.upcomingMilestones.length - 4} more milestones ahead</p>
-                )}
-              </div>
-            )}
-
-            {/* Completed milestones */}
-            {dash.completedMilestones.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-green-600 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> Completed ({dash.completedMilestones.length})
-                </p>
-                {dash.completedMilestones.map((ms) => (
-                  <button
-                    key={ms.id}
-                    onClick={() => dash.toggleMilestone(ms.id)}
-                    className="w-full flex items-center gap-2 rounded-lg bg-green-50/50 p-2 text-left opacity-70 hover:opacity-100 transition-opacity active:scale-[0.98]"
-                  >
-                    <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                    <p className="text-xs text-muted-foreground line-through flex-1">{ms.title}</p>
-                    <span className="text-[10px] text-muted-foreground">Wk {ms.week}</span>
-                  </button>
-                ))}
-              </div>
-            )}
+        {/* ─── Section 4: Weekly Progress ─────────────────────────── */}
+        <ScrollReveal delay={140}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
+            <WeeklyProgressCard />
+            <UpcomingAppointmentsCard />
+            <SymptomsOverviewCard />
           </div>
         </ScrollReveal>
 
         {/* ─── Section 5: Government Schemes Quick Access ──────────── */}
-        <ScrollReveal delay={240}>
-          <div className="rounded-2xl border-2 border-teal-200 bg-teal-50/50 p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center">
-                <FileText className="w-4 h-4 text-teal-700" />
+        <ScrollReveal delay={200}>
+          <div className="rounded-2xl border border-teal-200/60 bg-gradient-to-br from-teal-50/80 to-white p-6 sm:p-8 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-teal-100 flex items-center justify-center shadow-sm border border-teal-200/50">
+                <FileText className="w-5 h-5 text-teal-700" />
               </div>
-              <h2 className="font-bold text-sm text-teal-800">Government Schemes & Support</h2>
+              <h2 className="font-bold text-base text-teal-900">Government Schemes & Support</h2>
             </div>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               {[
                 { title: "Janani Suraksha Yojana (JSY)", desc: "Cash benefit for institutional delivery", emoji: "🏛️" },
                 { title: "PMMVY (₹5,000)", desc: "Matru Vandana for first pregnancy", emoji: "💰" },
                 { title: "ASHA Worker Support", desc: "Free home visits and health monitoring", emoji: "👩‍⚕️" },
                 { title: "Free Institutional Delivery", desc: "Government hospitals — no charges", emoji: "🏥" },
               ].map((scheme) => (
-                <div key={scheme.title} className="flex items-start gap-2 rounded-lg border border-teal-200 bg-white/80 p-3">
-                  <span className="text-lg shrink-0">{scheme.emoji}</span>
+                <div key={scheme.title} className="flex items-start gap-3 rounded-xl border border-teal-100 bg-white p-4 shadow-sm hover:border-teal-300 transition-colors">
+                  <span className="text-2xl shrink-0 mt-0.5">{scheme.emoji}</span>
                   <div>
-                    <p className="text-xs font-semibold text-teal-800">{scheme.title}</p>
-                    <p className="text-[10px] text-teal-600/80">{scheme.desc}</p>
+                    <p className="text-sm font-bold text-teal-900">{scheme.title}</p>
+                    <p className="text-xs text-teal-700/80 mt-0.5">{scheme.desc}</p>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-[10px] text-teal-600 text-center">Contact your nearest PHC or ASHA worker to avail these benefits</p>
+            <p className="mt-5 text-xs text-teal-700 font-medium text-center">Contact your nearest PHC or ASHA worker to avail these benefits</p>
           </div>
         </ScrollReveal>
 
-        {/* ─── Section 6: Diabetes Awareness & Care ─────────────────── */}
-        <div className="bg-transparent">
-           <DiabetesDashboardWidget currentWeek={currentWeek} />
-        </div>
-
         {/* ─── Quick navigation ────────────────────────────────────── */}
         <ScrollReveal delay={300}>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
-              { to: "/weekly-guide", label: "Weekly Guide", emoji: "📅" },
-              { to: "/nutrition", label: "Nutrition", emoji: "🍎" },
-              { to: "/vaccine-tracker", label: "Vaccines", emoji: "💉" },
-              { to: "/symptom-checker", label: "Symptoms", emoji: "🔍" },
+              { to: "/weekly-guide", label: "Weekly Guide", emoji: "📅", color: "bg-blue-50 border-blue-100" },
+              { to: "/nutrition", label: "Nutrition", emoji: "🍎", color: "bg-green-50 border-green-100" },
+              { to: "/vaccine-tracker", label: "Vaccines", emoji: "💉", color: "bg-purple-50 border-purple-100" },
+              { to: "/symptom-checker", label: "Symptoms", emoji: "🔍", color: "bg-rose-50 border-rose-100" },
             ].map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className="flex items-center gap-2 rounded-xl border border-border bg-card p-3 shadow-sm hover:shadow-md hover:border-primary/20 transition-all"
+                className={`flex items-center gap-3 rounded-2xl border ${link.color} bg-card p-4 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all group`}
               >
-                <span className="text-lg">{link.emoji}</span>
-                <span className="text-xs font-semibold">{link.label}</span>
-                <ChevronRight className="w-3.5 h-3.5 text-muted-foreground ml-auto" />
+                <span className="text-xl shrink-0 transition-transform group-hover:scale-110">{link.emoji}</span>
+                <span className="text-sm font-bold text-foreground/90">{link.label}</span>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/60 ml-auto group-hover:text-foreground transition-colors" />
               </Link>
             ))}
           </div>

@@ -49,15 +49,15 @@ interface StatCardProps {
 
 export default function StatCard({ label, value, sub, icon, accent }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-border/40 bg-card p-4 hover:shadow-sm transition-shadow">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`w-7 h-7 rounded-lg ${accent.bg} flex items-center justify-center`}>
+    <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className={`w-8 h-8 rounded-xl ${accent.bg} flex items-center justify-center shadow-sm`}>
           <span className={accent.text}>{icon}</span>
         </div>
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
       </div>
-      <p className="text-xl font-extrabold leading-none">{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-1">{sub}</p>
+      <p className="text-2xl font-extrabold leading-none tracking-tight">{value}</p>
+      <p className="text-[11px] font-medium text-muted-foreground mt-1.5">{sub}</p>
     </div>
   );
 }

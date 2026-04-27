@@ -19,6 +19,7 @@ import {
   type MaternityEntry,
 } from "@/hooks/useHealthLog";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useAppointments } from "@/hooks/useAppointments";
 import { MaternityDayCell, getMaternitySymptomCount, hasMaternityData } from "./MaternityDayCell";
 import { MaternityDayDetails } from "./MaternityDayDetails";
 import { useMaternalTestReminders } from "@/hooks/useMaternalTestReminders";
@@ -59,6 +60,7 @@ export default function MaternityCalendar() {
   const { maternityLogs, clearAllLogs } = useHealthLog();
   const { currentWeek, trimester, daysLeft, profile } = usePregnancyProfile();
   const { calendarReminders, testsWithStatus } = useMaternalTestReminders();
+  const { appointments } = useAppointments();
 
   // Build a map of dateISO -> test title for calendar badges
   const reminderBadgeMap = useMemo(() => {
@@ -71,6 +73,18 @@ export default function MaternityCalendar() {
     }
     return map;
   }, [calendarReminders]);
+
+  // Build a map of dateISO -> appointment title(s) for calendar badges
+  const appointmentBadgeMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    for (const apt of appointments) {
+      if (!map[apt.date]) {
+        map[apt.date] = [];
+      }
+      map[apt.date].push(apt.title);
+    }
+    return map;
+  }, [appointments]);
 
   const now = new Date();
   const [mode, setMode] = useState<CalendarMode>("month");
@@ -149,6 +163,7 @@ export default function MaternityCalendar() {
                 isSelected={iso === selectedDateISO}
                 isMiniView
                 reminderBadge={reminderBadgeMap[iso]}
+                appointmentBadges={appointmentBadgeMap[iso]}
                 onClick={openModal}
               />
             );
@@ -243,6 +258,7 @@ export default function MaternityCalendar() {
                   entry={maternityLogs[iso]}
                   isSelected={iso === selectedDateISO}
                   reminderBadge={reminderBadgeMap[iso]}
+                  appointmentBadges={appointmentBadgeMap[iso]}
                   onClick={openModal}
                 />
               );

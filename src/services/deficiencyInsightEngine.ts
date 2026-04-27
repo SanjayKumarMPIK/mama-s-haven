@@ -11,12 +11,15 @@ export interface NutrientRisk {
   matchedSymptoms: string[];
   confidenceScore: number; // 0-1
   phaseBoost: number;
+  recommendations: string[]; // Dynamic recommendations
 }
 
 export interface DeficiencyInsightInput {
   phase: HealthPhase;
   age: number;
   gender: "male" | "female";
+  pregnancyWeek?: number; // For maternity phase
+  trimester?: number; // For maternity phase
   symptoms: {
     fatigue: number; // 0-1 frequency
     headaches: number;
@@ -124,6 +127,73 @@ const NUTRIENT_MAPPINGS: NutrientSymptomMapping[] = [
   },
 ];
 
+// Dynamic recommendations for each nutrient based on pregnancy stage
+const NUTRIENT_RECOMMENDATIONS: Record<Nutrient, { general: string[]; firstTrimester?: string[]; secondTrimester?: string[]; thirdTrimester?: string[] }> = {
+  Iron: {
+    general: ["Spinach and dark leafy greens", "Lentils and legumes", "Dates and dried fruits", "Red meat or fortified cereals", "Pair iron-rich foods with vitamin C"],
+    firstTrimester: ["Focus on folate-rich iron sources like spinach", "Consider prenatal vitamins with iron"],
+    secondTrimester: ["Increase iron intake as blood volume expands", "Add iron-fortified foods to diet"],
+    thirdTrimester: ["Maximize iron stores for birth", "Include red meat or plant-based iron alternatives"],
+  },
+  "Vitamin D": {
+    general: ["Morning sunlight exposure (15-20 min)", "Fatty fish like salmon", "Fortified dairy products", "Egg yolks", "Vitamin D supplements if prescribed"],
+    secondTrimester: ["Ensure adequate vitamin D for baby's bone development", "Consider supplementation if outdoor time is limited"],
+    thirdTrimester: ["Maintain vitamin D levels for final bone growth"],
+  },
+  Magnesium: {
+    general: ["Dark chocolate", "Nuts and seeds", "Whole grains", "Leafy greens", "Avocados"],
+    secondTrimester: ["Increase magnesium to prevent cramps", "Add magnesium-rich snacks"],
+    thirdTrimester: ["Focus on magnesium for muscle relaxation and sleep"],
+  },
+  Calcium: {
+    general: ["Dairy products", "Sesame seeds", "Almonds", "Fortified plant milks", "Leafy greens"],
+    firstTrimester: ["Start building calcium stores early", "Include calcium-rich foods daily"],
+    secondTrimester: ["Increase calcium for baby's skeleton formation", "Add dairy or fortified alternatives"],
+    thirdTrimester: ["Maximize calcium intake for final bone development"],
+  },
+  Protein: {
+    general: ["Eggs", "Paneer or tofu", "Lean meats", "Legumes and pulses", "Greek yogurt"],
+    firstTrimester: ["Focus on high-quality protein for early development"],
+    secondTrimester: ["Increase protein for baby's rapid growth"],
+    thirdTrimester: ["Maximize protein for final growth stages"],
+  },
+  Folate: {
+    general: ["Spinach and leafy greens", "Lentils", "Citrus fruits", "Fortified cereals", "Prenatal vitamins with folic acid"],
+    firstTrimester: ["Critical for neural tube development", "Focus on folate-rich foods daily"],
+  },
+  B12: {
+    general: ["Animal products", "Fortified cereals", "Nutritional yeast", "Dairy products", "B12 supplements if vegetarian"],
+    secondTrimester: ["Ensure adequate B12 for nervous system development"],
+    thirdTrimester: ["Maintain B12 levels for final brain development"],
+  },
+  DHA: {
+    general: ["Fatty fish", "Walnuts", "Flaxseeds", "Chia seeds", "DHA supplements"],
+    secondTrimester: ["Increase DHA for brain and eye development"],
+    thirdTrimester: ["Maximize DHA for final brain growth"],
+  },
+  Fiber: {
+    general: ["Whole grains", "Fruits and vegetables", "Legumes", "Nuts and seeds", "Prunes"],
+    secondTrimester: ["Increase fiber to prevent constipation"],
+    thirdTrimester: ["Focus on fiber for digestive comfort"],
+  },
+  Zinc: {
+    general: ["Oysters", "Beef", "Pumpkin seeds", "Lentils", "Chickpeas"],
+    secondTrimester: ["Ensure zinc for immune system development"],
+    thirdTrimester: ["Maintain zinc for final growth stages"],
+  },
+  Potassium: {
+    general: ["Bananas", "Sweet potatoes", "Avocados", "White beans", "Spinach"],
+    secondTrimester: ["Increase potassium to prevent cramps"],
+    thirdTrimester: ["Focus on potassium for fluid balance"],
+  },
+  "Vitamin C": {
+    general: ["Citrus fruits", "Bell peppers", "Strawberries", "Kiwi", "Broccoli"],
+    firstTrimester: ["Focus on vitamin C for iron absorption"],
+    secondTrimester: ["Increase vitamin C for immune support"],
+    thirdTrimester: ["Maintain vitamin C for final development"],
+  },
+};
+
 function calculateSeverity(probability: number): Severity {
   if (probability >= 75) return "Critical";
   if (probability >= 60) return "High";
@@ -134,10 +204,10 @@ function calculateSeverity(probability: number): Severity {
 
 function calculateNutrientRisk(mapping: NutrientSymptomMapping, input: DeficiencyInsightInput): NutrientRisk {
   const phaseMultiplier = mapping.phaseMultipliers[input.phase] || 1;
-  
+
   let symptomScore = 0;
   const matchedSymptoms: string[] = [];
-  
+
   for (const symptom of mapping.symptoms) {
     const value = input.symptoms[symptom];
     if (value > 0) {
@@ -145,15 +215,33 @@ function calculateNutrientRisk(mapping: NutrientSymptomMapping, input: Deficienc
       matchedSymptoms.push(symptom);
     }
   }
-  
+
   const baseProbability = Math.min(95, mapping.baseScore + symptomScore);
   const adjustedProbability = Math.min(95, baseProbability * phaseMultiplier);
   const probability = Math.round(adjustedProbability);
-  
+
   const matchedCount = mapping.symptoms.filter(s => input.symptoms[s] > 0).length;
   const totalSymptoms = mapping.symptoms.length;
   const confidenceScore = Math.min(1, matchedCount / Math.max(1, totalSymptoms * 0.5));
-  
+
+  // Generate dynamic recommendations based on trimester
+  const recConfig = NUTRIENT_RECOMMENDATIONS[mapping.nutrient];
+  let recommendations: string[] = [];
+
+  if (input.phase === "maternity" && input.trimester) {
+    if (input.trimester === 1 && recConfig.firstTrimester) {
+      recommendations = [...recConfig.general, ...recConfig.firstTrimester];
+    } else if (input.trimester === 2 && recConfig.secondTrimester) {
+      recommendations = [...recConfig.general, ...recConfig.secondTrimester];
+    } else if (input.trimester === 3 && recConfig.thirdTrimester) {
+      recommendations = [...recConfig.general, ...recConfig.thirdTrimester];
+    } else {
+      recommendations = recConfig.general;
+    }
+  } else {
+    recommendations = recConfig.general;
+  }
+
   return {
     nutrient: mapping.nutrient,
     probability,
@@ -161,6 +249,7 @@ function calculateNutrientRisk(mapping: NutrientSymptomMapping, input: Deficienc
     matchedSymptoms,
     confidenceScore: Number(confidenceScore.toFixed(2)),
     phaseBoost: phaseMultiplier,
+    recommendations,
   };
 }
 

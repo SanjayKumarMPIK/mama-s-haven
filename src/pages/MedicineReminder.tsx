@@ -7,6 +7,10 @@ import {
   type DoseLog,
   type DoseStatus,
 } from "@/hooks/useMedicineReminder";
+import { useAppointments } from "@/hooks/useAppointments";
+import { usePregnancyDashboard } from "@/hooks/usePregnancyDashboard";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { AppointmentFilter, FILTER_LABELS, Appointment } from "@/lib/appointments/appointmentTypes";
 import { toast } from "@/components/ui/sonner";
 import ScrollReveal from "@/components/ScrollReveal";
 import {
@@ -32,8 +36,14 @@ import {
   Hourglass,
   Save,
   FileText,
+  Calendar as CalendarIcon,
+  Filter,
 } from "lucide-react";
 import MaternalTestsTimeline from "@/components/medicine/MaternalTestsTimeline";
+import AntenatalCareTimeline from "@/components/maternity/carelog/AntenatalCareTimeline";
+import AppointmentCard from "@/components/appointments/AppointmentCard";
+import AddAppointmentModal from "@/components/appointments/AddAppointmentModal";
+import AppointmentDetailModal from "@/components/appointments/AppointmentDetailModal";
 
 // ─── Status helpers ─────────────────────────────────────────────────────────────
 
@@ -707,13 +717,19 @@ function HistorySection({ logs, adherenceRate }: { logs: DoseLog[]; adherenceRat
 
 // ─── Main Page ──────────────────────────────────────────────────────────────────
 
-type Tab = "today" | "medicines" | "history" | "tests";
+type Tab = "today" | "medicines" | "history" | "tests" | "appointments" | "anc";
 
 export default function MedicineReminder() {
   const { phase, setPhase } = usePhase();
   const [activeTab, setActiveTab] = useState<Tab>("today");
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
+
+  // Appointments state
+  const [showAddAppointmentModal, setShowAddAppointmentModal] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
+  const [showAppointmentDetailModal, setShowAppointmentDetailModal] = useState(false);
+  const [appointmentFilter, setAppointmentFilter] = useState<AppointmentFilter>("all");
 
   // Route guard: only allow access in maternity phase
   if (phase !== "maternity") {
@@ -758,6 +774,25 @@ export default function MedicineReminder() {
     requestNotificationPermission,
     MAX_SNOOZE_COUNT,
   } = useMedicineReminder();
+
+  const {
+    appointments,
+    upcomingAppointments,
+    pastAppointments,
+    nextAppointment,
+    stats: appointmentStats,
+    addAppointment,
+    updateAppointment,
+    deleteAppointment,
+    markAsCompleted: markAppointmentCompleted,
+    markAsMissed: markAppointmentMissed,
+    rescheduleAppointment,
+    getFilteredAppointments,
+  } = useAppointments();
+
+  // ANC Timeline data (maternity only)
+  const { currentWeek } = usePregnancyProfile();
+  const dash = usePregnancyDashboard(currentWeek || 1);
 
   useEffect(() => {
     setPhase("maternity");
@@ -813,6 +848,55 @@ export default function MedicineReminder() {
     });
   };
 
+  // Appointment handlers
+  const handleAddAppointment = (appointment: Omit<Appointment, "id" | "status" | "createdAt" | "updatedAt">) => {
+    addAppointment(appointment);
+    toast.success("Appointment added 📅", {
+      description: "Your appointment has been saved.",
+    });
+  };
+
+  const handleEditAppointment = (appointment: Appointment) => {
+    updateAppointment(appointment.id, appointment);
+    toast.success("Appointment updated ✏️", {
+      description: "Appointment details have been saved.",
+    });
+    setShowAppointmentDetailModal(false);
+  };
+
+  const handleDeleteAppointment = (id: string) => {
+    deleteAppointment(id);
+    toast.error("Appointment removed", {
+      description: "The appointment has been deleted.",
+    });
+  };
+
+  const handleMarkAppointmentComplete = (id: string) => {
+    markAppointmentCompleted(id);
+    toast.success("Appointment completed ✅", {
+      description: "Great job attending your appointment!",
+    });
+  };
+
+  const handleMarkAppointmentMissed = (id: string) => {
+    markAppointmentMissed(id);
+    toast.error("Appointment marked as missed ⚠️", {
+      description: "You can reschedule if needed.",
+    });
+  };
+
+  const handleRescheduleAppointment = (id: string, newDate: string, newTime: string) => {
+    rescheduleAppointment(id, newDate, newTime);
+    toast.success("Appointment rescheduled 📅", {
+      description: "Your appointment has been moved to the new date.",
+    });
+  };
+
+  const openAppointmentDetail = (appointment: Appointment) => {
+    setSelectedAppointment(appointment);
+    setShowAppointmentDetailModal(true);
+  };
+
   const openEditDialog = (med: Medicine) => {
     setEditingMedicine(med);
     setShowFormDialog(true);
@@ -828,6 +912,8 @@ export default function MedicineReminder() {
     { key: "medicines", label: "Medicines", icon: Pill },
     { key: "history", label: "History", icon: History },
     ...(phase === "maternity" ? [{ key: "tests" as Tab, label: "Tests & Scans", icon: FileText }] : []),
+    ...(phase === "maternity" ? [{ key: "appointments" as Tab, label: "Appointments", icon: CalendarIcon }] : []),
+    ...(phase === "maternity" ? [{ key: "anc" as Tab, label: "ANC Visits", icon: FileText }] : []),
   ];
 
   return (
@@ -996,6 +1082,138 @@ export default function MedicineReminder() {
           {activeTab === "tests" && phase === "maternity" && (
             <MaternalTestsTimeline />
           )}
+
+          {/* ─── Appointments Tab ─── */}
+          {activeTab === "appointments" && phase === "maternity" && (
+            <>
+              <ScrollReveal delay={80}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      {appointmentStats.total} appointment{appointmentStats.total !== 1 ? "s" : ""}
+                    </h3>
+                    {nextAppointment && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[10px] font-medium border border-blue-200">
+                        <CalendarIcon className="w-3 h-3" />
+                        Next: {new Date(nextAppointment.date).toLocaleDateString("en-IN", { month: "short", day: "numeric" })}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowAddAppointmentModal(true)}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white text-xs font-semibold shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Appointment
+                  </button>
+                </div>
+
+                {/* Filters */}
+                <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2">
+                  {(Object.keys(FILTER_LABELS) as AppointmentFilter[]).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setAppointmentFilter(filter)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+                        appointmentFilter === filter
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      <Filter className="w-3 h-3" />
+                      {FILTER_LABELS[filter]}
+                    </button>
+                  ))}
+                </div>
+              </ScrollReveal>
+
+              {appointments.length === 0 ? (
+                <ScrollReveal delay={120}>
+                  <div className="rounded-2xl border border-dashed border-purple-200 bg-purple-50/30 p-8 text-center">
+                    <CalendarIcon className="w-10 h-10 text-purple-300 mx-auto mb-3" />
+                    <h3 className="font-bold text-sm mb-1">No appointments yet</h3>
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Track your upcoming pregnancy checkups and doctor visits.
+                    </p>
+                    <button
+                      onClick={() => setShowAddAppointmentModal(true)}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all active:scale-[0.97]"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Appointment
+                    </button>
+                  </div>
+                </ScrollReveal>
+              ) : (
+                <>
+                  {/* Upcoming Appointments */}
+                  {upcomingAppointments.length > 0 && (
+                    <ScrollReveal delay={100}>
+                      <div className="mb-6">
+                        <h4 className="text-xs font-semibold text-muted-foreground mb-3">Upcoming</h4>
+                        <div className="space-y-3">
+                          {upcomingAppointments.map((apt, i) => (
+                            <ScrollReveal key={apt.id} delay={120 + i * 30}>
+                              <AppointmentCard
+                                appointment={apt}
+                                onClick={() => openAppointmentDetail(apt)}
+                                onMarkComplete={handleMarkAppointmentComplete}
+                                onMarkMissed={handleMarkAppointmentMissed}
+                              />
+                            </ScrollReveal>
+                          ))}
+                        </div>
+                      </div>
+                    </ScrollReveal>
+                  )}
+
+                  {/* Past Appointments */}
+                  {pastAppointments.length > 0 && (
+                    <ScrollReveal delay={150}>
+                      <div>
+                        <h4 className="text-xs font-semibold text-muted-foreground mb-3">Past Appointments</h4>
+                        <div className="space-y-3">
+                          {pastAppointments.map((apt, i) => (
+                            <ScrollReveal key={apt.id} delay={160 + i * 30}>
+                              <AppointmentCard
+                                appointment={apt}
+                                onClick={() => openAppointmentDetail(apt)}
+                              />
+                            </ScrollReveal>
+                          ))}
+                        </div>
+                      </div>
+                    </ScrollReveal>
+                  )}
+
+                  {/* No results for filter */}
+                  {getFilteredAppointments(appointmentFilter).length === 0 && appointments.length > 0 && (
+                    <ScrollReveal delay={120}>
+                      <div className="rounded-2xl border border-border/60 bg-card p-8 text-center">
+                        <Filter className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                        <h3 className="font-bold text-sm mb-1">No appointments found</h3>
+                        <p className="text-xs text-muted-foreground">
+                          Try a different filter or add a new appointment.
+                        </p>
+                      </div>
+                    </ScrollReveal>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          {/* ─── ANC Visits Tab (Maternity Only) ─── */}
+          {activeTab === "anc" && (
+            <ScrollReveal delay={70}>
+              <AntenatalCareTimeline
+                ancWithStatus={dash.ancWithStatus}
+                nextANC={dash.nextANC}
+                ancCompletedCount={dash.ancCompletedCount}
+                toggleANC={dash.toggleANC}
+              />
+            </ScrollReveal>
+          )}
         </div>
       </div>
 
@@ -1005,6 +1223,25 @@ export default function MedicineReminder() {
         onClose={closeFormDialog}
         onSubmit={editingMedicine ? handleEditMedicine : handleAddMedicine}
         editData={editingMedicine}
+      />
+
+      {/* Add Appointment Modal */}
+      <AddAppointmentModal
+        isOpen={showAddAppointmentModal}
+        onClose={() => setShowAddAppointmentModal(false)}
+        onSave={handleAddAppointment}
+      />
+
+      {/* Appointment Detail Modal */}
+      <AppointmentDetailModal
+        isOpen={showAppointmentDetailModal}
+        appointment={selectedAppointment}
+        onClose={() => setShowAppointmentDetailModal(false)}
+        onEdit={handleEditAppointment}
+        onDelete={handleDeleteAppointment}
+        onMarkComplete={handleMarkAppointmentComplete}
+        onMarkMissed={handleMarkAppointmentMissed}
+        onReschedule={handleRescheduleAppointment}
       />
     </div>
   );

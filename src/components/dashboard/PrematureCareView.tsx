@@ -37,6 +37,7 @@ import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import HealthSummaryCards from "@/components/shared/HealthSummaryCards";
 import PrematureRecoveryTimeline from "@/components/dashboard/PrematureRecoveryTimeline";
+import { getMaternityDashboardMetrics } from "@/modules/maternity/dashboard/adapters/maternityDashboardMetricsAdapter";
 import {
   Baby, Heart, Thermometer, ShieldCheck, AlertTriangle,
   Scale, ClipboardCheck, Phone, Sparkles, ChevronRight,
@@ -92,49 +93,14 @@ export default function PrematureCareView() {
   const recoveryTimeline = useMemo(() => getRecoveryTimeline(weeksPostDelivery), [weeksPostDelivery]);
 
   // ─── Health Summary Stats for Premature Dashboard ────────────────────────
+  // Reuse the same metrics adapter as Pregnancy Dashboard
   const healthSummaryStats = useMemo(() => {
-    // Calculate stats from maternity logs (last 7 days)
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    
-    // Convert object to array and filter by date
-    const recentLogs = Object.values(maternityLogs)
-      .filter(log => {
-        const logDate = new Date(log.date);
-        return logDate >= sevenDaysAgo && logDate <= now;
-      });
-
-    const loggedDays = recentLogs.length;
-    
-    // Count symptoms tracked (symptoms is an object with boolean flags)
-    const symptomsTracked = recentLogs.reduce((count, log) => {
-      if (log.symptoms && typeof log.symptoms === 'object') {
-        const symptomCount = Object.values(log.symptoms as Record<string, boolean>).filter(Boolean).length;
-        return count + symptomCount;
-      }
-      return count;
-    }, 0);
-
-    // Calculate average sleep (property is sleepHours, not sleep)
-    const sleepLogs = recentLogs.map(log => log.sleepHours).filter(s => s !== null && s !== undefined);
-    const avgSleep = sleepLogs.length > 0 
-      ? sleepLogs.reduce((sum, s) => sum + s, 0) / sleepLogs.length 
-      : null;
-
-    // Calculate average mood (convert MoodType to number: Good=3, Okay=2, Low=1)
-    const moodLogs = recentLogs.map(log => log.mood).filter(m => m !== null && m !== undefined);
-    const avgMood = moodLogs.length > 0 
-      ? moodLogs.reduce((sum: number, m) => {
-          const moodValue = m === "Good" ? 3 : m === "Okay" ? 2 : m === "Low" ? 1 : 0;
-          return sum + moodValue;
-        }, 0) / moodLogs.length 
-      : null;
-
+    const metrics = getMaternityDashboardMetrics(maternityLogs);
     return {
-      loggedDays,
-      symptomsTracked,
-      avgSleep: avgSleep ? Math.round(avgSleep * 10) / 10 : null,
-      avgMood: avgMood ? Math.round(avgMood * 10) / 10 : null,
+      loggedDays: metrics.loggedDays,
+      symptomsTracked: metrics.symptomsTracked,
+      avgSleep: metrics.avgSleep,
+      avgMood: metrics.avgMood,
     };
   }, [maternityLogs]);
 

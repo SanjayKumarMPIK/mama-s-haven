@@ -1,21 +1,48 @@
 import { useState, useEffect } from "react";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useHealthLog } from "@/hooks/useHealthLog";
+import { usePhase } from "@/hooks/usePhase";
 import { generateNutritionChecklist, NutritionChecklistItem } from "@/lib/nutrition/nutritionChecklistEngine";
 import ScrollReveal from "@/components/ScrollReveal";
 import ChecklistItem from "@/components/nutrition/ChecklistItem";
 import ChecklistSummary from "@/components/nutrition/ChecklistSummary";
 import AddChecklistModal from "@/components/nutrition/AddChecklistModal";
-import { CheckSquare, Plus, Apple, ArrowLeft, Lightbulb } from "lucide-react";
+import DailyHealthChecklist from "@/components/nutrition/DailyHealthChecklist";
+import { CheckSquare, Plus, Apple, ArrowLeft, Lightbulb, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { predictMaternityDeficiencies } from "@/lib/maternityNutritionEngine";
 
 const STORAGE_KEY = "mama_haven_nutrition_checklist";
 
 export default function NutritionChecklistPage() {
-  const { trimester } = usePregnancyProfile();
+  const { trimester, currentWeek } = usePregnancyProfile();
   const { logs } = useHealthLog();
-  
+  const { phase } = usePhase();
+
+  // Phase gate: only allow access in maternity phase
+  if (phase !== "maternity") {
+    return (
+      <main className="min-h-screen bg-background pb-20">
+        <div className="container py-16 max-w-3xl mx-auto text-center">
+          <div className="w-20 h-20 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-6">
+            <AlertTriangle className="w-10 h-10 text-amber-500" />
+          </div>
+          <h2 className="text-2xl font-bold mb-3">Feature Not Available</h2>
+          <p className="text-sm text-muted-foreground mb-8 max-w-md mx-auto">
+            The Nutrition Checklist is only available during the Maternity phase.
+          </p>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Go to Home
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   const [items, setItems] = useState<NutritionChecklistItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NutritionChecklistItem | null>(null);
@@ -135,6 +162,10 @@ export default function NutritionChecklistPage() {
         </ScrollReveal>
 
         <ScrollReveal delay={100}>
+          <DailyHealthChecklist currentWeek={currentWeek} />
+        </ScrollReveal>
+
+        <ScrollReveal delay={200}>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-purple-600" />
@@ -170,7 +201,7 @@ export default function NutritionChecklistPage() {
         </ScrollReveal>
 
         {completedItems.length > 0 && (
-          <ScrollReveal delay={200}>
+          <ScrollReveal delay={300}>
             <h2 className="text-lg font-bold mb-4 flex items-center gap-2 text-muted-foreground">
               <CheckSquare className="w-5 h-5" />
               Completed Summary

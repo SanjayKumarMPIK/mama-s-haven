@@ -12,14 +12,20 @@ import {
   CheckCircle2,
   AlertTriangle,
   Settings,
+  Calendar as CalendarIcon,
+  Clock,
+  MapPin,
+  User,
 } from "lucide-react";
 import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
 import { useHealthLog, type HealthLogEntry, type MaternityEntry } from "@/hooks/useHealthLog";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useProfile } from "@/hooks/useProfile";
 import { useCustomSymptoms } from "@/hooks/useCustomSymptoms";
+import { useAppointments } from "@/hooks/useAppointments";
 import { getNutritionForTrimester, weekToTrimester, getPrioritizedSymptomsForTrimester, checkConsecutiveSevereSymptoms, getTrimesterLabel, type Trimester, type Severity } from "@/lib/maternityTrimesterData";
 import { SymptomCustomizer } from "./SymptomCustomizer";
+import { APPOINTMENT_TYPE_ICONS, STATUS_CONFIG } from "@/lib/appointments/appointmentTypes";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -69,7 +75,13 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
   const { activeEDD } = usePregnancyProfile();
   const { profile } = useProfile();
   const ctx = useCustomSymptoms();
+  const { appointments } = useAppointments();
   const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
+
+  // Get appointments for the selected date
+  const dayAppointments = useMemo(() => {
+    return appointments.filter((apt) => apt.date === dateISO);
+  }, [appointments, dateISO]);
 
   const existingEntry = getLog(dateISO) as MaternityEntry | undefined;
   const isMaternity = existingEntry?.phase === "maternity";
@@ -361,7 +373,62 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
 
         {/* ── Body ───────────────────────────────────────────────────────── */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
-          
+
+          {/* Appointments for this day */}
+          {dayAppointments.length > 0 && (
+            <section className="space-y-3">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <CalendarIcon className="w-4 h-4 text-purple-500" />
+                Appointments ({dayAppointments.length})
+              </h3>
+              <div className="space-y-2">
+                {dayAppointments.map((apt) => {
+                  const statusConfig = STATUS_CONFIG[apt.status];
+                  const typeIcon = APPOINTMENT_TYPE_ICONS[apt.type];
+                  return (
+                    <div
+                      key={apt.id}
+                      className={`p-3 rounded-xl border ${statusConfig.bg} ${statusConfig.border}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="text-2xl">{typeIcon}</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <p className="text-sm font-semibold truncate">{apt.title}</p>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${statusConfig.bg} ${statusConfig.color} ${statusConfig.border}`}>
+                              {statusConfig.label}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-3 h-3" />
+                              <span>{apt.time}</span>
+                            </div>
+                            {apt.doctorName && (
+                              <div className="flex items-center gap-1">
+                                <User className="w-3 h-3" />
+                                <span className="truncate">{apt.doctorName}</span>
+                              </div>
+                            )}
+                            {apt.hospitalName && (
+                              <div className="flex items-center gap-1">
+                                <MapPin className="w-3 h-3" />
+                                <span className="truncate">{apt.hospitalName}</span>
+                              </div>
+                            )}
+                          </div>
+                          {apt.notes && (
+                            <p className="text-xs text-muted-foreground mt-2 truncate">{apt.notes}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
           {/* Smart Warnings */}
           {warnings.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">

@@ -197,41 +197,7 @@ export default function SymptomChecker() {
           </ScrollReveal>
         ) : (
           <>
-            {/* ─── Section 1: Summary Stats ──────────────────────────────── */}
-            <ScrollReveal>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard
-                  label="Days Logged"
-                  value={String(data.loggedDays7d)}
-                  sub="this week"
-                  icon={<Calendar className="w-4 h-4" />}
-                  accent={accent}
-                />
-                <StatCard
-                  label="Symptoms Tracked"
-                  value={String(data.totalSymptoms7d)}
-                  sub="this week"
-                  icon={<Activity className="w-4 h-4" />}
-                  accent={accent}
-                />
-                <StatCard
-                  label="Avg Sleep"
-                  value={data.avgSleep7d !== null ? `${data.avgSleep7d}h` : "–"}
-                  sub="this week"
-                  icon={<Moon className="w-4 h-4" />}
-                  accent={accent}
-                />
-                <StatCard
-                  label="Avg Mood"
-                  value={moodLabel(data.avgMood7d)}
-                  sub="this week"
-                  icon={<Smile className="w-4 h-4" />}
-                  accent={accent}
-                />
-              </div>
-            </ScrollReveal>
-
-            {/* ─── Section 1.5: Predictive Symptom Insights ────────────── */}
+            {/* ─── Section 1: Predictive Symptom Insights ────────────── */}
             {predictionResult.predictions.length > 0 && (
               <ScrollReveal>
                 <SectionHeader title="Upcoming Symptom Insights" emoji="🔮" />
@@ -244,14 +210,6 @@ export default function SymptomChecker() {
                       accent={accent}
                     />
                   ))}
-                </div>
-
-                {/* Disclaimer */}
-                <div className="mt-3 flex items-start gap-2 rounded-xl bg-slate-50 border border-slate-200/60 px-4 py-2.5">
-                  <Eye className="w-3.5 h-3.5 text-slate-400 mt-0.5 shrink-0" />
-                  <p className="text-[11px] text-slate-500 leading-relaxed">
-                    {predictionResult.disclaimer}
-                  </p>
                 </div>
               </ScrollReveal>
             )}

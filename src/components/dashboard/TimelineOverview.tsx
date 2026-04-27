@@ -45,11 +45,11 @@ function WeekNode({
 
       <div
         className={cn(
-          "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative z-10",
+          "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative z-10 group-hover:scale-110",
           trimesterBorderColor,
-          isActive && `w-8 h-8 ${trimesterBgColor} shadow-lg scale-110`,
+          isActive && `w-8 h-8 ${trimesterBgColor} shadow-md scale-110`,
           isCompleted && !isActive && trimesterBgColor,
-          !isCompleted && !isActive && "bg-white opacity-40",
+          !isCompleted && !isActive && "bg-white opacity-40 group-hover:opacity-60",
           (isCompleted || isActive) && "opacity-100",
           !isActive && !isCompleted && "bg-white"
         )}
@@ -144,20 +144,20 @@ export function TimelineOverview({ currentWeek, selectedWeek, onSelectWeek }: Ti
   const weeks = Array.from({ length: 40 }, (_, i) => i + 1);
 
   return (
-    <div className="w-full bg-white rounded-3xl p-6 border border-border/60 shadow-sm relative overflow-hidden mt-4">
+    <div className="w-full rounded-3xl p-6 border border-border/60 bg-gradient-to-b from-white to-slate-50/50 shadow-sm relative overflow-hidden mt-4 transition-all hover:shadow-md">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-amber-500 to-purple-500 opacity-20" />
 
       <div className="flex items-center justify-between mb-6">
         <h3 className="font-bold text-slate-900 text-lg">Timeline Overview</h3>
-        <div className="flex gap-4 text-xs font-medium text-slate-500">
-          <span className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-500" /> T1 (W1-12)
+        <div className="flex gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+          <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-100">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> T1 (W1-12)
           </span>
-          <span className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-amber-500" /> T2 (W13-26)
+          <span className="flex items-center gap-1.5 bg-amber-50 text-amber-700 px-2.5 py-1 rounded-full border border-amber-100">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500" /> T2 (W13-26)
           </span>
-          <span className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-purple-500" /> T3 (W27-40)
+          <span className="flex items-center gap-1.5 bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full border border-purple-100">
+            <div className="w-1.5 h-1.5 rounded-full bg-purple-500" /> T3 (W27-40)
           </span>
         </div>
       </div>

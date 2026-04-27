@@ -41,6 +41,12 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
 const MENOPAUSE_HIDDEN_ROUTES = new Set([
   "/calendar", "/nutrition", "/symptom-checker", "/wellness",
   "/tools", "/shopping", "/weekly-guide", "/pregnancy-dashboard",
+  "/medicine-reminder",
+]);
+
+// Routes to show only in maternity phase
+const MATERNITY_ONLY_ROUTES = new Set([
+  "/medicine-reminder",
 ]);
 
 // Menopause-specific menu items
@@ -193,6 +199,8 @@ export default function HamburgerMenu({
               {SECONDARY_ITEMS.filter(item => {
                 if (item.to === "/pregnancy-dashboard" && phase !== "maternity") return false;
                 if (item.to === "/wellness" && phase === "maternity") return false;
+                // Show maternity-only routes only in maternity phase
+                if (MATERNITY_ONLY_ROUTES.has(item.to) && phase !== "maternity") return false;
                 // Hide general phase items when in menopause
                 if (phase === "menopause" && MENOPAUSE_HIDDEN_ROUTES.has(item.to)) return false;
                 return true;

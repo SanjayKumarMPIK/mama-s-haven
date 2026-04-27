@@ -4,22 +4,42 @@
  * Reusable calendar navigation button for the global header.
  * Allows users to navigate to the Calendar module from any dashboard.
  * Shows active state when already on calendar route.
+ * Phase-aware navigation for different lifecycle phases.
  */
 
 import { useNavigate, useLocation } from "react-router-dom";
 import { Calendar } from "lucide-react";
+import { usePhase } from "@/hooks/usePhase";
 
 export default function CalendarNavButton() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { phase } = usePhase();
+
+  // Phase-aware calendar route
+  const calendarRoute = (() => {
+    switch (phase) {
+      case "maternity":
+        return "/calendar";
+      case "puberty":
+        return "/calendar";
+      case "menopause":
+        return "/menopause/calendar";
+      case "family-planning":
+        return "/calendar";
+      default:
+        return "/calendar";
+    }
+  })();
 
   // Detect if current route is calendar
-  const isCalendarActive = location.pathname.startsWith("/calendar");
+  const isCalendarActive = location.pathname.startsWith("/calendar") || 
+                           location.pathname.startsWith("/menopause/calendar");
 
   // Handle click - navigate only if not already on calendar
   const handleClick = () => {
     if (!isCalendarActive) {
-      navigate("/calendar");
+      navigate(calendarRoute);
     }
   };
 

@@ -710,10 +710,36 @@ function HistorySection({ logs, adherenceRate }: { logs: DoseLog[]; adherenceRat
 type Tab = "today" | "medicines" | "history" | "tests";
 
 export default function MedicineReminder() {
-  const { setPhase } = usePhase();
+  const { phase, setPhase } = usePhase();
   const [activeTab, setActiveTab] = useState<Tab>("today");
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
+
+  // Route guard: only allow access in maternity phase
+  if (phase !== "maternity") {
+    return (
+      <div className="min-h-screen py-12 bg-background">
+        <div className="container max-w-2xl">
+          <div className="text-center py-16">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle className="w-8 h-8 text-amber-500" />
+            </div>
+            <h2 className="text-xl font-bold mb-2">Feature Not Available</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              The Care Log with Tests & Scans is only available during the Maternity phase.
+            </p>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Go to Home
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const {
     medicines,
@@ -801,7 +827,7 @@ export default function MedicineReminder() {
     { key: "today", label: "Today", icon: CalendarDays },
     { key: "medicines", label: "Medicines", icon: Pill },
     { key: "history", label: "History", icon: History },
-    { key: "tests", label: "Tests & Scans", icon: FileText },
+    ...(phase === "maternity" ? [{ key: "tests" as Tab, label: "Tests & Scans", icon: FileText }] : []),
   ];
 
   return (
@@ -967,7 +993,7 @@ export default function MedicineReminder() {
           )}
 
           {/* ─── Tests & Scans Tab ─── */}
-          {activeTab === "tests" && (
+          {activeTab === "tests" && phase === "maternity" && (
             <MaternalTestsTimeline />
           )}
         </div>

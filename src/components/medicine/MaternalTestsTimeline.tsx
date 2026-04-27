@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { usePhase } from "@/hooks/usePhase";
 import ScrollReveal from "@/components/ScrollReveal";
 import {
   ChevronDown,
@@ -270,7 +271,14 @@ function TrimesterSection({
 // ─── Main Timeline Component ─────────────────────────────────────────────────
 
 export default function MaternalTestsTimeline() {
+  const { phase } = usePhase();
   const { currentWeek, trimester } = usePregnancyProfile();
+
+  // Only render in maternity phase
+  if (phase !== "maternity") {
+    return null;
+  }
+
   const grouped = useMemo(() => groupTestsByTrimester(MATERNAL_TESTS), []);
   const nextTest = useMemo(
     () => getNextUpcomingTest(MATERNAL_TESTS, currentWeek),

@@ -42,8 +42,7 @@ import Profile from "./pages/Profile";
 import MedicineReminder from "./pages/MedicineReminder";
 import MissedLogReminder from "@/components/MissedLogReminder";
 import MedicineAlertPopup from "@/components/MedicineAlertPopup";
-import MaternalTestRecommendationPopup from "@/components/MaternalTestRecommendationPopup";
-import { GTTQuestionPopup } from "@/components/GTTQuestionPopup";
+import MaternityPhaseGatedReminders from "@/components/MaternityPhaseGatedReminders";
 import MenopauseOnboarding from "./pages/menopause/MenopauseOnboarding";
 import MenopauseCalendar from "./components/calendar/MenopauseCalendar";
 import SymptomAnalytics from "./pages/menopause/SymptomAnalytics";
@@ -225,8 +224,7 @@ const App = () => (
                       </Routes>
                       <MissedLogReminder />
                       <MedicineAlertPopup />
-                       <MaternalTestRecommendationPopup />
-                      <GTTQuestionPopup />
+                      <MaternityPhaseGatedReminders />
                       <Footer />
                       </CustomSymptomsProvider>
                     </AuthGate>

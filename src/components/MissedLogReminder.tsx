@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { useAuth } from "@/hooks/useAuth";
+import { usePhase } from "@/hooks/usePhase";
 import { CalendarCheck, X, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,7 @@ const DISMISS_KEY = "ss-missed-log-dismissed";
 export default function MissedLogReminder() {
   const { logs } = useHealthLog();
   const { user } = useAuth();
+  const { phase } = usePhase();
   const navigate = useNavigate();
   const location = useLocation();
   const [visible, setVisible] = useState(false);
@@ -22,6 +24,22 @@ export default function MissedLogReminder() {
   const [animateIn, setAnimateIn] = useState(false);
 
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  // Phase-aware calendar route
+  const calendarRoute = useMemo(() => {
+    switch (phase) {
+      case "maternity":
+        return "/calendar";
+      case "puberty":
+        return "/calendar";
+      case "menopause":
+        return "/menopause/calendar";
+      case "family-planning":
+        return "/calendar";
+      default:
+        return "/calendar";
+    }
+  }, [phase]);
 
   const hasTodayLog = useMemo(() => {
     const entry = logs[todayISO];
@@ -87,7 +105,7 @@ export default function MissedLogReminder() {
       try {
         sessionStorage.setItem(DISMISS_KEY, todayISO);
       } catch {}
-      navigate("/calendar");
+      navigate(calendarRoute);
     }, 150);
   }
 

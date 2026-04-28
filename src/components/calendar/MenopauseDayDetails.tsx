@@ -7,10 +7,12 @@ import {
   Moon,
   FileText,
   CheckCircle2,
+  Settings,
 } from "lucide-react";
 import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
 import { useHealthLog, type HealthLogEntry, type MenopauseEntry } from "@/hooks/useHealthLog";
 import { useMenopause, SYMPTOM_OPTIONS } from "@/hooks/useMenopause";
+import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +43,7 @@ interface MenopauseDayDetailsProps {
 export function MenopauseDayDetails({ dateISO, onClose }: MenopauseDayDetailsProps) {
   const { getLog, saveLog, deleteLog } = useHealthLog();
   const { profile } = useMenopause();
+  const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
   const existingEntry = getLog(dateISO) as MenopauseEntry | undefined;
   const isMenopause = existingEntry?.phase === "menopause";
@@ -176,10 +179,20 @@ export function MenopauseDayDetails({ dateISO, onClose }: MenopauseDayDetailsPro
           
           {/* Symptoms */}
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Activity className="w-4 h-4 text-amber-500" />
-              Symptoms
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-amber-500" />
+                Symptoms
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowSymptomCustomizer(true)}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              >
+                <Settings className="w-3 h-3" />
+                Customize
+              </button>
+            </div>
 
             <div className="grid grid-cols-2 gap-2">
               {SYMPTOM_OPTIONS.map((opt) => {
@@ -314,17 +327,22 @@ export function MenopauseDayDetails({ dateISO, onClose }: MenopauseDayDetailsPro
           <button
             type="button"
             onClick={handleSave}
+            className="flex items-center justify-center gap-1 px-4 py-2.5 rounded-xl border border-primary bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition-colors flex-1"
             disabled={saving}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all ${
-              saving
-                ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-amber-600 text-white hover:bg-amber-700 hover:shadow-md active:scale-[0.97]"
-            }`}
           >
             {saving ? "Saving…" : "Save log"}
           </button>
         </div>
       </div>
+
+      {/* Global Symptom Customizer */}
+      {showSymptomCustomizer && (
+        <GlobalSymptomCustomizer
+          isOpen={showSymptomCustomizer}
+          onClose={() => setShowSymptomCustomizer(false)}
+          phase="menopause"
+        />
+      )}
     </>
   );
 }

@@ -37,6 +37,8 @@ import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import HealthSummaryCards from "@/components/shared/HealthSummaryCards";
 import PrematureRecoveryTimeline from "@/components/dashboard/PrematureRecoveryTimeline";
+import PrematureNutritionTipsCard from "./premature/PrematureNutritionTipsCard";
+import PrematureActiveAlertsCard from "./premature/PrematureActiveAlertsCard";
 import { getMaternityDashboardMetrics } from "@/modules/maternity/dashboard/adapters/maternityDashboardMetricsAdapter";
 import {
   Baby, Heart, Thermometer, ShieldCheck, AlertTriangle,
@@ -281,6 +283,14 @@ export default function PrematureCareView() {
             avgSleep={healthSummaryStats.avgSleep}
             avgMood={healthSummaryStats.avgMood}
           />
+        </ScrollReveal>
+
+        {/* ═══ Recovery Insight Cards ═════════════════════════════════════ */}
+        <ScrollReveal delay={45}>
+          <div className="grid gap-4 md:grid-cols-2">
+            <PrematureNutritionTipsCard />
+            <PrematureActiveAlertsCard />
+          </div>
         </ScrollReveal>
 
         {/* ═══ Recovery Status + Daily Priority (side by side) ══════════════ */}

@@ -1,159 +1,151 @@
 // ─── Symptoms Trend Chart ─────────────────────────────────────────────────────
-// Line chart showing symptom count over the last 7 days
+// Pink gradient rectangular bar chart matching reference image 4.
+// Bars: tall, rectangular with slight rounded top, pink-to-hotpink gradient.
+// Y-axis: numeric even ticks (0, 2, 4, 6). X-axis: date labels.
+// Animated bar growth with stagger. Hover tooltip.
 
+import { useEffect, useState, useMemo } from "react";
 import type { SymptomTrendData } from "../useMaternityAnalytics";
 
-interface SymptomsTrendChartProps {
-  data: SymptomTrendData[];
+/* ─── CSS ────────────────────────────────────────────────────────────────── */
+const SID = "__symptom-chart-css";
+function injectCSS() {
+  if (typeof document === "undefined" || document.getElementById(SID)) return;
+  const s = document.createElement("style");
+  s.id = SID;
+  s.textContent = `
+    @keyframes sc-fade{0%{opacity:0}100%{opacity:1}}
+    @keyframes sc-grow{0%{transform:scaleY(0)}100%{transform:scaleY(1)}}
+    @keyframes sc-tip{0%{opacity:0;transform:translateY(6px) scale(.92)}100%{opacity:1;transform:translateY(0) scale(1)}}
+    @media(prefers-reduced-motion:reduce){.sc-anim{animation:none!important}}
+  `;
+  document.head.appendChild(s);
 }
 
-export default function SymptomsTrendChart({ data }: SymptomsTrendChartProps) {
+/* ─── Tooltip ────────────────────────────────────────────────────────────── */
+function Tip({ x, y, label, count, cw }: { x: number; y: number; label: string; count: number; cw: number }) {
+  const w = 100; const h = 46;
+  const tx = Math.min(Math.max(x - w / 2, 4), cw - w - 4);
+  const ty = y - h - 10;
+  return (
+    <g style={{ animation: "sc-tip 200ms cubic-bezier(.34,1.56,.64,1) both" }}>
+      <rect x={tx} y={ty} width={w} height={h} rx={10} fill="white" stroke="#e2e8f0" strokeWidth="1" filter="drop-shadow(0 4px 12px rgba(236,72,153,.12))" />
+      <text x={tx + w / 2} y={ty + 18} textAnchor="middle" fontSize="10" fontWeight="700" fill="#1e293b" fontFamily="system-ui,sans-serif">{label}</text>
+      <text x={tx + w / 2} y={ty + 34} textAnchor="middle" fontSize="10" fontWeight="600" fill="#ec4899" fontFamily="system-ui,sans-serif">{count} symptom{count !== 1 ? "s" : ""}</text>
+    </g>
+  );
+}
+
+/* ─── Chart ──────────────────────────────────────────────────────────────── */
+interface Props { data: SymptomTrendData[] }
+
+export default function SymptomsTrendChart({ data }: Props) {
   try {
-    if (!data || data.length === 0) {
-      return (
-        <div className="h-40 flex items-center justify-center text-muted-foreground text-xs">
-          No symptom data yet
-        </div>
-      );
+    injectCSS();
+    const [ready, setReady] = useState(false);
+    const [hovered, setHovered] = useState<number | null>(null);
+    const [key, setKey] = useState(0);
+
+    const fp = useMemo(() => data?.map(d => `${d.dayLabel}:${d.symptomCount}`).join(","), [data]);
+    useEffect(() => { setReady(false); setHovered(null); setKey(k => k + 1); }, [fp]);
+    useEffect(() => { const t = setTimeout(() => setReady(true), 60); return () => clearTimeout(t); }, [key]);
+
+    if (!data || data.length === 0 || !data.some(d => d.symptomCount > 0)) {
+      return <div className="h-52 flex items-center justify-center text-slate-300 text-sm font-medium">No symptom data yet</div>;
     }
 
-    const hasData = data.some((d) => d.symptomCount > 0);
+    const W = 700, H = 220, pL = 40, pR = 20, pT = 15, pB = 40;
+    const dW = W - pL - pR, dH = H - pT - pB;
+    const maxCount = Math.max(...data.map(d => d.symptomCount), 6);
 
-    if (!hasData) {
-      return (
-        <div className="h-40 flex items-center justify-center text-muted-foreground text-xs">
-          No symptom data yet
-        </div>
-      );
-    }
+    // Even Y-axis ticks: 0, 2, 4, 6 (matching reference)
+    const yTicks: number[] = [];
+    for (let v = 0; v <= maxCount; v += 2) yTicks.push(v);
+    if (yTicks[yTicks.length - 1] < maxCount) yTicks.push(Math.ceil(maxCount));
 
-    const maxCount = Math.max(...data.map((d) => d.symptomCount), 5);
-    const chartHeight = 130;
-    const chartWidth = 300;
-    const paddingLeft = 35;
-    const paddingRight = 15;
-    const paddingTop = 15;
-    const paddingBottom = 25;
+    const getY = (v: number) => pT + dH - (v / maxCount) * dH;
+    const baseline = pT + dH;
 
-    // Generate SVG path
-    const points = data.map((d, i) => {
-      const x = paddingLeft + (i / (data.length - 1)) * (chartWidth - paddingLeft - paddingRight);
-      const y = chartHeight - paddingBottom - (d.symptomCount / maxCount) * (chartHeight - paddingTop - paddingBottom);
-      return `${x},${y}`;
-    });
-
-    const pathD = `M ${points.join(" L ")}`;
+    // Bar layout — moderately thin rectangles
+    const slotW = dW / data.length;
+    const barW = Math.min(slotW * 0.35, 28);
 
     return (
-      <div className="w-full h-40 relative">
-        <svg
-          width="100%"
-          height="100%"
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          preserveAspectRatio="none"
-          className="overflow-visible"
-        >
-          {/* Grid lines & Y-axis labels */}
-          {[0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-            const y = chartHeight - paddingBottom - ratio * (chartHeight - paddingTop - paddingBottom);
-            const value = Math.round(ratio * maxCount);
-            // Only show 3 labels to avoid clutter
-            const showLabel = ratio === 0 || ratio === 0.5 || ratio === 1;
-            
+      <div className="w-full" style={{ aspectRatio: `${W}/${H}` }} key={key}>
+        <svg width="100%" height="100%" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" className="overflow-visible">
+          <defs>
+            <linearGradient id={`sb${key}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f472b6" stopOpacity="1" />
+              <stop offset="100%" stopColor="#ec4899" stopOpacity="1" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid + Y-labels */}
+          {yTicks.map((val, idx) => {
+            const y = getY(val);
             return (
-              <g key={ratio}>
-                <line
-                  x1={paddingLeft}
-                  y1={y}
-                  x2={chartWidth - paddingRight}
-                  y2={y}
-                  stroke="hsl(var(--muted))"
-                  strokeWidth="0.5"
-                  strokeDasharray="2 2"
-                  opacity="0.3"
-                />
-                {showLabel && (
-                  <text
-                    x={paddingLeft - 5}
-                    y={y + 3}
-                    textAnchor="end"
-                    fontSize="9"
-                    fill="hsl(var(--muted-foreground))"
-                    fontWeight="500"
-                  >
-                    {value}
-                  </text>
-                )}
+              <g key={val} className="sc-anim" style={{ animation: `sc-fade 350ms ${idx * 60}ms ease-out both` }}>
+                <line x1={pL} y1={y} x2={W - pR} y2={y} stroke="#f0e4ec" strokeWidth="1" />
+                <text x={pL - 10} y={y + 4} textAnchor="end" fontSize="12" fill="#94a3b8" fontWeight="500" fontFamily="system-ui,sans-serif">{val}</text>
               </g>
             );
           })}
 
-          {/* Y-axis Title */}
-          <text
-            x={10}
-            y={chartHeight / 2}
-            transform={`rotate(-90 10 ${chartHeight / 2})`}
-            textAnchor="middle"
-            fontSize="9"
-            fill="hsl(var(--muted-foreground))"
-            fontWeight="bold"
-            letterSpacing="0.5"
-          >
-            SYMPTOMS
-          </text>
+          {/* Bars — rectangular, slight rounded top, grow from bottom */}
+          {ready && data.map((d, i) => {
+            const cx = pL + slotW * i + slotW / 2;
+            const bx = cx - barW / 2;
+            const barH = (d.symptomCount / maxCount) * dH;
+            const by = baseline - barH;
+            const isH = hovered === i;
 
-          {/* Trend line */}
-          <path
-            d={pathD}
-            fill="none"
-            stroke="hsl(262, 83%, 58%)" // lavender
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
+            if (d.symptomCount === 0) return (
+              <g key={i}>
+                <text x={cx} y={H - 12} textAnchor="middle" fontSize="11" fill="#94a3b8" fontWeight="500" fontFamily="system-ui,sans-serif"
+                  className="sc-anim" style={{ animation: `sc-fade 300ms ${i * 50 + 300}ms ease-out both` }}>
+                  {d.dayLabel}
+                </text>
+              </g>
+            );
 
-          {/* Data points */}
-          {data.map((d, i) => {
-            const x = paddingLeft + (i / (data.length - 1)) * (chartWidth - paddingLeft - paddingRight);
-            const y = chartHeight - paddingBottom - (d.symptomCount / maxCount) * (chartHeight - paddingTop - paddingBottom);
             return (
-              <circle
-                key={i}
-                cx={x}
-                cy={y}
-                r={d.symptomCount > 0 ? 4 : 2}
-                fill={d.symptomCount > 0 ? "hsl(262, 83%, 58%)" : "hsl(var(--muted))"}
-                opacity={d.symptomCount > 0 ? 1 : 0.3}
-              />
+              <g key={i}>
+                {/* Hover hit area */}
+                <rect x={bx - 8} y={pT} width={barW + 16} height={dH + pB} fill="transparent" style={{ cursor: "pointer" }}
+                  onMouseEnter={() => setHovered(i)} onMouseLeave={() => setHovered(null)} />
+
+                {/* Bar — rectangular with small top radius */}
+                <rect
+                  x={bx} y={by} width={barW} height={Math.max(barH, 2)}
+                  rx={4} ry={4}
+                  fill={`url(#sb${key})`}
+                  opacity={isH ? 1 : 0.88}
+                  className="sc-anim"
+                  style={{
+                    transformOrigin: `${cx}px ${baseline}px`,
+                    animation: `sc-grow 500ms ${i * 80}ms cubic-bezier(.25,.46,.45,.94) both`,
+                    transition: "opacity 150ms ease",
+                  }}
+                />
+
+                {/* Hover tooltip */}
+                {isH && <Tip x={cx} y={by} label={d.dayLabel} count={d.symptomCount} cw={W} />}
+
+                {/* X-axis label */}
+                <text x={cx} y={H - 12} textAnchor="middle" fontSize="11" fill="#94a3b8" fontWeight="500" fontFamily="system-ui,sans-serif"
+                  className="sc-anim" style={{ animation: `sc-fade 300ms ${i * 50 + 300}ms ease-out both` }}>
+                  {d.dayLabel}
+                </text>
+              </g>
             );
           })}
 
-          {/* X-axis labels */}
-          {data.map((d, i) => {
-            const x = paddingLeft + (i / (data.length - 1)) * (chartWidth - paddingLeft - paddingRight);
-            return (
-              <text
-                key={i}
-                x={x}
-                y={chartHeight - 5}
-                textAnchor="middle"
-                fontSize="9"
-                fill="hsl(var(--muted-foreground))"
-                fontWeight="500"
-              >
-                {d.dayLabel}
-              </text>
-            );
-          })}
+          {/* X-axis labels for zero-bar days (already rendered above for non-zero) */}
         </svg>
       </div>
     );
   } catch (error) {
     console.error("SymptomsTrendChart error:", error);
-    return (
-      <div className="h-40 flex items-center justify-center text-muted-foreground text-xs">
-        Chart error
-      </div>
-    );
+    return <div className="h-52 flex items-center justify-center text-slate-300 text-sm">Chart error</div>;
   }
 }

@@ -3,7 +3,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon, Settings } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ import {
 } from "@/lib/symptomAnalysis";
 import { cn } from "@/lib/utils";
 import MaternityCalendar from "@/components/calendar/MaternityCalendar";
+import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
 
 type CalendarMode = "year" | "month";
 type SymptomTime = "morning" | "afternoon" | "evening";
@@ -347,7 +348,18 @@ function PubertyCalendarView() {
   const { phase } = usePhase();
   const { profile } = useProfile();
 
-  const phaseLogs = getPhaseLogs(phase);
+  // Defensive guard: ensure phase is defined before proceeding
+  if (!phase) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading calendar...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const phaseLogs = getPhaseLogs(phase) ?? {};
 
   const now = new Date();
   const [mode, setMode] = useState<CalendarMode>("year");
@@ -355,6 +367,7 @@ function PubertyCalendarView() {
   const [month0, setMonth0] = useState(now.getMonth());
   const [selectedDateISO, setSelectedDateISO] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -794,6 +807,8 @@ function SymptomLogPanel({
   periodDuration,
   cycleLength,
 }: SymptomLogPanelProps) {
+  const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
+
   // STRICT SEPARATION: the phaseLogs passed here only contain the current phase's data
   const existingEntry = logs[dateISO];
 
@@ -1435,10 +1450,20 @@ function SymptomLogPanel({
 
           {/* Symptom Toggle Grid */}
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Activity className="w-4 h-4 text-primary" />
-              Symptoms
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" />
+                Symptoms
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowSymptomCustomizer(true)}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              >
+                <Settings className="w-3 h-3" />
+                Customize
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {symptomOptions.map((opt) => {
                 const isActive = !!selectedSymptoms[opt.id];
@@ -1712,6 +1737,15 @@ function SymptomLogPanel({
           </button>
         </div>
       </div>
+
+      {/* Global Symptom Customizer */}
+      {showSymptomCustomizer && (
+        <GlobalSymptomCustomizer
+          isOpen={showSymptomCustomizer}
+          onClose={() => setShowSymptomCustomizer(false)}
+          phase={phase}
+        />
+      )}
     </>
   );
 }

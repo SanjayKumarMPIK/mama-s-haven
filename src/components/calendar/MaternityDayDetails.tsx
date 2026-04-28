@@ -1,31 +1,17 @@
 import { useState, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  X,
-  Activity,
-  Moon,
-  Droplets,
-  Apple,
-  Dumbbell,
-  FileText,
-  CheckCircle2,
-  AlertTriangle,
-  Settings,
-  Calendar as CalendarIcon,
-  Clock,
-  MapPin,
-  User,
-} from "lucide-react";
+import { X, Settings, Calendar, Clock, ChevronRight, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
 import { useHealthLog, type HealthLogEntry, type MaternityEntry } from "@/hooks/useHealthLog";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { usePregnancyProfile, getWeekForDate } from "@/hooks/usePregnancyProfile";
 import { useProfile } from "@/hooks/useProfile";
 import { useCustomSymptoms } from "@/hooks/useCustomSymptoms";
 import { useAppointments } from "@/hooks/useAppointments";
 import { getNutritionForTrimester, weekToTrimester, getPrioritizedSymptomsForTrimester, checkConsecutiveSevereSymptoms, getTrimesterLabel, type Trimester, type Severity } from "@/lib/maternityTrimesterData";
 import { SymptomCustomizer } from "./SymptomCustomizer";
 import { APPOINTMENT_TYPE_ICONS, STATUS_CONFIG } from "@/lib/appointments/appointmentTypes";
+import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

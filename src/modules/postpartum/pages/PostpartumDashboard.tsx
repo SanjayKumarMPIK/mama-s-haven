@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
@@ -5,6 +6,9 @@ import RecoveryScoreCard from "../components/RecoveryScoreCard";
 import PostpartumOverviewCard from "../components/PostpartumOverviewCard";
 import PostpartumGrid from "../components/PostpartumGrid";
 import RecoverySummaryCards from "../components/RecoverySummaryCards";
+import PostpartumRecoveryTimeline from "../components/PostpartumRecoveryTimeline";
+import NutritionTipsCard from "../components/NutritionTipsCard";
+import ActiveAlertsCard from "../components/ActiveAlertsCard";
 import MaternityRouteGuard from "@/components/MaternityRouteGuard";
 import { Heart, ArrowLeft, RotateCcw } from "lucide-react";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
@@ -18,7 +22,15 @@ const accent = {
 };
 
 export default function PostpartumDashboard() {
-  const { clearProfile } = usePregnancyProfile();
+  const { clearProfile, profile } = usePregnancyProfile();
+
+  // Calculate weeks postpartum from delivery date
+  const weeksPostpartum = useMemo(() => {
+    if (!profile.delivery?.birthDate) return 1;
+    const birth = new Date(profile.delivery.birthDate + "T00:00:00");
+    const now = new Date();
+    return Math.max(1, Math.floor((now.getTime() - birth.getTime()) / (7 * 24 * 60 * 60 * 1000)));
+  }, [profile.delivery?.birthDate]);
 
   return (
     <MaternityRouteGuard expectedState="postpartum">
@@ -55,11 +67,22 @@ export default function PostpartumDashboard() {
         </div>
 
         <div className="container py-6 space-y-6">
-          {/* Top Section: Recovery Score and Overview */}
+          {/* Hero Section: Recovery Score + Recovery Timeline */}
           <ScrollReveal>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-[1fr_3fr]">
               <RecoveryScoreCard />
-              <PostpartumOverviewCard />
+              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
+                    <Heart className="w-4 h-4 text-rose-700" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-sm">Recovery Timeline</h2>
+                    <p className="text-[10px] text-muted-foreground">Week {weeksPostpartum} post-delivery</p>
+                  </div>
+                </div>
+                <PostpartumRecoveryTimeline currentWeek={weeksPostpartum} />
+              </div>
             </div>
           </ScrollReveal>
 
@@ -68,8 +91,21 @@ export default function PostpartumDashboard() {
             <RecoverySummaryCards />
           </ScrollReveal>
 
-          {/* Main Dashboard Grid */}
+          {/* Recovery Insight Cards */}
+          <ScrollReveal delay={40}>
+            <div className="grid gap-4 md:grid-cols-2">
+              <NutritionTipsCard />
+              <ActiveAlertsCard />
+            </div>
+          </ScrollReveal>
+
+          {/* Overview Card */}
           <ScrollReveal delay={50}>
+            <PostpartumOverviewCard />
+          </ScrollReveal>
+
+          {/* Main Dashboard Grid */}
+          <ScrollReveal delay={60}>
             <div>
               <h2 className="text-lg font-bold text-foreground mb-4">Your Recovery Tools</h2>
               <PostpartumGrid />

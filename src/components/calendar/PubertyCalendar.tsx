@@ -1,8 +1,9 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon } from "lucide-react";
+import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
+import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon, AlertTriangle, Zap, Settings } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
 
@@ -14,10 +15,34 @@ import {
   analyzePhaseSymptom,
   type KeySymptomId,
 } from "@/lib/symptomAnalysis";
+import { analyzePatterns } from "@/lib/pubertyPatternEngine";
 import { cn } from "@/lib/utils";
+import MaternityCalendar from "@/components/calendar/MaternityCalendar";
+import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
 
 type CalendarMode = "year" | "month";
 type SymptomTime = "morning" | "afternoon" | "evening";
+
+const SLEEP_CHECKPOINTS: Checkpoint[] = [
+  { value: 4, label: "4h (Low)", priority: "low" },
+  { value: 6, label: "6h (Min)", priority: "medium" },
+  { value: 8, label: "8h (Optimal)", priority: "high" },
+  { value: 10, label: "10h+ (High)", priority: "medium" },
+];
+
+/** Intensity slider checkpoints (1–10) for symptom severity */
+const INTENSITY_CHECKPOINTS: Checkpoint[] = [
+  { value: 1, label: "1", priority: "low" },
+  { value: 2, label: "2", priority: "low" },
+  { value: 3, label: "3 · Mild", priority: "low" },
+  { value: 4, label: "4", priority: "medium" },
+  { value: 5, label: "5", priority: "medium" },
+  { value: 6, label: "6 · Moderate", priority: "medium" },
+  { value: 7, label: "7", priority: "high" },
+  { value: 8, label: "8 · Severe", priority: "high" },
+  { value: 9, label: "9", priority: "high" },
+  { value: 10, label: "10 · Very Severe", priority: "high" },
+];
 
 interface CalendarSymptomEntry {
   id: string;        // symptom key id
@@ -189,12 +214,24 @@ export default function CalendarPage() {
   const { phase } = usePhase();
   const { profile } = useProfile();
 
+  // Defensive guard: ensure phase is defined before proceeding
+  if (!phase) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading calendar...</p>
+        </div>
+      </div>
+    );
+  }
+
   const now = new Date();
   const [mode, setMode] = useState<CalendarMode>("year");
   const [year, setYear] = useState(now.getFullYear());
   const [month0, setMonth0] = useState(now.getMonth());
   const [selectedDateISO, setSelectedDateISO] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -206,6 +243,44 @@ export default function CalendarPage() {
   function openModal(dateISO: string) {
     setSelectedDateISO(dateISO);
     setModalOpen(true);
+  }
+
+  // Irregular cycle detection counting
+  const irregularCycleCount = useMemo(() => {
+    if (phase !== "puberty") return 0;
+
+    const periodStarts = Object.entries(logs)
+      .filter(([, e]) => e.phase === "puberty" && (e as PubertyEntry).periodStarted)
+      .map(([d]) => new Date(d + "T12:00:00").getTime())
+      .sort((a, b) => a - b);
+
+    let count = 0;
+    // Intelligent check: period starts < 21 days apart => consecutive/irregular cycle
+    for (let i = 1; i < periodStarts.length; i++) {
+      const gapDays = (periodStarts[i] - periodStarts[i - 1]) / (1000 * 60 * 60 * 24);
+      if (gapDays > 0 && gapDays < 21) {
+        count++;
+      }
+    }
+    
+    return count;
+  }, [logs, phase]);
+
+  // Warning Overlay State Management
+  const [showWarningModal, setShowWarningModal] = useState(false);
+
+  useEffect(() => {
+    if (irregularCycleCount > 0) {
+      const acknowledgedCount = parseInt(localStorage.getItem("acknowledgedIrregularCyleCount") || "0", 10);
+      if (irregularCycleCount > acknowledgedCount) {
+        setShowWarningModal(true);
+      }
+    }
+  }, [irregularCycleCount]);
+
+  function handleAcknowledgeWarning() {
+    localStorage.setItem("acknowledgedIrregularCyleCount", irregularCycleCount.toString());
+    setShowWarningModal(false);
   }
 
   // ─── Mini Month (Year View) ───────────────────────────────────────────────
@@ -573,6 +648,50 @@ export default function CalendarPage() {
             cycleLength={profile.cycleLength}
           />
         )}
+
+        {/* Central Overlay Warning Modal */}
+        {showWarningModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity"
+              onClick={handleAcknowledgeWarning}
+            />
+            <div className="relative bg-card rounded-2xl shadow-xl border border-border w-full max-w-sm p-6 flex flex-col items-center text-center animate-in zoom-in-95 fade-in duration-200">
+              <div className="w-12 h-12 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center mb-4">
+                <AlertTriangle className="w-6 h-6" />
+              </div>
+              
+              <h3 className="text-lg font-bold text-foreground mb-2">
+                ⚠️ Cycle Change Detected
+              </h3>
+              
+              <p className="text-sm font-medium text-foreground mb-1">
+                Your cycle pattern seems to have changed.
+              </p>
+              
+              <p className="text-xs text-muted-foreground mb-6">
+                Consecutive or closely spaced periods may indicate irregularity.
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => setShowWarningModal(false)}
+                  className="flex-1 py-2.5 rounded-xl border border-border bg-background text-sm font-semibold hover:bg-muted/50 transition-colors"
+                >
+                  View Logs
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAcknowledgeWarning}
+                  className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-sm font-semibold shadow-sm transition-colors"
+                >
+                  Got It
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
@@ -641,6 +760,32 @@ function SymptomLogPanel({
   });
   const [selectedAnalyticsId, setSelectedAnalyticsId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // ── Intensity Slider State (Puberty only) ─────────────────────────────────
+  // Tracks intensity per symptom (1–10) and the actively expanded symptom
+  // Initialize from existing entry if editing a previously-saved log
+  const [symptomIntensities, setSymptomIntensities] = useState<Record<string, number>>(() => {
+    if (existingEntry?.phase === "puberty") {
+      return { ...((existingEntry as PubertyEntry).symptomIntensities ?? {}) };
+    }
+    return {};
+  });
+  const [expandedIntensityId, setExpandedIntensityId] = useState<string | null>(null);
+
+  function getIntensityLabel(val: number): string {
+    if (val <= 3) return "Mild";
+    if (val <= 6) return "Moderate";
+    if (val <= 8) return "Severe";
+    return "Very Severe";
+  }
+
+  function getIntensityColor(val: number): string {
+    if (val <= 3) return "#22c55e";   // green
+    if (val <= 6) return "#f59e0b";   // amber
+    if (val <= 8) return "#ef4444";   // red
+    return "#991b1b";                 // dark red
+  }
+
   // Determine if this date is already within an existing period range
   const existingPeriodRange = useMemo(() => findPeriodRangeForDate(dateISO, logs), [dateISO, logs]);
   const isExistingPeriodStart = isPeriodStartDay(existingEntry);
@@ -650,7 +795,6 @@ function SymptomLogPanel({
   // Period Started toggle should only reflect actual period start status (not continuation days)
   const [periodStarted, setPeriodStarted] = useState<boolean>(() => {
     if (existingEntry?.phase === "puberty") {
-      // Only show as "started" if this is an actual period start date
       return (existingEntry as PubertyEntry).periodStarted === true;
     }
     return false;
@@ -668,9 +812,24 @@ function SymptomLogPanel({
     [selectedSymptoms]
   );
 
+  // Ref to always access current selectedSymptoms without stale closures
+  const selectedSymptomsRef = useRef(selectedSymptoms);
+  selectedSymptomsRef.current = selectedSymptoms;
+
   const toggleSymptom = useCallback((id: string) => {
+    const currentlyActive = !!selectedSymptomsRef.current[id];
+    const willBeActive = !currentlyActive;
     setSelectedSymptoms((prev) => ({ ...prev, [id]: !prev[id] }));
+    if (willBeActive) {
+      setExpandedIntensityId(id);
+    } else {
+      setExpandedIntensityId((cur) => (cur === id ? null : cur));
+    }
   }, []);
+
+  function handleIntensityChange(id: string, val: number) {
+    setSymptomIntensities((prev) => ({ ...prev, [id]: val }));
+  }
 
   // Compute analytics for selected symptom
   const analyticsResult = useMemo(() => {
@@ -701,6 +860,18 @@ function SymptomLogPanel({
       return;
     }
 
+    // ⚠️ PUBERTY-ONLY: Require intensity for every active symptom
+    if (phase === "puberty" && hasSymptoms) {
+      const activeWithoutIntensity = activeSymptomIds.filter(
+        (id) => symptomIntensities[id] === undefined
+      );
+      if (activeWithoutIntensity.length > 0) {
+        toast.error("Please select intensity for all symptoms before saving.");
+        setExpandedIntensityId(activeWithoutIntensity[0]);
+        return;
+      }
+    }
+
     setSaving(true);
 
     // Build the correct entry for the current phase
@@ -723,6 +894,7 @@ function SymptomLogPanel({
           acne: !!selectedSymptoms.acne,
           breastTenderness: !!selectedSymptoms.breastTenderness,
         },
+        symptomIntensities: { ...symptomIntensities },
         mood: moodValue,
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
@@ -962,33 +1134,117 @@ function SymptomLogPanel({
 
           {/* Symptom Toggle Grid */}
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Activity className="w-4 h-4 text-primary" />
-              Symptoms
-            </h3>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" />
+                Symptoms
+                <span className="text-[10px] text-muted-foreground font-normal ml-auto">
+                  {phase === "puberty" ? "Tap to set intensity" : ""}
+                </span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowSymptomCustomizer(true)}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              >
+                <Settings className="w-3 h-3" />
+                Customize
+              </button>
+            </div>
+            <div className="space-y-2">
               {symptomOptions.map((opt) => {
                 const isActive = !!selectedSymptoms[opt.id];
+                const isExpanded = phase === "puberty" && isActive && expandedIntensityId === opt.id;
+                const hasIntensity = symptomIntensities[opt.id] !== undefined;
+                const intensity = symptomIntensities[opt.id] ?? null;
+                const intensityLabel = intensity !== null ? getIntensityLabel(intensity) : null;
+                const intensityColor = intensity !== null ? getIntensityColor(intensity) : null;
+
                 return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => toggleSymptom(opt.id)}
-                    className={cn(
-                      "px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
-                      isActive
-                        ? "bg-primary/15 border-primary/50 text-primary shadow-sm"
-                        : "bg-card border-border hover:bg-muted/50 text-foreground"
+                  <div key={opt.id} className="w-full">
+                    {/* Symptom Button - full width */}
+                    <button
+                      type="button"
+                      onClick={() => toggleSymptom(opt.id)}
+                      className={cn(
+                        "w-full px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
+                        isActive
+                          ? "bg-primary/15 border-primary/50 text-primary shadow-sm"
+                          : "bg-card border-border hover:bg-muted/50 text-foreground"
+                      )}
+                    >
+                      <span className="flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <span className={cn(
+                            "w-3 h-3 rounded-full border-2 shrink-0 transition-colors",
+                            isActive ? "bg-primary border-primary" : "border-muted-foreground/40"
+                          )} />
+                          {opt.label}
+                        </span>
+                        {isActive && phase === "puberty" && (
+                          hasIntensity && intensity !== null && intensityColor ? (
+                            <span
+                              className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
+                              style={{ color: intensityColor, background: `${intensityColor}20` }}
+                            >
+                              {intensityLabel} {intensity}/10
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full shrink-0 animate-pulse">
+                              Set intensity ⚠
+                            </span>
+                          )
+                        )}
+                      </span>
+                    </button>
+
+                    {/* Inline Intensity Panel — EnhancedSlider dragger with checkpoints */}
+                    {isExpanded && (
+                      <div className="mt-1 mx-1 rounded-xl bg-muted/40 border border-border/60 px-4 pt-3 pb-5 animate-in slide-in-from-top-2 fade-in duration-200">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Select Intensity (1–10)</span>
+                          {intensity !== null && intensityColor ? (
+                            <span
+                              className="text-xs font-bold px-2.5 py-1 rounded-full transition-all"
+                              style={{ color: intensityColor, background: `${intensityColor}18` }}
+                            >
+                              {intensityLabel} — {intensity}/10
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-amber-600 font-semibold">
+                              Drag to set ↓
+                            </span>
+                          )}
+                        </div>
+                        <EnhancedSlider
+                          phase="puberty"
+                          checkpoints={INTENSITY_CHECKPOINTS}
+                          min={1}
+                          max={10}
+                          step={1}
+                          value={intensity ?? 1}
+                          onChange={(val) => handleIntensityChange(opt.id, val)}
+                          className="w-full"
+                        />
+                      </div>
                     )}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className={cn(
-                        "w-3 h-3 rounded-full border-2 transition-colors",
-                        isActive ? "bg-primary border-primary" : "border-muted-foreground/40"
-                      )} />
-                      {opt.label}
-                    </span>
-                  </button>
+
+                    {/* "Set intensity" link shown when active but different symptom is expanded, or intensity not yet set */}
+                    {isActive && phase === "puberty" && !isExpanded && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedIntensityId(opt.id)}
+                        className={cn(
+                          "mt-0.5 ml-3 text-[10px] underline underline-offset-2 transition-colors",
+                          hasIntensity
+                            ? "text-primary/60 hover:text-primary"
+                            : "text-amber-600 hover:text-amber-700 font-semibold"
+                        )}
+                      >
+                        {hasIntensity ? "Adjust intensity ›" : "⚠ Set intensity (required) ›"}
+                      </button>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -1028,38 +1284,40 @@ function SymptomLogPanel({
                 <span className="text-xs font-medium text-foreground">Duration (hours)</span>
                 <span className="text-sm font-bold text-indigo-700">{sleepHours !== "" ? sleepHours : "–"} h</span>
               </div>
-              <input 
-                type="range" 
-                min="0" max="15" step="0.5" 
-                value={sleepHours !== "" ? sleepHours : 0} 
-                onChange={(e) => setSleepHours(Number(e.target.value))} 
-                className="w-full accent-indigo-500"
+              <EnhancedSlider
+                phase="puberty"
+                checkpoints={SLEEP_CHECKPOINTS}
+                min={0}
+                max={15}
+                step={0.5}
+                value={sleepHours !== "" ? sleepHours : 0}
+                onChange={(val) => setSleepHours(val)}
+                className="w-full [&_[role=slider]]:bg-indigo-500 [&_[role=slider]]:border-indigo-500 [&_.relative.h-full]:bg-indigo-500"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                <span>0h</span><span>5h</span><span>10h+</span>
-              </div>
             </div>
 
-            <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
-              <span className="text-xs font-medium text-foreground">Quality</span>
-              <div className="flex gap-2">
-                {(["Good", "Okay", "Poor"] as const).map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
-                    className={cn(
-                      "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
-                      sleepQuality === q
-                        ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                        : "bg-background border-border hover:bg-muted/50 text-foreground"
-                    )}
-                  >
-                    {q}
-                  </button>
-                ))}
+            {phase === "menopause" && (
+              <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
+                <span className="text-xs font-medium text-foreground">Quality</span>
+                <div className="flex gap-2">
+                  {(["Good", "Okay", "Poor"] as const).map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
+                      className={cn(
+                        "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
+                        sleepQuality === q
+                          ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                          : "bg-background border-border hover:bg-muted/50 text-foreground"
+                      )}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </section>
 
           {/* Notes */}
@@ -1211,6 +1469,9 @@ function SymptomLogPanel({
               )}
             </section>
           )}
+
+          {/* ── Pattern Detection Insights (Puberty Only) ──────────── */}
+          {phase === "puberty" && <PatternInsightsPanel logs={logs} />}
         </div>
 
         {/* Footer */}
@@ -1237,6 +1498,138 @@ function SymptomLogPanel({
           </button>
         </div>
       </div>
+
+      {/* Global Symptom Customizer */}
+      {showSymptomCustomizer && (
+        <GlobalSymptomCustomizer
+          isOpen={showSymptomCustomizer}
+          onClose={() => setShowSymptomCustomizer(false)}
+          phase={phase}
+        />
+      )}
     </>
+  );
+}
+
+// ─── Pattern Insights Panel (Puberty Only) ────────────────────────────────────
+
+function PatternInsightsPanel({ logs }: { logs: HealthLogs }) {
+  const insights = useMemo(() => analyzePatterns(logs), [logs]);
+
+  if (insights.length === 0) return null;
+
+  return (
+    <section className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        <Zap className="w-4 h-4 text-amber-500" />
+        Pattern Insights
+        <span className="text-[10px] text-muted-foreground font-normal ml-auto">
+          Based on last 20 days
+        </span>
+      </h3>
+
+      {insights.map((insight, idx) => {
+        const { pattern, deficiencies } = insight;
+        const strengthBorder =
+          pattern.patternStrength === "high"
+            ? "border-red-300 bg-gradient-to-br from-red-50/80 to-orange-50/60"
+            : "border-amber-300 bg-gradient-to-br from-amber-50/80 to-yellow-50/60";
+
+        return (
+          <div
+            key={`${pattern.symptom}-${idx}`}
+            className={cn(
+              "rounded-xl border-2 p-4 space-y-3",
+              strengthBorder
+            )}
+          >
+            {/* Header */}
+            <div className="flex items-start gap-3">
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                pattern.patternStrength === "high" ? "bg-red-100" : "bg-amber-100"
+              )}>
+                <AlertTriangle className={cn(
+                  "w-5 h-5",
+                  pattern.patternStrength === "high" ? "text-red-600" : "text-amber-600"
+                )} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  "text-sm font-bold",
+                  pattern.patternStrength === "high" ? "text-red-900" : "text-amber-900"
+                )}>
+                  ⚠️ Repeated High-Intensity {pattern.symptomLabel} Detected
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  You&apos;ve logged <strong>{pattern.highIntensityCount}</strong> high-intensity{" "}
+                  {pattern.symptomLabel.toLowerCase()} entries in the last 20 days
+                  {pattern.clusterValid && " with clustered occurrences"}.
+                </p>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-lg bg-white/60 py-2 px-2 text-center">
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase">Avg Intensity</p>
+                <p className="text-sm font-bold mt-0.5">{pattern.avgIntensity}/10</p>
+              </div>
+              <div className="rounded-lg bg-white/60 py-2 px-2 text-center">
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase">Strength</p>
+                <p className="text-sm font-bold mt-0.5 capitalize">{pattern.patternStrength}</p>
+              </div>
+              <div className="rounded-lg bg-white/60 py-2 px-2 text-center">
+                <p className="text-[10px] text-muted-foreground font-semibold uppercase">Clustered</p>
+                <p className="text-sm font-bold mt-0.5">{pattern.clusterValid ? "Yes" : "No"}</p>
+              </div>
+            </div>
+
+            {/* Deficiencies */}
+            {deficiencies.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  Possible Contributing Factors
+                </p>
+                {deficiencies.map((d, i) => (
+                  <div
+                    key={`${d.nutrient}-${i}`}
+                    className="flex items-center gap-3 rounded-lg bg-white/70 border border-border/40 px-3 py-2"
+                  >
+                    <span className="text-lg shrink-0">{d.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-foreground">
+                        {d.nutrient}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground leading-snug mt-0.5">
+                        {d.explanation}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={cn(
+                        "text-xs font-bold",
+                        d.confidenceLabel === "High"
+                          ? "text-red-600"
+                          : d.confidenceLabel === "Medium"
+                          ? "text-amber-600"
+                          : "text-gray-500"
+                      )}>
+                        {d.confidence}%
+                      </p>
+                      <p className="text-[9px] text-muted-foreground">{d.confidenceLabel}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Disclaimer */}
+            <p className="text-[10px] text-muted-foreground/70 italic leading-snug">
+              These are possible contributing factors based on your logged patterns. They are not a medical diagnosis. Please consult a healthcare professional for personalized advice.
+            </p>
+          </div>
+        );
+      })}
+    </section>
   );
 }

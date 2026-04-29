@@ -17,12 +17,10 @@ export interface ProfileData {
   age: number;           // computed from DOB, auto-advances
   mobile: string;
   email: string;
+  bloodGroup: string;
 
   // Location
-  state: string;
-  district: string;
-  village: string;
-  pincode: string;
+  region: "north" | "south" | "east" | "west";
 
   // Body metrics
   weight: number | null;
@@ -38,11 +36,18 @@ export interface ProfileData {
   // Health
   haemoglobin: string;
   knownConditions: string;
+  medicalConditions: string[];
+  dietType: "veg" | "non-veg" | "mixed" | "eggetarian";
   lifeStage: string;
+
+  // Lifestyle (nutrition engine inputs)
+  activityLevel: "sedentary" | "moderate" | "active";
+  climate: "hot" | "moderate" | "cold";
 
   // Meta
   registeredAt: string;
   isProfileAvailable: boolean;
+  lastWeightUpdate: number | null; // epoch ms of last weight save
 }
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
@@ -70,7 +75,7 @@ function writeExtras(extras: ProfileExtras) {
   } catch {}
 }
 
-function readWellnessProfile(): { weight: number; height: number; region: string } | null {
+function readWellnessProfile(): { weight: number; height: number; region: string; lastWeightUpdate?: number; activityLevel?: string; climate?: string } | null {
   try {
     const raw = localStorage.getItem(WELLNESS_KEY);
     if (raw) {
@@ -81,9 +86,9 @@ function readWellnessProfile(): { weight: number; height: number; region: string
   return null;
 }
 
-function writeWellnessProfile(data: { weight: number; height: number; region: string }) {
+function writeWellnessProfile(data: { weight: number; height: number; region: string; lastWeightUpdate?: number; activityLevel?: string; climate?: string }) {
   try {
-    localStorage.setItem(WELLNESS_KEY, JSON.stringify(data));
+    localStorage.setItem(WELLNESS_KEY, JSON.stringify({ ...data, lastWeightUpdate: Date.now() }));
   } catch {}
 }
 
@@ -119,7 +124,7 @@ function getBMICategory(bmi: number | null): string {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useProfile() {
-  const { fullProfile } = useAuth();
+  const { fullProfile, updateProfile } = useAuth();
   const { phase } = usePhase();
   const { config } = useOnboarding();
 
@@ -137,11 +142,9 @@ export function useProfile() {
     const age = ageFromDOB ?? (basic?.age ? parseInt(basic.age, 10) : 0);
     const mobile = basic?.mobile ?? "";
     const email = basic?.email ?? "";
+    const bloodGroup = basic?.bloodGroup ?? "";
 
-    const state = loc?.state ?? "";
-    const district = loc?.district ?? "";
-    const village = loc?.village ?? "";
-    const pincode = loc?.pincode ?? "";
+    const region = (loc?.region ?? "north") as "north" | "south" | "east" | "west";
 
     const weight = wellnessProfile?.weight ?? null;
     const height = wellnessProfile?.height ?? null;
@@ -154,7 +157,12 @@ export function useProfile() {
 
     const haemoglobin = health?.haemoglobin ?? "";
     const knownConditions = health?.knownConditions ?? "";
+    const medicalConditions = health?.medicalConditions ?? [];
+    const dietType = (health?.dietType ?? "mixed") as ProfileData["dietType"];
     const lifeStage = health?.lifeStage ?? phase;
+
+    const activityLevel = (wellnessProfile?.activityLevel ?? "moderate") as ProfileData["activityLevel"];
+    const climate = (wellnessProfile?.climate ?? "hot") as ProfileData["climate"];
 
     const registeredAt = fullProfile?.registeredAt ?? "";
 
@@ -164,10 +172,8 @@ export function useProfile() {
       age,
       mobile,
       email,
-      state,
-      district,
-      village,
-      pincode,
+      bloodGroup,
+      region,
       weight,
       height,
       bmi,
@@ -177,9 +183,14 @@ export function useProfile() {
       periodDuration,
       haemoglobin,
       knownConditions,
+      medicalConditions,
+      dietType,
       lifeStage,
+      activityLevel,
+      climate,
       registeredAt,
       isProfileAvailable: !!name,
+      lastWeightUpdate: wellnessProfile?.lastWeightUpdate ?? null,
     };
   }, [fullProfile, wellnessProfile, extras, phase, config]);
 
@@ -213,10 +224,59 @@ export function useProfile() {
     setExtras(updated);
   }, [extras]);
 
+  const updatePersonalInfo = useCallback((updates: { dob?: string; bloodGroup?: string; medicalConditions?: string[]; region?: "north" | "south" | "east" | "west" }) => {
+    updateProfile((prev) => {
+      const dob = updates.dob ?? prev.basic.dob;
+      const age = computeAgeFromDOB(dob);
+      const medicalConditions = updates.medicalConditions ?? prev.health.medicalConditions ?? [];
+      const region = updates.region ?? prev.location.region ?? "north";
+      const currentWellness = readWellnessProfile();
+      writeWellnessProfile({
+        weight: currentWellness?.weight ?? 55,
+        height: currentWellness?.height ?? 160,
+        region,
+      });
+      setWellnessProfile(readWellnessProfile());
+      return {
+        ...prev,
+        basic: {
+          ...prev.basic,
+          dob,
+          age: age !== null ? String(age) : prev.basic.age,
+          bloodGroup: updates.bloodGroup ?? prev.basic.bloodGroup,
+        },
+        health: {
+          ...prev.health,
+          medicalConditions,
+          knownConditions: medicalConditions.length > 0 ? medicalConditions.join(", ") : prev.health.knownConditions,
+        },
+        location: {
+          ...prev.location,
+          region,
+        },
+      };
+    });
+  }, [updateProfile]);
+
+  const updateLifestyle = useCallback((updates: { activityLevel?: ProfileData["activityLevel"]; climate?: ProfileData["climate"] }) => {
+    const current = readWellnessProfile();
+    const updated = {
+      weight: current?.weight ?? 55,
+      height: current?.height ?? 160,
+      region: current?.region ?? "south",
+      activityLevel: updates.activityLevel ?? current?.activityLevel ?? "moderate",
+      climate: updates.climate ?? current?.climate ?? "hot",
+    };
+    writeWellnessProfile(updated);
+    setWellnessProfile(updated);
+  }, []);
+
   return {
     profile,
     updateWeight,
     updateHeight,
     updateCycleConfig,
+    updatePersonalInfo,
+    updateLifestyle,
   };
 }

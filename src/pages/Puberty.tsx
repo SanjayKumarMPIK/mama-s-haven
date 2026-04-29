@@ -681,6 +681,24 @@ export default function Puberty() {
               <SuggestionPanel suggestions={suggestions} />
             </ScrollReveal>
           )}
+          {/* Wellness Dashboard link */}
+          <ScrollReveal delay={200}>
+            <Link
+              to="/wellness"
+              className="flex items-center gap-4 rounded-2xl border border-primary/20 bg-gradient-to-r from-teal-50 to-emerald-50 p-5 hover:shadow-md hover:border-primary/30 transition-all duration-200 group"
+            >
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shrink-0 shadow-md shadow-teal-200/40">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold mb-0.5">Wellness Dashboard</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Track BMI, water intake, health score, and get personalized daily wellness plans.
+                </p>
+              </div>
+              <ArrowLeft className="w-5 h-5 text-muted-foreground rotate-180 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </ScrollReveal>
         </div>
       </div>
     </div>

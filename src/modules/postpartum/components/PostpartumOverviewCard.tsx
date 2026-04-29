@@ -1,0 +1,53 @@
+import { Calendar, Baby, Heart } from "lucide-react";
+
+const accent = {
+  gradient: "from-rose-500 to-pink-400",
+  bg: "bg-rose-50",
+  text: "text-rose-700",
+  border: "border-rose-200/60",
+  cardBg: "bg-gradient-to-br from-rose-50 to-pink-50",
+};
+
+export default function PostpartumOverviewCard() {
+  // Placeholder data
+  const daysPostpartum = 14;
+  const deliveryType = "Normal Delivery";
+  const recoveryPhase = "Early Recovery";
+
+  return (
+    <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6 hover:shadow-md transition-all`}>
+      <div className="flex items-center gap-2 mb-4">
+        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-md`}>
+          <Heart className="w-5 h-5 text-white" />
+        </div>
+        <h3 className="text-base font-bold text-foreground">Postpartum Status</h3>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Calendar className={`w-5 h-5 ${accent.text}`} />
+          <div>
+            <p className="text-xs text-muted-foreground">Days Postpartum</p>
+            <p className="text-lg font-bold text-foreground">{daysPostpartum} days</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Baby className={`w-5 h-5 ${accent.text}`} />
+          <div>
+            <p className="text-xs text-muted-foreground">Delivery Type</p>
+            <p className="text-sm font-semibold text-foreground">{deliveryType}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Heart className={`w-5 h-5 ${accent.text}`} />
+          <div>
+            <p className="text-xs text-muted-foreground">Recovery Phase</p>
+            <p className="text-sm font-semibold text-foreground">{recoveryPhase}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

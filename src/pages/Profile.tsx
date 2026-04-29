@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useProfile } from "@/hooks/useProfile";
 import { usePhase } from "@/hooks/usePhase";
 import { useAuth } from "@/hooks/useAuth";
@@ -222,13 +222,24 @@ function InfoRow({
 // ─── Main Profile Page ────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
-  const { profile, updateWeight, updateHeight, updateCycleConfig } = useProfile();
+  const { profile, updateWeight, updateHeight, updateCycleConfig, updatePersonalInfo, updateLifestyle } = useProfile();
   const { phase, phaseName, phaseEmoji, phaseColor } = usePhase();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const isSetup = searchParams.get("setup") === "true";
+  const [editingPersonal, setEditingPersonal] = useState(false);
+  const [draftDob, setDraftDob] = useState(profile.dob || "");
+  const [draftBloodGroup, setDraftBloodGroup] = useState(profile.bloodGroup || "");
+  const [draftMedicalConditions, setDraftMedicalConditions] = useState<string[]>(profile.medicalConditions || []);
+  const [draftRegion, setDraftRegion] = useState<"north" | "south" | "east" | "west">(profile.region || "north");
+  useEffect(() => {
+    setDraftDob(profile.dob || "");
+    setDraftBloodGroup(profile.bloodGroup || "");
+    setDraftMedicalConditions(profile.medicalConditions || []);
+    setDraftRegion(profile.region || "north");
+  }, [profile.dob, profile.bloodGroup, profile.medicalConditions, profile.region]);
   
   const handleFinishSetup = () => {
     if (profile.weight === null || profile.height === null) {
@@ -241,6 +252,16 @@ export default function ProfilePage() {
   };
 
   const showCycleSettings = phase === "puberty" || phase === "family-planning";
+  const CONDITION_OPTIONS = ["Hypothyroidism", "Hyperthyroidism", "PCOD", "PCOS", "Diabetes", "Anemia", "Osteoporosis"];
+  const CONDITION_GUIDANCE: Record<string, string> = {
+    Hypothyroidism: "Slow metabolism diet, iodine intake, and light exercise plan",
+    Hyperthyroidism: "Calorie-rich diet, avoid excess iodine, and stress management",
+    PCOD: "Hormonal balance diet, weight management, and cycle tracking",
+    PCOS: "Hormonal balance diet, weight management, and cycle tracking",
+    Diabetes: "Low sugar diet and glucose monitoring reminders",
+    Anemia: "Iron-rich food suggestions and supplement reminders",
+    Osteoporosis: "Calcium + Vitamin D focus and bone-strength exercises",
+  };
 
   // Generate initials for avatar
   const initials = profile.name
@@ -256,6 +277,27 @@ export default function ProfilePage() {
         year: "numeric",
       })
     : "";
+
+  const toggleCondition = (condition: string) => {
+    setDraftMedicalConditions((prev) =>
+      prev.includes(condition) ? prev.filter((c) => c !== condition) : [...prev, condition],
+    );
+  };
+
+  const savePersonalHealth = () => {
+    if (!draftDob) {
+      toast.error("Date of birth is required.");
+      return;
+    }
+    updatePersonalInfo({
+      dob: draftDob,
+      bloodGroup: draftBloodGroup,
+      medicalConditions: draftMedicalConditions,
+      region: draftRegion,
+    });
+    setEditingPersonal(false);
+    toast.success("Profile health details updated.");
+  };
 
   if (!user || !profile.isProfileAvailable) {
     return (
@@ -370,6 +412,13 @@ export default function ProfilePage() {
               iconColor="text-violet-600"
             />
             <InfoRow
+              icon={Droplets}
+              label="Blood Group"
+              value={profile.bloodGroup || "Not set"}
+              iconBg="bg-red-50"
+              iconColor="text-red-600"
+            />
+            <InfoRow
               icon={Phone}
               label="Mobile"
               value={profile.mobile ? `+91 ${profile.mobile}` : ""}
@@ -432,6 +481,90 @@ export default function ProfilePage() {
                 </p>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* ── Lifestyle Settings ────────────────────────────────── */}
+        <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-border/60 bg-muted/20">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <Activity className="w-4 h-4 text-teal-600" />
+              Lifestyle Settings
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              Used for hydration, calorie, and protein recommendations
+            </p>
+          </div>
+          <div className="p-5 space-y-4">
+            <div className="rounded-xl border border-border bg-background p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                  <Activity className="w-4 h-4 text-blue-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Activity Level</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {(["sedentary", "moderate", "active"] as const).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => updateLifestyle({ activityLevel: level })}
+                    className={cn(
+                      "py-2.5 px-3 rounded-xl text-sm font-medium border-2 transition-all active:scale-[0.97] capitalize",
+                      profile.activityLevel === level
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-transparent bg-muted/50 hover:bg-muted"
+                    )}
+                  >
+                    {level === "sedentary" ? "🪑 Sedentary" : level === "moderate" ? "🚶 Moderate" : "🏃 Active"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                {profile.activityLevel === "sedentary"
+                  ? "Mostly sitting, minimal physical activity"
+                  : profile.activityLevel === "active"
+                  ? "Regular exercise, sports, or physical work"
+                  : "Light walks, some physical activity"}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-background p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-9 h-9 rounded-xl bg-orange-50 flex items-center justify-center shrink-0">
+                  <MapPin className="w-4 h-4 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Climate</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {(["hot", "moderate", "cold"] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => updateLifestyle({ climate: c })}
+                    className={cn(
+                      "py-2.5 px-3 rounded-xl text-sm font-medium border-2 transition-all active:scale-[0.97] capitalize",
+                      profile.climate === c
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-transparent bg-muted/50 hover:bg-muted"
+                    )}
+                  >
+                    {c === "hot" ? "🌡️ Hot" : c === "moderate" ? "🌤️ Moderate" : "❄️ Cold"}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">
+                {profile.climate === "hot"
+                  ? "Tropical / summer climate — higher hydration needs"
+                  : profile.climate === "cold"
+                  ? "Cold / winter climate — lower sweat loss"
+                  : "Temperate climate — moderate hydration needs"}
+              </p>
+            </div>
           </div>
         </section>
 
@@ -528,10 +661,20 @@ export default function ProfilePage() {
         {/* ── Health Info ──────────────────────────────────────── */}
         <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-border/60 bg-muted/20">
-            <h3 className="text-sm font-bold flex items-center gap-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold flex items-center gap-2">
               <Heart className="w-4 h-4 text-red-500" />
               Health Information
-            </h3>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingPersonal((v) => !v)}
+                className="w-8 h-8 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
+                aria-label="Edit health details"
+              >
+                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
           </div>
           <div className="px-5 py-2 divide-y divide-border/40">
             <InfoRow
@@ -543,28 +686,132 @@ export default function ProfilePage() {
             />
             <InfoRow
               icon={Heart}
-              label="Known Conditions"
-              value={profile.knownConditions || "None reported"}
+              label="Medical Conditions"
+              value={profile.medicalConditions.length > 0 ? profile.medicalConditions.join(", ") : "None reported"}
               iconBg="bg-orange-50"
               iconColor="text-orange-600"
             />
           </div>
+          {editingPersonal && (
+            <div className="px-5 py-4 border-t border-border/40 space-y-4">
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date of Birth</label>
+                  <input
+                    type="date"
+                    value={draftDob}
+                    onChange={(e) => setDraftDob(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-border px-3 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Blood Group</label>
+                  <select
+                    value={draftBloodGroup}
+                    onChange={(e) => setDraftBloodGroup(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background"
+                  >
+                    {["", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                      <option key={bg || "none"} value={bg}>{bg || "Select"}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Medical Conditions</p>
+                <p className="text-xs text-muted-foreground mb-2">This helps us give you personalized health insights.</p>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {CONDITION_OPTIONS.map((condition) => {
+                    const active = draftMedicalConditions.includes(condition);
+                    return (
+                      <button
+                        key={condition}
+                        type="button"
+                        onClick={() => toggleCondition(condition)}
+                        className={cn(
+                          "rounded-lg border px-3 py-2 text-sm text-left",
+                          active ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted/40",
+                        )}
+                      >
+                        {condition}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={savePersonalHealth} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold">Save</button>
+                <button type="button" onClick={() => setEditingPersonal(false)} className="px-4 py-2 rounded-lg border border-border text-sm font-semibold">Cancel</button>
+              </div>
+            </div>
+          )}
+          {profile.medicalConditions.length > 0 && (
+            <div className="px-5 py-4 border-t border-border/40 bg-amber-50/50">
+              <p className="text-xs font-semibold text-amber-800 mb-2">Personalized focus based on your conditions</p>
+              <ul className="space-y-1">
+                {profile.medicalConditions.map((condition) => (
+                  <li key={condition} className="text-xs text-amber-700">
+                    <strong>{condition}:</strong> {CONDITION_GUIDANCE[condition] || "Personalized guidance enabled."}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
 
         {/* ── Location ─────────────────────────────────────────── */}
         <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-border/60 bg-muted/20">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-teal-600" />
-              Location
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-teal-600" />
+                Region
+              </h3>
+              <button
+                type="button"
+                onClick={() => setEditingPersonal((v) => !v)}
+                className="w-8 h-8 rounded-full bg-muted/60 flex items-center justify-center hover:bg-muted transition-colors"
+                aria-label="Edit region"
+              >
+                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            </div>
           </div>
           <div className="px-5 py-2 divide-y divide-border/40">
-            <InfoRow icon={MapPin} label="State" value={profile.state} iconBg="bg-teal-50" iconColor="text-teal-600" />
-            <InfoRow icon={MapPin} label="District" value={profile.district} iconBg="bg-teal-50" iconColor="text-teal-600" />
-            <InfoRow icon={MapPin} label="Village / City" value={profile.village} iconBg="bg-teal-50" iconColor="text-teal-600" />
-            <InfoRow icon={MapPin} label="Pincode" value={profile.pincode} iconBg="bg-teal-50" iconColor="text-teal-600" />
+            <InfoRow
+              icon={MapPin}
+              label="Region"
+              value={
+                profile.region === "north"
+                  ? "North India"
+                  : profile.region === "south"
+                  ? "South India"
+                  : profile.region === "east"
+                  ? "East India"
+                  : "West India"
+              }
+              iconBg="bg-teal-50"
+              iconColor="text-teal-600"
+            />
           </div>
+          {editingPersonal && (
+            <div className="px-5 py-4 border-t border-border/40">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Edit Region</label>
+              <select
+                value={draftRegion}
+                onChange={(e) => setDraftRegion(e.target.value as any)}
+                className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background max-w-xs"
+              >
+                <option value="north">North India</option>
+                <option value="south">South India</option>
+                <option value="east">East India</option>
+                <option value="west">West India</option>
+              </select>
+              <p className="text-xs text-muted-foreground mt-2">
+                Region is used for food, lifestyle, and climate-based personalized recommendations.
+              </p>
+            </div>
+          )}
         </section>
 
         {/* ── Privacy Footer ──────────────────────────────────── */}
@@ -572,7 +819,7 @@ export default function ProfilePage() {
           <Shield className="w-5 h-5 text-muted-foreground shrink-0" />
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             All your profile data is stored locally on your device. Nothing is sent to any server.
-            To update your name, DOB, or location, please re-register.
+            You can update DOB, blood group, and medical conditions from this profile page.
           </p>
         </div>
 

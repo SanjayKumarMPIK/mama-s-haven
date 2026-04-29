@@ -27,15 +27,21 @@ export type FamilyPlanningGoal =
 
 export type MenopauseGoal =
   | "track_symptoms"
-  | "hormonal_understanding"
-  | "sleep_lifestyle"
-  | "pattern_tracking"
-  | "health_awareness";
+  | "wellness_support"
+  | "understand_changes"
+  | "nutrition_guidance"
+  | "just_exploring";
 
 export type Goal = PubertyGoal | MaternityGoal | FamilyPlanningGoal | MenopauseGoal;
 
 export interface PubertyOnboardingData {
+  period_awareness?: "Yes" | "No";
   has_started_periods?: boolean;
+  first_period_month?: string;
+  first_period_year?: string;
+  menarche_age?: number;
+  menarche_category?: "Early Puberty" | "Normal" | "Late Puberty";
+  cycle_regularity?: "Regular" | "Irregular" | "Not sure";
   cramps?: "Yes" | "No" | "Not sure";
   mood_swings?: "Yes, a lot" | "Sometimes" | "Not really";
   fatigue?: "Often" | "Sometimes" | "Rarely";
@@ -135,6 +141,8 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
         if (next.phase) {
           setPhase(next.phase);
         }
+      } else {
+        setConfig(DEFAULT_CONFIG);
       }
     } catch {}
   }, [storageKey, setPhase]);

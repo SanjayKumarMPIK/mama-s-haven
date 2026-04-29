@@ -4,12 +4,15 @@ import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
-import { Link } from "react-router-dom";
+import SymptomGuideSearch from "@/components/symptoms/SymptomGuideSearch";
+import KnowYourSymptomsCard from "@/components/nutrition/KnowYourSymptomsCard";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity, TrendingUp, TrendingDown, Minus, Brain, Lightbulb, Heart,
   ChevronRight, Calendar, Moon, Smile, Sparkles, X, ArrowRight, BarChart3,
-  Shield,
+  Shield, Zap, Eye,
 } from "lucide-react";
+import StatCard, { phaseAccent } from "@/components/shared/StatCard";
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
 } from "recharts";
@@ -19,6 +22,10 @@ import {
   type SymptomFrequency,
   type SymptomDetailData,
 } from "@/lib/symptomInsightsEngine";
+import {
+  computeSymptomPredictions,
+  type SymptomPrediction,
+} from "@/lib/symptomPredictionEngine";
 
 // ─── Chart palette ────────────────────────────────────────────────────────────
 
@@ -31,32 +38,6 @@ const CHART_COLORS = [
 const CHART_SOLID = ["#f472b6", "#a78bfa", "#34d399"];
 
 // ─── Phase accent map ─────────────────────────────────────────────────────────
-
-const phaseAccent: Record<string, {
-  border: string; bg: string; text: string; gradient: string;
-  cardBg: string; badge: string; ring: string;
-}> = {
-  puberty: {
-    border: "border-pink-200/60", bg: "bg-pink-50", text: "text-pink-700",
-    gradient: "from-pink-500 to-rose-400", cardBg: "bg-gradient-to-br from-pink-50 to-rose-50",
-    badge: "bg-pink-100 text-pink-700", ring: "ring-pink-300",
-  },
-  maternity: {
-    border: "border-purple-200/60", bg: "bg-purple-50", text: "text-purple-700",
-    gradient: "from-purple-500 to-violet-400", cardBg: "bg-gradient-to-br from-purple-50 to-violet-50",
-    badge: "bg-purple-100 text-purple-700", ring: "ring-purple-300",
-  },
-  "family-planning": {
-    border: "border-teal-200/60", bg: "bg-teal-50", text: "text-teal-700",
-    gradient: "from-teal-500 to-emerald-400", cardBg: "bg-gradient-to-br from-teal-50 to-emerald-50",
-    badge: "bg-teal-100 text-teal-700", ring: "ring-teal-300",
-  },
-  menopause: {
-    border: "border-amber-200/60", bg: "bg-amber-50", text: "text-amber-700",
-    gradient: "from-amber-500 to-orange-400", cardBg: "bg-gradient-to-br from-amber-50 to-orange-50",
-    badge: "bg-amber-100 text-amber-700", ring: "ring-amber-300",
-  },
-};
 
 // ─── Trend icon helper ────────────────────────────────────────────────────────
 
@@ -134,20 +115,34 @@ const insightBg: Record<string, string> = {
 export default function SymptomChecker() {
   const { simpleMode } = useLanguage();
   const { phase } = usePhase();
-  const { logs } = useHealthLog();
+  const { getPhaseLogs } = useHealthLog();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read ?query= param for deep-linking from Nutrition Guide
+  const initialQuery = searchParams.get("query") ?? undefined;
+  
+  const [isSearchVisible, setIsSearchVisible] = useState(!!initialQuery);
+
+  const phaseLogs = useMemo(() => getPhaseLogs(phase), [getPhaseLogs, phase]);
 
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
 
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
 
   // ── Compute analytics (memoized) ──
-  const data = useMemo(() => computeSymptomInsights(logs, phase), [logs, phase]);
+  const data = useMemo(() => computeSymptomInsights(phaseLogs, phase), [phaseLogs, phase]);
+
+  // ── Compute predictions (memoized) ──
+  const predictionResult = useMemo(
+    () => computeSymptomPredictions(phaseLogs, phase),
+    [phaseLogs, phase],
+  );
 
   // ── Compute symptom detail (memoized) ──
   const detail = useMemo<SymptomDetailData | null>(() => {
     if (!selectedSymptomId) return null;
-    return getSymptomDetail(logs, phase, selectedSymptomId);
-  }, [logs, phase, selectedSymptomId]);
+    return getSymptomDetail(phaseLogs, phase, selectedSymptomId);
+  }, [phaseLogs, phase, selectedSymptomId]);
 
   const handleSymptomClick = useCallback((id: string) => {
     setSelectedSymptomId((prev) => (prev === id ? null : id));
@@ -186,7 +181,38 @@ export default function SymptomChecker() {
       </div>
 
       <div className="container py-6 space-y-6">
-        {!data.hasData ? (
+        {/* ─── Symptom Guide Search (conditionally visible) ─────────────── */}
+        <ScrollReveal>
+          {isSearchVisible ? (
+            <SymptomGuideSearch 
+              phase={phase} 
+              initialQuery={initialQuery} 
+              onClose={() => {
+                setIsSearchVisible(false);
+                setSearchParams({});
+              }}
+            />
+          ) : (
+            <KnowYourSymptomsCard 
+              onExplore={() => setIsSearchVisible(true)}
+              onSymptomClick={(id) => {
+                setSearchParams({ query: id });
+                setIsSearchVisible(true);
+              }}
+            />
+          )}
+        </ScrollReveal>
+
+        {/* ─── Divider & Analytics (Hidden while searching) ────── */}
+        {!isSearchVisible && (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border/40" />
+              <span className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">Your logged data analytics</span>
+              <div className="flex-1 h-px bg-border/40" />
+            </div>
+
+            {!data.hasData ? (
           /* ─── Empty State ──────────────────────────────────────────────── */
           <ScrollReveal>
             <div className="flex flex-col items-center justify-center text-center py-20 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
@@ -210,39 +236,22 @@ export default function SymptomChecker() {
           </ScrollReveal>
         ) : (
           <>
-            {/* ─── Section 1: Summary Stats ──────────────────────────────── */}
-            <ScrollReveal>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <StatCard
-                  label="Days Logged"
-                  value={String(data.loggedDays7d)}
-                  sub="this week"
-                  icon={<Calendar className="w-4 h-4" />}
-                  accent={accent}
-                />
-                <StatCard
-                  label="Symptoms Tracked"
-                  value={String(data.totalSymptoms7d)}
-                  sub="this week"
-                  icon={<Activity className="w-4 h-4" />}
-                  accent={accent}
-                />
-                <StatCard
-                  label="Avg Sleep"
-                  value={data.avgSleep7d !== null ? `${data.avgSleep7d}h` : "–"}
-                  sub="this week"
-                  icon={<Moon className="w-4 h-4" />}
-                  accent={accent}
-                />
-                <StatCard
-                  label="Avg Mood"
-                  value={moodLabel(data.avgMood7d)}
-                  sub="this week"
-                  icon={<Smile className="w-4 h-4" />}
-                  accent={accent}
-                />
-              </div>
-            </ScrollReveal>
+            {/* ─── Section 1: Predictive Symptom Insights ────────────── */}
+            {predictionResult.predictions.length > 0 && (
+              <ScrollReveal>
+                <SectionHeader title="Upcoming Symptom Insights" emoji="🔮" />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {predictionResult.predictions.map((pred) => (
+                    <PredictionCard
+                      key={pred.symptom}
+                      prediction={pred}
+                      accent={accent}
+                    />
+                  ))}
+                </div>
+              </ScrollReveal>
+            )}
 
             {/* ─── Section 2: Top Symptoms ────────────────────────────────── */}
             <ScrollReveal>
@@ -486,7 +495,7 @@ export default function SymptomChecker() {
                 {/* Connect cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
                   <Link
-                    to="/wellness-dashboard"
+                    to="/wellness"
                     className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
                   >
                     <BarChart3 className={`w-5 h-5 ${accent.text}`} />
@@ -497,12 +506,12 @@ export default function SymptomChecker() {
                     <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                   </Link>
                   <Link
-                    to="/weekly-guide"
+                    to="/dashboard"
                     className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
                   >
                     <Calendar className={`w-5 h-5 ${accent.text}`} />
                     <div className="flex-1">
-                      <p className="text-sm font-semibold">Weekly Guide</p>
+                      <p className="text-sm font-semibold">Dashboard</p>
                       <p className="text-[11px] text-muted-foreground">Phase-specific advice</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
@@ -523,6 +532,8 @@ export default function SymptomChecker() {
             )}
           </>
         )}
+          </>
+        )}
       </div>
 
       <SafetyDisclaimer />
@@ -541,25 +552,53 @@ function SectionHeader({ title, emoji }: { title: string; emoji: string }) {
   );
 }
 
-function StatCard({
-  label, value, sub, icon, accent,
+// ─── Prediction Card ──────────────────────────────────────────────────────────
+
+const CONFIDENCE_COLORS: Record<string, { bg: string; border: string; badge: string }> = {
+  high:   { bg: "bg-gradient-to-br from-violet-50/80 to-purple-50/60", border: "border-violet-200/60", badge: "bg-violet-100 text-violet-700" },
+  medium: { bg: "bg-gradient-to-br from-slate-50/80 to-gray-50/60",   border: "border-slate-200/60",  badge: "bg-slate-100 text-slate-600" },
+};
+
+function PredictionCard({
+  prediction,
+  accent,
 }: {
-  label: string;
-  value: string;
-  sub: string;
-  icon: React.ReactNode;
+  prediction: SymptomPrediction;
   accent: typeof phaseAccent[string];
 }) {
+  const colors = CONFIDENCE_COLORS[prediction.confidence] ?? CONFIDENCE_COLORS.medium;
+
   return (
-    <div className="rounded-xl border border-border/40 bg-card p-4 hover:shadow-sm transition-shadow">
-      <div className="flex items-center gap-2 mb-2">
-        <div className={`w-7 h-7 rounded-lg ${accent.bg} flex items-center justify-center`}>
-          <span className={accent.text}>{icon}</span>
+    <div
+      className={`relative rounded-2xl border-2 ${colors.border} ${colors.bg} p-4 transition-all hover:shadow-md group overflow-hidden`}
+    >
+      {/* Decorative shimmer */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 -translate-x-full group-hover:translate-x-full" style={{ transition: 'transform 0.7s ease, opacity 0.3s ease' }} />
+
+      <div className="relative z-10">
+        {/* Top row: emoji + confidence */}
+        <div className="flex items-center justify-between mb-2.5">
+          <span className="text-2xl">{prediction.emoji}</span>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${colors.badge}`}>
+            {prediction.confidence === "high" ? (
+              <Zap className="w-2.5 h-2.5" />
+            ) : (
+              <Sparkles className="w-2.5 h-2.5" />
+            )}
+            {prediction.confidence}
+          </span>
         </div>
-        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+
+        {/* Prediction message */}
+        <p className="text-sm font-semibold leading-snug mb-1.5">
+          {prediction.message}
+        </p>
+
+        {/* Confidence label */}
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          {prediction.confidenceLabel}
+        </p>
       </div>
-      <p className="text-xl font-extrabold leading-none">{value}</p>
-      <p className="text-[10px] text-muted-foreground mt-1">{sub}</p>
     </div>
   );
 }

@@ -1,21 +1,25 @@
-import { useMemo } from "react";
-import { useHealthLog } from "@/hooks/useHealthLog";
-import { usePhase } from "@/hooks/usePhase";
+import { useState, useCallback } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePhase } from "@/hooks/usePhase";
+import { useNutritionIntelligence } from "@/hooks/useNutritionIntelligence";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
+import SymptomSearchBar from "@/components/nutrition/SymptomSearchBar";
+import SymptomAnalysisCard from "@/components/nutrition/SymptomAnalysisCard";
+import NutrientCard from "@/components/nutrition/NutrientCard";
+import FoodRecommendationCard from "@/components/nutrition/FoodRecommendationCard";
+import DeficiencySummaryInline from "@/components/nutrition/DeficiencySummaryInline";
+import FitnessCalculatorInline from "@/components/nutrition/FitnessCalculatorInline";
+import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
+import AffirmationBanner from "@/components/nutrition/AffirmationBanner";
 import { Link } from "react-router-dom";
 import {
   Apple, Calendar, ChevronRight, ArrowRight, Activity,
-  Zap, Sparkles, ShieldCheck, Leaf,
+  Sparkles, ShieldCheck, Search,
 } from "lucide-react";
-import {
-  computeNutritionInsights,
-  type NutrientNeed,
-} from "@/lib/nutritionInsightsEngine";
+import type { SymptomAnalysisResult } from "@/lib/nutrition/nutritionTypes";
 
-// ─── Phase accent map ─────────────────────────────────────────────────────────
-
+// ─── Phase accent map ─────────────────────────────────────────────────────
 const phaseAccent: Record<string, {
   gradient: string; bg: string; text: string; border: string;
   cardBg: string; badge: string;
@@ -42,33 +46,50 @@ const phaseAccent: Record<string, {
   },
 };
 
-// ─── Priority color ────────────────────────────────────────────────────────────
+// ─── Explore More Links per phase ─────────────────────────────────────────
+const EXPLORE_LINKS: Record<string, { to: string; label: string; desc: string }[]> = {
+  puberty: [
+    { to: "/puberty/nutrition/meal-plan", label: "Meal Plan", desc: "Personalized daily meals" },
+    { to: "/puberty/nutrition/hydration", label: "Hydration", desc: "Water intake goals" },
+    { to: "/puberty/nutrition/calories", label: "Calories", desc: "Daily calorie needs" },
+    { to: "/puberty/nutrition/protein", label: "Protein", desc: "Protein requirements" },
+    { to: "/puberty/nutrition/food-restrictions", label: "Foods to Avoid", desc: "Restriction guidance" },
+    { to: "/puberty/nutrition/nutrient-recommendations", label: "Nutrients & Foods", desc: "Full nutrient guide" },
+  ],
+  maternity: [
+    { to: "/maternity/nutrition/personalized-diet", label: "Personalized Diet", desc: "Region-based diet plan" },
+    { to: "/maternity/nutrition/fitness-health-calculator", label: "Fitness Calculator", desc: "Calorie & hydration" },
+    { to: "/maternity/nutrition/checklist", label: "Nutrition Checklist", desc: "Daily tracking" },
+  ],
+  "family-planning": [
+    { to: "/family-planning/nutrition/deficiency-insights", label: "Deficiency Insights", desc: "Nutrient gap analysis" },
+    { to: "/family-planning/nutrition/hormonal-balance", label: "Hormonal Nutrition", desc: "Hormone-support foods" },
+    { to: "/family-planning/nutrition/cycle-plan", label: "Cycle Plan", desc: "Phase-specific eating" },
+    { to: "/family-planning/nutrition/lifestyle", label: "Lifestyle & Metabolism", desc: "BMI & activity" },
+    { to: "/family-planning/nutrition/foods-to-avoid", label: "Foods to Avoid", desc: "What to limit" },
+  ],
+  menopause: [],
+};
 
-function priorityStyle(priority: NutrientNeed["priority"]) {
-  return priority === "high"
-    ? "border-amber-200 bg-gradient-to-br from-amber-50/80 to-orange-50/60"
-    : "border-border/40 bg-card";
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// ─── Main Component ───────────────────────────────────────────────────────────
-// ═══════════════════════════════════════════════════════════════════════════════
+// ─── Main Component ───────────────────────────────────────────────────────
 
 export default function NutritionGuide() {
   const { simpleMode } = useLanguage();
-  const { phase, phaseName } = usePhase();
-  const { logs } = useHealthLog();
-
+  const { phase, phaseName, phaseEmoji } = usePhase();
+  const { result, analyzeSymptom, searchSymptoms, suggestedSymptoms } = useNutritionIntelligence();
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
+  const [selectedAnalysis, setSelectedAnalysis] = useState<SymptomAnalysisResult | null>(null);
 
-  // ── Compute nutrition insights (memoized) ──
-  const data = useMemo(() => computeNutritionInsights(logs, phase), [logs, phase]);
+  const handleSelectSymptom = useCallback((symptomId: string) => {
+    const analysis = analyzeSymptom(symptomId);
+    setSelectedAnalysis(analysis);
+  }, [analyzeSymptom]);
 
-  // ═══ Render ═════════════════════════════════════════════════════════════════
+  const exploreLinks = EXPLORE_LINKS[phase] ?? [];
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
-      {/* ─── Header ──────────────────────────────────────────────────────── */}
+      {/* ─── Header ─────────────────────────────────────────────── */}
       <div className="border-b border-border bg-card/60 backdrop-blur-sm">
         <div className="container py-6">
           <ScrollReveal>
@@ -77,9 +98,9 @@ export default function NutritionGuide() {
                 <Apple className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Nutrition Guide</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Nutrition Intelligence</h1>
                 <p className="text-sm text-muted-foreground">
-                  Personalized for <strong>{phaseName}</strong> • Based on your symptoms
+                  {phaseEmoji} Personalized for <strong>{phaseName}</strong> • Symptom-driven insights
                 </p>
               </div>
             </div>
@@ -88,8 +109,42 @@ export default function NutritionGuide() {
       </div>
 
       <div className="container py-6 space-y-6">
-        {!data.hasData ? (
-          /* ─── Empty State ──────────────────────────────────────────────── */
+
+        {/* ─── Affirmation Banner ─────────────────────────────── */}
+        <ScrollReveal>
+          <AffirmationBanner />
+        </ScrollReveal>
+
+        {/* ─── Symptom Search ─────────────────────────────────── */}
+        <ScrollReveal>
+          <SymptomSearchBar
+            onSearch={searchSymptoms}
+            onSelectSymptom={handleSelectSymptom}
+            suggestedSymptoms={suggestedSymptoms}
+            accentColor={phase}
+          />
+        </ScrollReveal>
+
+        {/* ─── Symptom Analysis Card (when selected) ──────────── */}
+        {selectedAnalysis && (
+          <ScrollReveal>
+            <SymptomAnalysisCard
+              analysis={selectedAnalysis}
+              accentGradient={accent.gradient}
+              onClose={() => setSelectedAnalysis(null)}
+            />
+          </ScrollReveal>
+        )}
+
+        {/* ─── Safety Warnings ────────────────────────────────── */}
+        {result.safetyWarnings.length > 0 && (
+          <ScrollReveal>
+            <SafetyWarningBanner warnings={result.safetyWarnings} />
+          </ScrollReveal>
+        )}
+
+        {/* ─── No Data State ──────────────────────────────────── */}
+        {!result.hasData ? (
           <ScrollReveal>
             <div className="flex flex-col items-center justify-center text-center py-20 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
               <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center mb-5 shadow-lg opacity-40`}>
@@ -112,178 +167,141 @@ export default function NutritionGuide() {
           </ScrollReveal>
         ) : (
           <>
-            {/* ─── Section 1: Today's Nutrition Focus ─────────────────────── */}
+            {/* ─── Deficiency Summary ──────────────────────────── */}
             <ScrollReveal>
-              <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6 relative overflow-hidden`}>
-                <div className="absolute top-0 right-0 w-32 h-32 rounded-bl-[80px] opacity-10 bg-gradient-to-br from-current to-transparent" />
-                <div className="flex items-start gap-4">
-                  <span className="text-4xl shrink-0">{data.focusEmoji}</span>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1.5">
-                      Today's Nutrition Focus
-                    </p>
-                    <h2 className="text-lg font-bold leading-snug">{data.focus}</h2>
-                    <div className="flex items-center gap-3 mt-3 flex-wrap">
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-border/30">
-                        <Zap className="w-3 h-3" />
-                        Energy: <span className="capitalize">{data.state.energyTrend}</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-border/30">
-                        <ShieldCheck className="w-3 h-3" />
-                        Recovery: <span className="capitalize">{data.state.recoveryNeed}</span>
-                      </span>
-                      <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full bg-background/80 border border-border/30">
-                        <Activity className="w-3 h-3" />
-                        {data.state.loggedDays} day{data.state.loggedDays !== 1 ? "s" : ""} logged
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <DeficiencySummaryInline
+                deficiencyScore={result.deficiencyScore}
+                deficiencySeverity={result.deficiencySeverity}
+                priorityNutrient={result.priorityNutrient}
+                riskCounts={result.riskCounts}
+                accentGradient={accent.gradient}
+              />
             </ScrollReveal>
 
-            {/* ─── Section 2: Key Nutrients You Need ──────────────────────── */}
-            {data.nutrients.length > 0 && (
+            {/* ─── Detected Symptoms ───────────────────────────── */}
+            {result.detectedSymptoms.length > 0 && (
               <ScrollReveal>
-                <SectionHeader title="Key Nutrients You Need" emoji="🧠" />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {data.nutrients.map((nutrient) => (
-                    <div
-                      key={nutrient.name}
-                      className={`rounded-2xl border-2 p-5 transition-shadow hover:shadow-md ${priorityStyle(nutrient.priority)}`}
+                <SectionHeader title="Detected Symptoms" emoji="🔍" />
+                <div className="flex flex-wrap gap-2">
+                  {result.detectedSymptoms.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => handleSelectSymptom(s.id)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border ${accent.border} ${accent.bg} text-sm font-medium hover:shadow-md transition-all active:scale-95 cursor-pointer`}
                     >
-                      <div className="flex items-center gap-2.5 mb-2.5">
-                        <span className="text-2xl">{nutrient.emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-sm font-bold">{nutrient.name}</h3>
-                            {nutrient.priority === "high" && (
-                              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-200/60 text-amber-700">
-                                Priority
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground leading-relaxed mb-3">
-                        {nutrient.reason}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {nutrient.foods.map((food) => (
-                          <span
-                            key={food}
-                            className="inline-flex items-center px-2.5 py-1 rounded-lg bg-background/80 border border-border/30 text-xs font-medium"
-                          >
-                            {food}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
-
-            {/* ─── Section 3: Smart Suggestions ──────────────────────────── */}
-            {data.suggestions.length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Smart Suggestions" emoji="🎯" />
-                <div className="grid gap-2.5 sm:grid-cols-2">
-                  {data.suggestions.map((sug, i) => (
-                    <div
-                      key={i}
-                      className="flex items-start gap-3 rounded-xl border border-border/40 bg-card p-4 hover:shadow-sm transition-shadow"
-                    >
-                      <span className="text-lg mt-0.5 shrink-0">{sug.emoji}</span>
-                      <p className="text-sm leading-relaxed">{sug.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
-
-            {/* ─── Section 4: Quick Tips ──────────────────────────────────── */}
-            {data.tips.length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Quick Tips" emoji="⚡" />
-                <div className="rounded-2xl border border-border/40 bg-card divide-y divide-border/30">
-                  {data.tips.map((tip, i) => (
-                    <div key={i} className="flex items-start gap-3 px-5 py-3.5">
-                      <span className="text-base mt-0.5 shrink-0">{tip.emoji}</span>
-                      <p className="text-sm leading-relaxed text-foreground/85">{tip.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
-
-            {/* ─── Inferred Deficiencies Badge Row ───────────────────────── */}
-            {data.state.deficiencies.length > 0 && (
-              <ScrollReveal>
-                <div className={`rounded-2xl border ${accent.border} ${accent.bg} p-4`}>
-                  <div className="flex items-center gap-2 mb-2.5">
-                    <Leaf className={`w-4 h-4 ${accent.text}`} />
-                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      Possible Nutritional Gaps
-                    </p>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground mb-3">
-                    Based on your recent symptoms, your body may benefit from more:
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {data.state.deficiencies.map((d) => (
-                      <span
-                        key={d}
-                        className={`px-3 py-1.5 rounded-full text-xs font-semibold ${accent.badge} border border-current/10`}
-                      >
-                        {d}
+                      <span>{s.emoji}</span>
+                      <span>{s.label}</span>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${accent.badge}`}>
+                        {s.count}x
                       </span>
-                    ))}
-                  </div>
+                    </button>
+                  ))}
                 </div>
               </ScrollReveal>
             )}
 
-            {/* ─── Integration Links ─────────────────────────────────────── */}
+            {/* ─── Priority Nutrients ──────────────────────────── */}
+            {result.nutrientNeeds.filter(n => n.isPriority).length > 0 && (
+              <ScrollReveal>
+                <SectionHeader title="Priority Nutrients" emoji="⚡" />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {result.nutrientNeeds.filter(n => n.isPriority).map((nutrient) => (
+                    <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                  ))}
+                </div>
+              </ScrollReveal>
+            )}
+
+            {/* ─── All Nutrient Needs ──────────────────────────── */}
+            {result.nutrientNeeds.filter(n => !n.isPriority).length > 0 && (
+              <ScrollReveal>
+                <SectionHeader title="Other Nutrient Needs" emoji="🧪" />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {result.nutrientNeeds.filter(n => !n.isPriority).map((nutrient) => (
+                    <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                  ))}
+                </div>
+              </ScrollReveal>
+            )}
+
+            {/* ─── Food Recommendations ────────────────────────── */}
+            {result.foodRecommendations.length > 0 && (
+              <ScrollReveal>
+                <SectionHeader title="Recommended Foods" emoji="🥗" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {result.foodRecommendations.slice(0, 8).map((food) => (
+                    <FoodRecommendationCard key={food.name} food={food} />
+                  ))}
+                </div>
+              </ScrollReveal>
+            )}
+
+            {/* ─── Fitness Calculator Inline ───────────────────── */}
             <ScrollReveal>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <Link
-                  to="/symptom-checker"
-                  className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
-                >
+              <FitnessCalculatorInline />
+            </ScrollReveal>
+
+            {/* ─── Explore More (phase sub-pages) ──────────────── */}
+            {exploreLinks.length > 0 && (
+              <ScrollReveal>
+                <SectionHeader title="Explore More" emoji="📚" />
+                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                  {exploreLinks.map((link) => (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold">{link.label}</p>
+                        <p className="text-[11px] text-muted-foreground">{link.desc}</p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                    </Link>
+                  ))}
+                </div>
+              </ScrollReveal>
+            )}
+
+            {/* ─── Quick Links ──────────────────────────────────── */}
+            <ScrollReveal>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Link to="/symptom-checker" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
                   <Activity className={`w-5 h-5 ${accent.text}`} />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">Symptom Insights</p>
-                    <p className="text-[11px] text-muted-foreground">See your patterns</p>
-                  </div>
+                  <div className="flex-1"><p className="text-sm font-semibold">Symptoms</p><p className="text-[11px] text-muted-foreground">See patterns</p></div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                 </Link>
-                <Link
-                  to="/wellness-dashboard"
-                  className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
-                >
+                <Link to="/deficiency-insights" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
                   <Sparkles className={`w-5 h-5 ${accent.text}`} />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">Wellness Dashboard</p>
-                    <p className="text-[11px] text-muted-foreground">Full health overview</p>
-                  </div>
+                  <div className="flex-1"><p className="text-sm font-semibold">Deficiency</p><p className="text-[11px] text-muted-foreground">Full analysis</p></div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                 </Link>
-                <Link
-                  to="/calendar"
-                  className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}
-                >
+                <Link to="/wellness" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
+                  <ShieldCheck className={`w-5 h-5 ${accent.text}`} />
+                  <div className="flex-1"><p className="text-sm font-semibold">Wellness</p><p className="text-[11px] text-muted-foreground">Full overview</p></div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                </Link>
+                <Link to="/calendar" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
                   <Calendar className={`w-5 h-5 ${accent.text}`} />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">Log Symptoms</p>
-                    <p className="text-[11px] text-muted-foreground">Keep data fresh</p>
-                  </div>
+                  <div className="flex-1"><p className="text-sm font-semibold">Log More</p><p className="text-[11px] text-muted-foreground">Keep data fresh</p></div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               </div>
             </ScrollReveal>
           </>
         )}
+
+        {/* ─── Medical Disclaimer ────────────────────────────── */}
+        <ScrollReveal>
+          <div className="rounded-xl border border-amber-200/60 bg-amber-50/50 p-4">
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                <strong>Disclaimer:</strong> These nutrition suggestions are generated from your logged symptoms and profile data. They are for informational purposes only and may not reflect actual deficiencies. Always consult a healthcare professional for medical advice.
+              </p>
+            </div>
+          </div>
+        </ScrollReveal>
       </div>
 
       <SafetyDisclaimer />
@@ -291,7 +309,7 @@ export default function NutritionGuide() {
   );
 }
 
-// ─── Sub-Components ───────────────────────────────────────────────────────────
+// ─── Sub-Components ───────────────────────────────────────────────────────
 
 function SectionHeader({ title, emoji }: { title: string; emoji: string }) {
   return (

@@ -2,11 +2,12 @@ import { useMemo, useState, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon } from "lucide-react";
+import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
+import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon, Settings } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
 
-import { useHealthLog, type HealthLogEntry, type HealthLogs, type PubertyEntry } from "@/hooks/useHealthLog";
+import { useHealthLog, type HealthLogEntry, type HealthLogs, type PubertyEntry, type PeriodBloodColor } from "@/hooks/useHealthLog";
 import { usePhase, type Phase } from "@/hooks/usePhase";
 import { useProfile } from "@/hooks/useProfile";
 import {
@@ -16,9 +17,17 @@ import {
 } from "@/lib/symptomAnalysis";
 import { cn } from "@/lib/utils";
 import MaternityCalendar from "@/components/calendar/MaternityCalendar";
+import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
 
 type CalendarMode = "year" | "month";
 type SymptomTime = "morning" | "afternoon" | "evening";
+
+const SLEEP_CHECKPOINTS: Checkpoint[] = [
+  { value: 4, label: "4h (Low)", priority: "low" },
+  { value: 6, label: "6h (Min)", priority: "medium" },
+  { value: 8, label: "8h (Optimal)", priority: "high" },
+  { value: 10, label: "10h+ (High)", priority: "medium" },
+];
 
 interface CalendarSymptomEntry {
   id: string;        // symptom key id
@@ -35,6 +44,74 @@ const MONTH_NAMES = [
 
 function toISODate(y: number, m0: number, day: number) {
   return `${y}-${String(m0 + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+const BLOOD_COLOR_OPTIONS: PeriodBloodColor[] = [
+  "Bright Red",
+  "Dark Red / Maroon",
+  "Brown",
+  "Black",
+  "Pink",
+  "Orange",
+  "Grey",
+];
+
+function bloodColorInsight(color: PeriodBloodColor): string {
+  switch (color) {
+    case "Bright Red":
+      return "Fresh blood, normal flow.";
+    case "Dark Red / Maroon":
+      return "Older blood, common at start or end.";
+    case "Brown":
+      return "Old blood, normal at beginning or end.";
+    case "Black":
+      return "Older blood. Usually normal, monitor if unusual symptoms.";
+    case "Pink":
+      return "Light flow or low estrogen. Ensure proper nutrition.";
+    case "Orange":
+      return "May indicate infection if paired with odor or irritation.";
+    case "Grey":
+      return "Possible infection. Consider consulting a doctor.";
+  }
+}
+
+function addDaysISO(dateISO: string, deltaDays: number): string {
+  const d = new Date(dateISO + "T12:00:00");
+  d.setDate(d.getDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
+function shouldShowDoctorAlert(args: {
+  dateISO: string;
+  allLogs: HealthLogs;
+  selectedColor: PeriodBloodColor | "";
+  periodSymptoms: { badSmell: boolean; itching: boolean; severePain: boolean };
+  lookbackDays?: number;
+  repeatThreshold?: number;
+}): boolean {
+  const {
+    dateISO,
+    allLogs,
+    selectedColor,
+    periodSymptoms,
+    lookbackDays = 7,
+    repeatThreshold = 2,
+  } = args;
+
+  const hasConcernSymptoms = Object.values(periodSymptoms).some(Boolean);
+  const isRiskColor = selectedColor === "Grey" || selectedColor === "Orange";
+  if (!isRiskColor || !hasConcernSymptoms) return false;
+
+  // Count risky colors in recent history (excluding today, then add today)
+  let priorRiskyCount = 0;
+  for (let i = 1; i <= lookbackDays; i++) {
+    const iso = addDaysISO(dateISO, -i);
+    const e = allLogs[iso];
+    const c = (e as any)?.bloodColor as PeriodBloodColor | undefined;
+    if (c === "Grey" || c === "Orange") priorRiskyCount += 1;
+  }
+  const totalWithToday = priorRiskyCount + 1;
+  return totalWithToday >= repeatThreshold;
 }
 
 function severityDotClass(sev: number) {
@@ -62,26 +139,92 @@ function formatDisplayDate(iso: string): string {
   return d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
-/** Check if a date is a period day (puberty phase with periodStarted or auto-marked) */
+/** Check if a date is a period day (puberty or family-planning phase with periodStarted, auto-marked, or irregular) */
 function isPeriodDay(entry: HealthLogEntry | undefined): boolean {
   if (!entry) return false;
-  if (entry.phase !== "puberty") return false;
-  const e = entry as PubertyEntry;
-  return e.periodStarted || !!(e as any)._periodAutoMarked;
+  if (entry.phase === "puberty") return (entry as PubertyEntry).periodStarted || !!(entry as any)._periodAutoMarked || !!(entry as any)._irregular;
+  if (entry.phase === "family-planning") return !!(entry as any).periodStarted || !!(entry as any)._periodAutoMarked || !!(entry as any)._irregular;
+  return false;
 }
 
 /** Check if a date is a period START day (not a continuation day) */
 function isPeriodStartDay(entry: HealthLogEntry | undefined): boolean {
   if (!entry) return false;
-  if (entry.phase !== "puberty") return false;
-  return (entry as PubertyEntry).periodStarted === true;
+  if (entry.phase === "puberty") return (entry as PubertyEntry).periodStarted === true;
+  if (entry.phase === "family-planning") return (entry as any).periodStarted === true;
+  return false;
 }
 
 /** Check if a date is an auto-marked continuation day (not a manual start) */
 function isAutoMarkedContinuation(entry: HealthLogEntry | undefined): boolean {
   if (!entry) return false;
-  if (entry.phase !== "puberty") return false;
-  return !!(entry as any)._periodAutoMarked && !(entry as PubertyEntry).periodStarted;
+  if (entry.phase === "puberty") return !!(entry as any)._periodAutoMarked && !(entry as PubertyEntry).periodStarted;
+  if (entry.phase === "family-planning") return !!(entry as any)._periodAutoMarked && !(entry as any).periodStarted;
+  return false;
+}
+
+// ─── Irregular Period Detection ───────────────────────────────────────────────
+
+/** Default fallback threshold if cycle length is unknown */
+const DEFAULT_CYCLE_LENGTH = 28;
+
+/** Check if an entry is an irregular single-day period entry */
+function isIrregularPeriodDay(entry: HealthLogEntry | undefined): boolean {
+  if (!entry) return false;
+  return !!(entry as any)._irregular;
+}
+
+/**
+ * Detect whether a new period toggle on `dateISO` should be treated as irregular.
+ * Returns { irregular: true, reason: string } or { irregular: false }.
+ *
+ * A date is irregular if:
+ * 1. It already has auto-marked period data on it, OR
+ * 2. It falls within an existing predicted/auto-marked period range, OR
+ * 3. It occurs within `thresholdDays` of ANY genuine (non-auto, non-irregular) period start
+ */
+function detectIrregularEntry(
+  dateISO: string,
+  logs: HealthLogs,
+  cycleLengthDays: number = DEFAULT_CYCLE_LENGTH
+): { irregular: boolean; reason?: string } {
+  const dateMs = new Date(dateISO + "T12:00:00").getTime();
+
+  // 0. Check if this date already has auto-marked period data
+  const existingEntry = logs[dateISO];
+  if (existingEntry && (existingEntry.phase === "puberty" || existingEntry.phase === "family-planning")) {
+    if ((existingEntry as any)._periodAutoMarked) {
+      return { irregular: true, reason: "This date is already part of a predicted period range." };
+    }
+  }
+
+  // 1. Check if within an existing predicted period range
+  const rangeStart = findPeriodRangeForDate(dateISO, logs);
+  if (rangeStart !== null && rangeStart !== dateISO) {
+    return { irregular: true, reason: "This date falls within an already predicted period range." };
+  }
+
+  // 2. Check if too close to ANY genuine manual period start (exclude auto-generated and irregular)
+  const genuineStarts = Object.entries(logs)
+    .filter(([d, e]) => {
+      if (d === dateISO) return false;
+      if (e.phase !== "puberty" && e.phase !== "family-planning") return false;
+      if (!(e as any).periodStarted) return false;
+      if ((e as any)._irregular) return false;       // don't count irregular entries
+      if ((e as any)._periodAutoMarked) return false; // don't count auto-generated predicted starts
+      return true;
+    })
+    .map(([d]) => d);
+
+  for (const startDate of genuineStarts) {
+    const startMs = new Date(startDate + "T12:00:00").getTime();
+    const dayGap = Math.round(Math.abs(dateMs - startMs) / (1000 * 60 * 60 * 24));
+    if (dayGap > 0 && dayGap < cycleLengthDays) {
+      return { irregular: true, reason: `Only ${dayGap} days since your period on ${startDate} — within your ${cycleLengthDays}-day cycle.` };
+    }
+  }
+
+  return { irregular: false };
 }
 
 /**
@@ -91,7 +234,7 @@ function isAutoMarkedContinuation(entry: HealthLogEntry | undefined): boolean {
 function findPeriodRangeForDate(dateISO: string, logs: HealthLogs): string | null {
   // Find all period start dates
   const periodStarts = Object.entries(logs)
-    .filter(([, e]) => e.phase === "puberty" && (e as PubertyEntry).periodStarted)
+    .filter(([, e]) => (e.phase === "puberty" || e.phase === "family-planning") && (e as any).periodStarted)
     .map(([d]) => d)
     .sort();
 
@@ -126,6 +269,8 @@ function hasAnyLogData(entry: HealthLogEntry | undefined): boolean {
   if (sympCount > 0) return true;
   if ((entry as any).mood) return true;
   if ((entry as any).notes) return true;
+  if ((entry as any).bloodColor) return true;
+  if ((entry as any).periodSymptoms && Object.values((entry as any).periodSymptoms).some(Boolean)) return true;
   if (isPeriodDay(entry)) return true;
   return false;
 }
@@ -179,6 +324,7 @@ function buildTooltipForEntry(entry: HealthLogEntry | undefined): string | undef
     parts.push(...active.slice(0, 3));
   }
   if ((entry as any).mood) parts.push(`Mood: ${(entry as any).mood}`);
+  if ((entry as any).bloodColor) parts.push(`Color: ${(entry as any).bloodColor}`);
   if (parts.length === 0) return "Logged";
   return `Logged: ${parts.join(", ")}`;
 }
@@ -198,9 +344,22 @@ export default function CalendarPage() {
 }
 
 function PubertyCalendarView() {
-  const { pubertyLogs: phaseLogs, saveLog, saveBulkLogs, clearAllLogs } = useHealthLog();
+  const { getPhaseLogs, saveLog, saveBulkLogs, deleteBulkLogs, clearAllLogs } = useHealthLog();
   const { phase } = usePhase();
   const { profile } = useProfile();
+
+  // Defensive guard: ensure phase is defined before proceeding
+  if (!phase) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading calendar...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const phaseLogs = getPhaseLogs(phase) ?? {};
 
   const now = new Date();
   const [mode, setMode] = useState<CalendarMode>("year");
@@ -208,6 +367,7 @@ function PubertyCalendarView() {
   const [month0, setMonth0] = useState(now.getMonth());
   const [selectedDateISO, setSelectedDateISO] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -251,21 +411,23 @@ function PubertyCalendarView() {
               return <div key={`empty-${idx}`} className="h-7 rounded-md" />;
             const iso = toISODate(year, monthIndex0, day);
             const isFuture = iso > todayISO;
-            const entry = phaseLogs[iso];
-            const hasData = hasAnyLogData(entry);
-            const sympCount = getSymptomCountFromEntry(entry);
-            const maxSev = getMaxSeverityFromEntry(entry);
+            const phaseEntry = phaseLogs[iso];
+            const periodEntry = phaseLogs[iso];
+            const hasData = hasAnyLogData(phaseEntry) || isPeriodDay(periodEntry);
+            const sympCount = getSymptomCountFromEntry(phaseEntry);
+            const maxSev = getMaxSeverityFromEntry(phaseEntry);
             const isToday = iso === todayISO;
             const isSelected = iso === selectedDateISO;
-            const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(entry);
-            const dotColor = entry ? (PHASE_DOT[entry.phase] ?? "bg-primary") : null;
-            const isPeriod = isPeriodDay(entry);
+            const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(phaseEntry);
+            const dotColor = phaseEntry ? (PHASE_DOT[phaseEntry.phase] ?? "bg-primary") : null;
+            const isPeriod = isPeriodDay(periodEntry);
+            const isIrregular = isIrregularPeriodDay(periodEntry);
 
             return (
               <button
                 key={iso}
                 type="button"
-                title={tooltip}
+                title={isIrregular ? "Irregular entry — not affecting predictions" : tooltip}
                 disabled={isFuture}
                 onClick={() => !isFuture && openModal(iso)}
                 className={cn(
@@ -274,15 +436,20 @@ function PubertyCalendarView() {
                     ? "text-muted-foreground/30 cursor-not-allowed"
                     : isSelected
                     ? "bg-primary/15 ring-2 ring-primary/40 border-primary/40"
+                    : isIrregular
+                    ? "bg-orange-100 hover:bg-orange-200 border border-dashed border-orange-300"
                     : isPeriod
                     ? "bg-pink-100 hover:bg-pink-200"
                     : "hover:bg-muted/50",
                   isToday ? "font-extrabold text-primary" : isFuture ? "" : "text-foreground"
                 )}
-                aria-label={`${iso}${hasData ? " (logged)" : ""}${isPeriod ? " (period)" : ""}${isFuture ? " (future)" : ""}`}
+                aria-label={`${iso}${hasData ? " (logged)" : ""}${isIrregular ? " (irregular)" : isPeriod ? " (period)" : ""}${isFuture ? " (future)" : ""}`}
               >
                 <span className="text-[11px] leading-none">{day}</span>
-                {isPeriod && (
+                {isIrregular && (
+                  <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-orange-500" />
+                )}
+                {isPeriod && !isIrregular && (
                   <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-pink-500" />
                 )}
                 {hasData && !isPeriod && (
@@ -311,26 +478,30 @@ function PubertyCalendarView() {
 
   function DayCell({ dateISO }: { dateISO: string }) {
     const isFuture = dateISO > todayISO;
-    const entry = phaseLogs[dateISO];
-    const hasData = hasAnyLogData(entry);
-    const sympCount = getSymptomCountFromEntry(entry);
-    const maxSev = getMaxSeverityFromEntry(entry);
+    const phaseEntry = phaseLogs[dateISO];
+    const periodEntry = phaseLogs[dateISO];
+    const hasData = hasAnyLogData(phaseEntry) || isPeriodDay(periodEntry);
+    const sympCount = getSymptomCountFromEntry(phaseEntry);
+    const maxSev = getMaxSeverityFromEntry(phaseEntry);
     const isToday = dateISO === todayISO;
     const isSelected = dateISO === selectedDateISO;
-    const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(entry);
-    const dotColor = entry ? (PHASE_DOT[entry.phase] ?? "bg-primary") : null;
-    const isPeriod = isPeriodDay(entry);
+    const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(phaseEntry);
+    const dotColor = phaseEntry ? (PHASE_DOT[phaseEntry.phase] ?? "bg-primary") : null;
+    const isPeriod = isPeriodDay(periodEntry);
+    const isIrregular = isIrregularPeriodDay(periodEntry);
 
     return (
       <button
         type="button"
-        title={tooltip}
+        title={isIrregular ? "Irregular entry — not affecting predictions" : tooltip}
         disabled={isFuture}
         onClick={() => !isFuture && openModal(dateISO)}
         className={cn(
           "relative h-14 sm:h-16 w-full border-b border-r border-border/20 flex flex-col items-center justify-center transition-all text-sm font-medium",
           isFuture
             ? "text-muted-foreground/30 cursor-not-allowed bg-muted/10"
+            : isIrregular
+            ? "bg-orange-50 hover:bg-orange-100 cursor-pointer border-dashed !border-orange-300"
             : isPeriod
             ? "bg-pink-50 hover:bg-pink-100 cursor-pointer"
             : "hover:bg-muted/55 cursor-pointer",
@@ -350,7 +521,10 @@ function PubertyCalendarView() {
         ) : (
           <span className={isSelected ? "text-primary font-bold" : ""}>{Number(dateISO.slice(-2))}</span>
         )}
-        {isPeriod && (
+        {isIrregular && (
+          <span className="absolute bottom-1.5 w-2 h-2 rounded-full bg-orange-500" />
+        )}
+        {isPeriod && !isIrregular && (
           <span className="absolute bottom-1.5 w-2 h-2 rounded-full bg-pink-500" />
         )}
         {hasData && !isPeriod && (
@@ -455,10 +629,16 @@ function PubertyCalendarView() {
 
           {/* Legend */}
           <div className="px-6 py-3 border-t border-border/40 flex items-center gap-4 flex-wrap">
-            {phase === "puberty" && (
+            {(phase === "puberty" || phase === "family-planning") && (
               <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <span className="w-2 h-2 rounded-full bg-pink-500" />
                 Period day
+              </span>
+            )}
+            {(phase === "puberty" || phase === "family-planning") && (
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="w-2 h-2 rounded-full bg-orange-500" />
+                Irregular
               </span>
             )}
             <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -581,6 +761,7 @@ function PubertyCalendarView() {
             onClose={() => setModalOpen(false)}
             onSave={saveLog}
             onSaveBulk={saveBulkLogs}
+            onDeleteBulk={deleteBulkLogs}
             periodDuration={profile.periodDuration}
             cycleLength={profile.cycleLength}
           />
@@ -600,6 +781,7 @@ interface SymptomLogPanelProps {
   onClose: () => void;
   onSave: (dateISO: string, entry: HealthLogEntry) => void;
   onSaveBulk: (entries: Record<string, HealthLogEntry>) => void;
+  onDeleteBulk: (dateISOs: string[], phase?: Phase) => void;
   periodDuration: number;
   cycleLength: number | null;
 }
@@ -616,13 +798,17 @@ function SymptomLogPanel({
   dateISO,
   phase,
   logs,
+  allLogs,
   symptomOptions,
   onClose,
   onSave,
   onSaveBulk,
+  onDeleteBulk,
   periodDuration,
   cycleLength,
 }: SymptomLogPanelProps) {
+  const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
+
   // STRICT SEPARATION: the phaseLogs passed here only contain the current phase's data
   const existingEntry = logs[dateISO];
 
@@ -652,17 +838,29 @@ function SymptomLogPanel({
   });
   const [selectedAnalyticsId, setSelectedAnalyticsId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const periodEntry = logs[dateISO];
   // Determine if this date is already within an existing period range
   const existingPeriodRange = useMemo(() => findPeriodRangeForDate(dateISO, logs), [dateISO, logs]);
-  const isExistingPeriodStart = isPeriodStartDay(existingEntry);
-  const isExistingContinuation = isAutoMarkedContinuation(existingEntry);
+  const isExistingPeriodStart = isPeriodStartDay(periodEntry);
+  const isExistingContinuation = isAutoMarkedContinuation(periodEntry);
   const isWithinExistingRange = existingPeriodRange !== null;
+  const isExistingIrregular = isIrregularPeriodDay(periodEntry);
+
+  // Pre-detect if toggling ON would create an irregular entry
+  // Threshold = user's cycle length (e.g. 28 days) — any period within the full cycle is irregular
+  const irregularDetection = useMemo(
+    () => detectIrregularEntry(dateISO, logs, cycleLength || DEFAULT_CYCLE_LENGTH),
+    [dateISO, logs, cycleLength]
+  );
 
   // Period Started toggle should only reflect actual period start status (not continuation days)
   const [periodStarted, setPeriodStarted] = useState<boolean>(() => {
-    if (existingEntry?.phase === "puberty") {
+    if (periodEntry?.phase === "puberty") {
       // Only show as "started" if this is an actual period start date
-      return (existingEntry as PubertyEntry).periodStarted === true;
+      return (periodEntry as PubertyEntry).periodStarted === true;
+    }
+    if (periodEntry?.phase === "family-planning") {
+      return (periodEntry as any).periodStarted === true;
     }
     return false;
   });
@@ -673,6 +871,38 @@ function SymptomLogPanel({
     setPeriodStarted(checked);
     setPeriodToggleChanged(true);
   }, []);
+
+  const [bloodColor, setBloodColor] = useState<PeriodBloodColor | "">(() => {
+    const existingColor = (periodEntry as any)?.bloodColor as PeriodBloodColor | undefined;
+    return existingColor ?? "";
+  });
+
+  const [periodInfectionSymptoms, setPeriodInfectionSymptoms] = useState<{
+    badSmell: boolean;
+    itching: boolean;
+    severePain: boolean;
+  }>(() => {
+    const existingSymptoms = (periodEntry as any)?.periodSymptoms as
+      | { badSmell: boolean; itching: boolean; severePain: boolean }
+      | undefined;
+    return existingSymptoms ?? { badSmell: false, itching: false, severePain: false };
+  });
+
+  const showBloodColorSection = (phase === "puberty" || phase === "family-planning") && (
+    isPeriodDay(periodEntry) || periodStarted || isWithinExistingRange || isExistingIrregular || isExistingContinuation
+  );
+
+  const doctorAlert = useMemo(() => {
+    if (!showBloodColorSection) return false;
+    return shouldShowDoctorAlert({
+      dateISO,
+      allLogs,
+      selectedColor: bloodColor,
+      periodSymptoms: periodInfectionSymptoms,
+      lookbackDays: 7,
+      repeatThreshold: 2,
+    });
+  }, [showBloodColorSection, dateISO, allLogs, bloodColor, periodInfectionSymptoms]);
 
   const activeSymptomIds = useMemo(
     () => Object.entries(selectedSymptoms).filter(([, v]) => v).map(([k]) => k),
@@ -706,8 +936,10 @@ function SymptomLogPanel({
     const hasMood = mood !== "";
     const hasSleep = sleepHours !== "" || sleepQuality !== "";
     const hasNotes = notes.trim().length > 0;
-    const hasPeriod = phase === "puberty" && periodStarted;
-    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod) {
+    const hasPeriod = (phase === "puberty" || phase === "family-planning") && periodStarted;
+    const hasBloodColor = bloodColor !== "";
+    const hasPeriodConcerns = Object.values(periodInfectionSymptoms).some(Boolean);
+    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod && !hasBloodColor && !hasPeriodConcerns) {
       toast.error("Please select at least one symptom, sleep log, mood, or add a note before saving.");
       return;
     }
@@ -719,6 +951,7 @@ function SymptomLogPanel({
     const moodValue = mood !== "" ? (mood as "Good" | "Okay" | "Low") : null;
     const sleepHoursValue = sleepHours !== "" ? Number(sleepHours) : null;
     const sleepQualityValue = sleepQuality !== "" ? (sleepQuality as "Good" | "Okay" | "Poor") : null;
+    const periodSymptomsHasAny = Object.values(periodInfectionSymptoms).some(Boolean);
 
     if (phase === "puberty") {
       entry = {
@@ -726,6 +959,8 @@ function SymptomLogPanel({
         periodStarted: periodStarted,
         periodEnded: false,
         flowIntensity: null,
+        bloodColor: bloodColor !== "" ? bloodColor : undefined,
+        periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
         symptoms: {
           cramps: !!selectedSymptoms.cramps,
           fatigue: !!selectedSymptoms.fatigue,
@@ -762,6 +997,9 @@ function SymptomLogPanel({
         phase: "family-planning",
         lastPeriodDate: existingFP?.lastPeriodDate ?? "",
         cycleLength: existingFP?.cycleLength ?? null,
+        periodStarted: periodStarted,
+        bloodColor: bloodColor !== "" ? bloodColor : undefined,
+        periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
         symptoms: {
           irregularCycle: !!selectedSymptoms.irregularCycle,
           ovulationPain: !!selectedSymptoms.ovulationPain,
@@ -796,30 +1034,131 @@ function SymptomLogPanel({
 
     // If this date is within an existing period range and user didn't explicitly toggle period,
     // preserve the period markers from the existing entry
-    if (phase === "puberty" && isWithinExistingRange && !periodToggleChanged) {
-      if (existingEntry?.phase === "puberty") {
-        (entry as any).periodStarted = (existingEntry as PubertyEntry).periodStarted;
-        if ((existingEntry as any)._periodAutoMarked) {
+    if ((phase === "puberty" || phase === "family-planning") && isWithinExistingRange && !periodToggleChanged) {
+      if (periodEntry?.phase === "puberty" || periodEntry?.phase === "family-planning") {
+        (entry as any).periodStarted = (periodEntry as any).periodStarted;
+        if ((periodEntry as any)._periodAutoMarked) {
           (entry as any)._periodAutoMarked = true;
+        }
+        if ((periodEntry as any)._irregular) {
+          (entry as any)._irregular = true;
+        }
+        if ((periodEntry as any)._periodGroupId) {
+          (entry as any)._periodGroupId = (periodEntry as any)._periodGroupId;
         }
       }
     }
 
+    // For family-planning, save the symptom entry as family-planning but handle period separately
+    const isPeriodRelevantPhase = phase === "puberty" || phase === "family-planning";
+
     onSave(dateISO, entry);
 
-    // Only auto-mark period days when:
-    // 1. Phase is puberty
-    // 2. User explicitly toggled "Period Started" ON in this session
-    // 3. This is a NEW period start (not re-saving an existing one)
-    const isNewPeriodStart = phase === "puberty" 
+    // ── PERIOD TOGGLE OFF ──
+    if (isPeriodRelevantPhase && periodToggleChanged && !periodStarted) {
+
+      // Case A: Removing an IRREGULAR entry → only remove this single day
+      if (isExistingIrregular) {
+        const updated: any = { ...periodEntry, periodStarted: false };
+        delete updated._irregular;
+        delete updated._periodGroupId;
+        delete updated._periodAutoMarked;
+        onSave(dateISO, updated as HealthLogEntry);
+
+        toast.success("Irregular entry removed", {
+          description: "Only this single day was removed. Predictions are unchanged.",
+        });
+
+        setSaving(false);
+        onClose();
+        return;
+      }
+
+      // Case B: Removing a REGULAR period start → remove entire block + predictions
+      if (isExistingPeriodStart) {
+        const datesToRemove: string[] = [];
+        for (let dayOffset = 1; dayOffset < 15; dayOffset++) {
+          const checkDate = new Date(dateISO + "T12:00:00");
+          checkDate.setDate(checkDate.getDate() + dayOffset);
+          const checkISO = checkDate.toISOString().slice(0, 10);
+          const checkEntry = logs[checkISO];
+          if (checkEntry && (checkEntry.phase === "puberty" || checkEntry.phase === "family-planning") && (checkEntry as any)._periodAutoMarked) {
+            datesToRemove.push(checkISO);
+          } else {
+            break;
+          }
+        }
+
+        // Also remove predicted future cycles
+        const actualCycleLenForRemoval = cycleLength || 28;
+        for (let cycle = 1; cycle <= 3; cycle++) {
+          const futureStart = new Date(dateISO + "T12:00:00");
+          futureStart.setDate(futureStart.getDate() + cycle * actualCycleLenForRemoval);
+          for (let dayOffset = 0; dayOffset < periodDuration; dayOffset++) {
+            const futureDay = new Date(futureStart);
+            futureDay.setDate(futureDay.getDate() + dayOffset);
+            const futureISO = futureDay.toISOString().slice(0, 10);
+            const futureEntry = logs[futureISO];
+            if (futureEntry && (futureEntry.phase === "puberty" || futureEntry.phase === "family-planning") && (futureEntry as any)._periodAutoMarked) {
+              datesToRemove.push(futureISO);
+            }
+          }
+        }
+
+        // Update the start day itself: remove period flag
+        if (periodEntry?.phase === "puberty" || periodEntry?.phase === "family-planning") {
+          const updatedStart: any = { ...periodEntry, periodStarted: false };
+          delete updatedStart._periodAutoMarked;
+          delete updatedStart._periodGroupId;
+          onSave(dateISO, updatedStart as HealthLogEntry);
+        }
+
+        if (datesToRemove.length > 0) {
+          onDeleteBulk(datesToRemove, phase);
+        }
+
+        toast.success(`Period range removed`, {
+          description: `Cleared ${datesToRemove.length + 1} marked days including predicted cycles.`,
+        });
+
+        setSaving(false);
+        onClose();
+        return;
+      }
+    }
+
+    // ── PERIOD TOGGLE ON ──
+    // Only trigger when user explicitly toggled ON and it's a NEW period start
+    const isNewPeriodStart = isPeriodRelevantPhase
       && periodStarted 
       && periodToggleChanged 
       && !isExistingPeriodStart;
 
     if (isNewPeriodStart) {
-      // Check for overlapping period ranges — prevent if another period start is too close
+      // ── Check for IRREGULAR entry ──
+      // If the date is within a predicted range or too close to last start, mark as irregular
+      if (irregularDetection.irregular) {
+        // Save as single-day irregular entry — NO multi-day expansion, NO predictions
+        const irregularEntry: any = { ...entry };
+        irregularEntry.periodStarted = true;
+        irregularEntry._irregular = true;
+        delete irregularEntry._periodAutoMarked;
+        delete irregularEntry._periodGroupId;
+        onSave(dateISO, irregularEntry as HealthLogEntry);
+
+        toast.info("Marked as irregular entry", {
+          description: irregularDetection.reason || "This day was marked as irregular — predictions are unchanged.",
+          duration: 5000,
+        });
+
+        setSaving(false);
+        onClose();
+        return;
+      }
+
+      // ── Regular period start — full cycle generation ──
       const existingStarts = Object.entries(logs)
-        .filter(([, e]) => e.phase === "puberty" && (e as PubertyEntry).periodStarted)
+        .filter(([, e]) => (e.phase === "puberty" || e.phase === "family-planning") && (e as any).periodStarted && !(e as any)._irregular)
         .map(([d]) => d)
         .sort();
 
@@ -827,7 +1166,7 @@ function SymptomLogPanel({
       const hasOverlap = existingStarts.some((s) => {
         const sMs = new Date(s + "T12:00:00").getTime();
         const dayDiff = Math.abs(Math.round((sMs - startMs) / (1000 * 60 * 60 * 24)));
-        return dayDiff > 0 && dayDiff < periodDuration; // Too close to another cycle start
+        return dayDiff > 0 && dayDiff < periodDuration;
       });
 
       if (hasOverlap) {
@@ -835,10 +1174,15 @@ function SymptomLogPanel({
           description: "This date is too close to another period start. Adjust the existing cycle or choose a different date.",
         });
       } else {
-        // Mark current cycle and next 3 months (3 future cycles) using settings from profile
+        const groupId = `cycle_${dateISO}`;
         const bulkEntries: Record<string, HealthLogEntry> = {};
         const cyclesToPredict = 3;
         const actualCycleLength = cycleLength || 28;
+
+        // Tag the start day with group ID
+        const startEntry: any = { ...entry };
+        startEntry._periodGroupId = groupId;
+        onSave(dateISO, startEntry as HealthLogEntry);
 
         for (let cycle = 0; cycle <= cyclesToPredict; cycle++) {
           const cycleStartDate = new Date(dateISO + "T12:00:00");
@@ -849,26 +1193,42 @@ function SymptomLogPanel({
             periodDay.setDate(periodDay.getDate() + dayOffset);
             const periodISO = periodDay.toISOString().slice(0, 10);
 
-            // Skip updating the very first day of the initial cycle as it was already handled by onSave
+            // Skip the very first day (already saved above)
             if (cycle === 0 && dayOffset === 0) continue;
 
             const existingLog = logs[periodISO];
-            // Don't overwrite manually-set start days from older logs
-            if (existingLog && existingLog.phase === "puberty" && (existingLog as PubertyEntry).periodStarted && !(existingLog as any)._periodAutoMarked) {
-              continue;
+            // Don't overwrite manually-set start days or irregular entries
+            if (existingLog && (existingLog.phase === "puberty" || existingLog.phase === "family-planning")) {
+              if ((existingLog as any).periodStarted && !(existingLog as any)._periodAutoMarked) continue;
+              if ((existingLog as any)._irregular) continue;
             }
 
-            // Merge with existing entry data or create new
-            const base: any = existingLog?.phase === "puberty" ? { ...existingLog } : {
-              phase: "puberty",
-              periodStarted: false,
-              periodEnded: false,
-              flowIntensity: null,
-              symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
-              mood: null,
-            };
+            let base: any;
+            if (existingLog?.phase === phase) {
+              base = { ...existingLog };
+            } else if (phase === "family-planning") {
+              base = {
+                phase: "family-planning",
+                periodStarted: false,
+                lastPeriodDate: dateISO,
+                cycleLength: actualCycleLength,
+                symptoms: { irregularCycle: false, ovulationPain: false, moodChanges: false, fatigue: false, stress: false, sleepIssues: false },
+                mood: null,
+                sleepHours: null,
+                sleepQuality: null,
+              };
+            } else {
+              base = {
+                phase: "puberty",
+                periodStarted: false,
+                periodEnded: false,
+                flowIntensity: null,
+                symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
+                mood: null,
+              };
+            }
             base._periodAutoMarked = true;
-            // The start day of autogenerated FUTURE cycle is treated as periodStarted logically
+            base._periodGroupId = groupId;
             base.periodStarted = dayOffset === 0; 
             base.periodEnded = dayOffset === periodDuration - 1;
             bulkEntries[periodISO] = base as HealthLogEntry;
@@ -879,13 +1239,11 @@ function SymptomLogPanel({
           onSaveBulk(bulkEntries);
         }
 
-        const totalDaysMarked = Object.keys(bulkEntries).length + 1; // +1 for the start day
         toast.success(`Period marked for ${periodDuration} days/cycle`, {
           description: `Predicted cycles for the next 3 months based on a ${actualCycleLength}-day cycle length.`,
         });
       }
-    } else if (phase === "puberty" && periodStarted && isExistingPeriodStart && !periodToggleChanged) {
-      // Re-saving an existing period start without toggling — just save symptoms, no re-projection
+    } else if (isPeriodRelevantPhase && periodStarted && isExistingPeriodStart && !periodToggleChanged) {
       toast.success(`Symptoms updated for ${formatDisplayDate(dateISO)}`, {
         description: "Period start preserved. Symptoms and mood updated.",
       });
@@ -931,32 +1289,45 @@ function SymptomLogPanel({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
-          {/* Period Start Toggle (Puberty only) */}
-          {phase === "puberty" && (
+          {/* Period Start Toggle (Puberty + Family Planning) */}
+          {(phase === "puberty" || phase === "family-planning") && (
             <section className={cn(
               "rounded-xl border-2 p-4",
-              isExistingContinuation
+              isExistingIrregular
+                ? "border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50"
+                : isExistingContinuation
                 ? "border-pink-100 bg-gradient-to-r from-pink-50/50 to-rose-50/50 opacity-75"
                 : "border-pink-200 bg-gradient-to-r from-pink-50 to-rose-50"
             )}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
-                    <Droplets className="w-5 h-5 text-pink-600" />
+                  <div className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center",
+                    isExistingIrregular ? "bg-orange-100" : "bg-pink-100"
+                  )}>
+                    <Droplets className={cn("w-5 h-5", isExistingIrregular ? "text-orange-600" : "text-pink-600")} />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-pink-900">
-                      {isExistingContinuation
+                    <p className={cn("text-sm font-semibold", isExistingIrregular ? "text-orange-900" : "text-pink-900")}>
+                      {isExistingIrregular
+                        ? "Irregular Period Day"
+                        : isExistingContinuation
                         ? "Period Day (auto-marked)"
                         : isExistingPeriodStart
                         ? "Period Start Day"
                         : "Period Started"}
                     </p>
-                    <p className="text-[11px] text-pink-600">
-                      {isExistingContinuation
+                    <p className={cn("text-[11px]", isExistingIrregular ? "text-orange-600" : "text-pink-600")}>
+                      {isExistingIrregular
+                        ? periodStarted
+                          ? "Marked as irregular — not affecting cycle predictions. Toggle OFF to remove."
+                          : "Toggle OFF will remove only this irregular day. Predictions stay unchanged."
+                        : isExistingContinuation
                         ? `Part of period starting ${existingPeriodRange ?? "unknown"}. Log symptoms without affecting the period range.`
+                        : periodStarted && !isExistingPeriodStart && irregularDetection.irregular
+                        ? `⚠ Will be marked as irregular: ${irregularDetection.reason}`
                         : periodStarted
-                        ? `Will predict 3 months based on your duration and cycle length`
+                        ? "Will predict 3 months based on your duration and cycle length"
                         : "Toggle if your period started on this day"}
                     </p>
                   </div>
@@ -965,18 +1336,134 @@ function SymptomLogPanel({
                   checked={periodStarted}
                   onCheckedChange={handlePeriodToggle}
                   disabled={isExistingContinuation}
-                  className="data-[state=checked]:bg-pink-500"
+                  className={cn(
+                    isExistingIrregular || (periodStarted && irregularDetection.irregular)
+                      ? "data-[state=checked]:bg-orange-500"
+                      : "data-[state=checked]:bg-pink-500"
+                  )}
                 />
               </div>
             </section>
           )}
 
+          {/* Blood Color Logging (period days only) */}
+          {showBloodColorSection && (
+            <section className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold">What is the color of your flow today?</h3>
+                <p className="text-xs text-muted-foreground">
+                  Select one option for instant insight.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {BLOOD_COLOR_OPTIONS.map((opt) => {
+                  const active = bloodColor === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setBloodColor(active ? "" : opt)}
+                      className={cn(
+                        "px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
+                        active
+                          ? "bg-primary/15 border-primary/50 text-primary shadow-sm"
+                          : "bg-background border-border hover:bg-muted/50 text-foreground"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={cn(
+                          "w-3 h-3 rounded-full border-2 transition-colors",
+                          active ? "bg-primary border-primary" : "border-muted-foreground/40"
+                        )} />
+                        {opt}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {bloodColor !== "" && (
+                <div className={cn(
+                  "rounded-lg border p-3 text-sm",
+                  bloodColor === "Grey" || bloodColor === "Orange"
+                    ? "bg-amber-50 border-amber-200 text-amber-900"
+                    : "bg-emerald-50 border-emerald-200 text-emerald-900"
+                )}>
+                  <p className="text-xs font-semibold uppercase tracking-wider mb-1">
+                    Insight
+                  </p>
+                  <p className="text-sm leading-relaxed">{bloodColorInsight(bloodColor)}</p>
+                </div>
+              )}
+
+              <div className="space-y-2 pt-1">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Symptoms to watch (optional)
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {([
+                    { key: "badSmell", label: "Bad smell" },
+                    { key: "itching", label: "Itching" },
+                    { key: "severePain", label: "Severe pain" },
+                  ] as const).map((s) => {
+                    const active = periodInfectionSymptoms[s.key];
+                    return (
+                      <button
+                        key={s.key}
+                        type="button"
+                        onClick={() =>
+                          setPeriodInfectionSymptoms((prev) => ({ ...prev, [s.key]: !prev[s.key] }))
+                        }
+                        className={cn(
+                          "px-3 py-2 rounded-xl border text-xs font-semibold transition-all text-left",
+                          active
+                            ? "bg-orange-50 border-orange-200 text-orange-800"
+                            : "bg-background border-border hover:bg-muted/50 text-foreground"
+                        )}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className={cn(
+                            "w-3 h-3 rounded-full border-2 transition-colors",
+                            active ? "bg-orange-500 border-orange-500" : "border-muted-foreground/40"
+                          )} />
+                          {s.label}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {doctorAlert && (
+                <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+                  <p className="text-xs font-semibold text-red-800 uppercase tracking-wider mb-1">
+                    Smart alert
+                  </p>
+                  <p className="text-sm text-red-800 leading-relaxed">
+                    We recommend consulting a doctor for further evaluation.
+                  </p>
+                </div>
+              )}
+            </section>
+          )}
+
           {/* Symptom Toggle Grid */}
           <section className="space-y-3">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Activity className="w-4 h-4 text-primary" />
-              Symptoms
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Activity className="w-4 h-4 text-primary" />
+                Symptoms
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowSymptomCustomizer(true)}
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+              >
+                <Settings className="w-3 h-3" />
+                Customize
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-2">
               {symptomOptions.map((opt) => {
                 const isActive = !!selectedSymptoms[opt.id];
@@ -1039,38 +1526,40 @@ function SymptomLogPanel({
                 <span className="text-xs font-medium text-foreground">Duration (hours)</span>
                 <span className="text-sm font-bold text-indigo-700">{sleepHours !== "" ? sleepHours : "–"} h</span>
               </div>
-              <input 
-                type="range" 
-                min="0" max="15" step="0.5" 
-                value={sleepHours !== "" ? sleepHours : 0} 
-                onChange={(e) => setSleepHours(Number(e.target.value))} 
-                className="w-full accent-indigo-500"
+              <EnhancedSlider
+                phase={phase as any}
+                checkpoints={SLEEP_CHECKPOINTS}
+                min={0}
+                max={15}
+                step={0.5}
+                value={sleepHours !== "" ? sleepHours : 0}
+                onChange={(val) => setSleepHours(val)}
+                className="w-full [&_[role=slider]]:bg-indigo-500 [&_[role=slider]]:border-indigo-500 [&_.relative.h-full]:bg-indigo-500"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                <span>0h</span><span>5h</span><span>10h+</span>
-              </div>
             </div>
 
-            <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
-              <span className="text-xs font-medium text-foreground">Quality</span>
-              <div className="flex gap-2">
-                {(["Good", "Okay", "Poor"] as const).map((q) => (
-                  <button
-                    key={q}
-                    type="button"
-                    onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
-                    className={cn(
-                      "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
-                      sleepQuality === q
-                        ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                        : "bg-background border-border hover:bg-muted/50 text-foreground"
-                    )}
-                  >
-                    {q}
-                  </button>
-                ))}
+            {phase === "menopause" && (
+              <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
+                <span className="text-xs font-medium text-foreground">Quality</span>
+                <div className="flex gap-2">
+                  {(["Good", "Okay", "Poor"] as const).map((q) => (
+                    <button
+                      key={q}
+                      type="button"
+                      onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
+                      className={cn(
+                        "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
+                        sleepQuality === q
+                          ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                          : "bg-background border-border hover:bg-muted/50 text-foreground"
+                      )}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </section>
 
           {/* Notes */}
@@ -1248,6 +1737,15 @@ function SymptomLogPanel({
           </button>
         </div>
       </div>
+
+      {/* Global Symptom Customizer */}
+      {showSymptomCustomizer && (
+        <GlobalSymptomCustomizer
+          isOpen={showSymptomCustomizer}
+          onClose={() => setShowSymptomCustomizer(false)}
+          phase={phase}
+        />
+      )}
     </>
   );
 }

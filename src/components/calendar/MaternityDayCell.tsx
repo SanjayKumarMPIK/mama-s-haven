@@ -34,6 +34,13 @@ function getSeverityColor(entry: HealthLogEntry | undefined): string {
   if (!entry || entry.phase !== "maternity") return "";
   const count = getMaternitySymptomCount(entry);
   const e = entry as MaternityEntry;
+  
+  if (e.symptomSeverities) {
+    const severities = Object.values(e.symptomSeverities);
+    if (severities.includes("severe")) return "bg-rose-500";
+    if (severities.includes("moderate")) return "bg-amber-400";
+  }
+
   if (e.fatigueLevel === "High" || count >= 4) return "bg-rose-500";
   if (count >= 2) return "bg-amber-400";
   if (count >= 1) return "bg-purple-400";
@@ -48,6 +55,8 @@ interface MaternityDayCellProps {
   entry: HealthLogEntry | undefined;
   isSelected: boolean;
   isMiniView?: boolean;
+  reminderBadge?: string; // test title for reminder badge
+  appointmentBadges?: string[]; // appointment titles for appointment badges
   onClick: (dateISO: string) => void;
 }
 
@@ -57,6 +66,8 @@ export function MaternityDayCell({
   entry,
   isSelected,
   isMiniView = false,
+  reminderBadge,
+  appointmentBadges,
   onClick,
 }: MaternityDayCellProps) {
   const isFuture = dateISO > todayISO;
@@ -65,12 +76,13 @@ export function MaternityDayCell({
   const indicators = getMaternityIndicators(entry);
   const sympCount = getMaternitySymptomCount(entry);
   const sevColor = getSeverityColor(entry);
+  const hasAppointments = appointmentBadges && appointmentBadges.length > 0;
 
   if (isMiniView) {
     return (
       <button
         type="button"
-        title={isFuture ? "Future date" : hasData ? `Logged: ${sympCount} symptom(s)` : undefined}
+        title={isFuture ? "Future date" : hasData ? `Logged: ${sympCount} symptom(s)` : hasAppointments ? `${appointmentBadges?.length} appointment(s)` : undefined}
         disabled={isFuture}
         onClick={() => !isFuture && onClick(dateISO)}
         className={cn(
@@ -84,6 +96,12 @@ export function MaternityDayCell({
         )}
       >
         <span className="text-[11px] leading-none">{Number(dateISO.slice(-2))}</span>
+        {reminderBadge && (
+          <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-teal-500 ring-1 ring-white" title={reminderBadge} />
+        )}
+        {hasAppointments && (
+          <span className="absolute top-0 left-0 w-2 h-2 rounded-full bg-purple-500 ring-1 ring-white" title={`${appointmentBadges?.length} appointment(s)`} />
+        )}
         {hasData && (
           <span className={cn("absolute bottom-0.5 w-1.5 h-1.5 rounded-full", sevColor)} />
         )}
@@ -100,7 +118,7 @@ export function MaternityDayCell({
         "relative h-14 sm:h-16 w-full border-b border-r border-border/20 flex flex-col items-center justify-center transition-all text-sm font-medium",
         isFuture
           ? "text-muted-foreground/30 cursor-not-allowed bg-muted/10"
-          : hasData
+          : hasData || hasAppointments
           ? "bg-blue-50/50 hover:bg-blue-100/60 cursor-pointer"
           : "hover:bg-muted/55 cursor-pointer",
         isSelected ? "bg-blue-100 ring-2 ring-inset ring-blue-500/50" : "",
@@ -118,6 +136,16 @@ export function MaternityDayCell({
         </span>
       ) : (
         <span className={isSelected ? "text-blue-600 font-bold" : ""}>{Number(dateISO.slice(-2))}</span>
+      )}
+
+      {/* Reminder badge (tests) */}
+      {reminderBadge && (
+        <span className="absolute top-0.5 left-0.5 w-2.5 h-2.5 rounded-full bg-teal-500 ring-2 ring-white" title={reminderBadge} />
+      )}
+
+      {/* Appointment badge */}
+      {hasAppointments && (
+        <span className="absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-purple-500 ring-2 ring-white" title={`${appointmentBadges?.length} appointment(s)`} />
       )}
 
       {/* Indicator dots row */}

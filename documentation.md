@@ -61,3 +61,61 @@ Combating widespread issues like gestational anemia and low birth weight, the ap
 
 ### Driving Behavioral Shifts
 The gamified wellness tracker leverages proven behavioral psychology. By rewarding streaks and giving positive reinforcement (badges, encouraging nudges), it transforms tedious tasks—like drinking 8 glasses of water or taking daily supplements—into engaging, consistent habits, leading to healthier pregnancies and healthier babies.
+
+---
+
+## 7. Component Documentation
+
+The application's UI is divided into several feature-based domains and reusable elements. Below is a structured overview of the components present in `src/components`:
+
+### Core / Shared Components
+Found at the root of `src/components/`:
+- **AuthGate**: Manages authentication state and protects routes.
+- **Navbar / Footer / NavLink**: Application-wide layout and routing links.
+- **HealthCalendar**: A generalized calendar interface for health tracking.
+- **DayLogModal / MissedLogReminder**: Generic log entry prompts and modalities.
+- **EmergencyCard / SafetyDisclaimer**: Critical safety alerts and legal/health disclaimers.
+- **LanguageSwitcher**: Toggles the custom i18n locale.
+- **MedicineAlertPopup**: Reminders for medicine.
+- **ScrollReveal**: Scroll-based animation wrapper.
+- **SymptomQuickLogger / VoiceButton**: Quick access logging and voice-driven input components.
+
+### Calendar Phase Components (`/calendar`)
+Phase-specific calendar implementations.
+- **MaternityCalendar**: Core calendar specifically tailored for pregnancy.
+- **MaternityDayCell / MaternityDayDetails**: Deep dives into daily maternal logs.
+- **PubertyCalendar**: Calendar tailored for the puberty phase.
+- **SymptomLogModal**: Specific modal handling symptom data entry.
+
+### Dashboard & Analytics (`/dashboard`)
+Widgets and wrappers visualizing health data.
+- **ActionList / AnalyticsList / VisualAnalytics**: Render charts and tasks.
+- **DiabetesDashboardWidget**: Specialized widget for tracking gestational diabetes.
+- **HealthScoreHero / InsightsCard / StatusCard / WeightGauge**: Track wellness and show progress metrics.
+- **TimelineOverview / PrematureCareView**: Timelines of pregnancy and specific premature care logs.
+
+### Gamification (`/gamification`)
+Handles user rewards and motivation.
+- **BadgeGrid / HabitCard / LevelProgress / MotivationalNudge / StreakBadge**: Visual components detailing gamification, levels, and user habit strengths.
+
+### Guidance (`/guidance`)
+Content components aimed at educating users.
+- **MaternalGuide.tsx**, **MenstrualGuide.tsx**, **WeeklyGuidance.tsx**: Dynamic articles and advice based on phase.
+- **MaternalGuide/ (Subdirectory)**: Contains structural parts for maternal guidance (`Timeline.tsx`, `WeekDetailsCard.tsx`, `WeekNode.tsx`, `data.ts`).
+
+### Health Logs (`/healthlog`)
+Forms for users to manually submit health statuses.
+- **FamilyPlanningLogForm**, **MaternityLogForm**, **MenopauseLogForm**, **PubertyLogForm**: Distinct forms tailored to the tracking requirements of each phase.
+
+### Navigation (`/navigation`)
+Specific navigation elements.
+- **HamburgerMenu**, **NavItem**, **PhaseSelector**: Managing site-wide phase switching and mobile navigation.
+
+### Onboarding & Setup (`/onboarding`)
+- **OnboardingFlow**, **PubertyQuestions**: Initial setup and questionnaire to build the user profile.
+
+### Educational Features (`/puberty`)
+- **EducationCards**: Readily accessible cards explaining puberty-related body changes.
+
+### UI Toolkit (`/ui`)
+A comprehensive collection of 50 highly reusable base elements (like Shadcn/ui) including generic Buttons, Inputs, Dialogs, Selects, Toasts, Cards, Carousels, Charts, Forms, etc. that handle fundamental styling and accessibility.

@@ -1,48 +1,33 @@
-import { useState, useMemo } from "react";
+
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { useWellnessRecommendation } from "@/hooks/useWellnessRecommendation";
 import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
-import { useHealthLog, PubertyEntry } from "@/hooks/useHealthLog";
-import { computeDailyRecommendations } from "@/lib/dailyStateEngine";
+import { useHealthLog, PubertyEntry, FamilyPlanningEntry } from "@/hooks/useHealthLog";
+import VisualAnalytics from "@/components/dashboard/VisualAnalytics";
+import {
+  computeWellnessScore,
+  generatePriorityActions,
+  computeBodySignals,
+  generateSmartPredictions,
+  getCompletedActions,
+  toggleActionComplete,
+  type WellnessScoreResult,
+  type PriorityAction,
+  type BodySignal,
+  type SmartPrediction,
+} from "@/lib/wellnessCommandEngine";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
-import HealthScoreHero from "@/components/dashboard/HealthScoreHero";
-import VisualAnalytics from "@/components/dashboard/VisualAnalytics";
-import WeightGauge from "@/components/dashboard/WeightGauge";
-import InsightsCard from "@/components/dashboard/InsightsCard";
-import type { InsightItem } from "@/components/dashboard/InsightsCard";
 import type { Region } from "@/lib/nutritionData";
 
 import {
-  Sparkles,
-  Droplets,
-  Moon,
-  Activity,
-  AlertTriangle,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
-  ArrowRight,
-  Scale,
-  Ruler,
-  MapPin,
-  Flame,
-  CalendarCheck,
-  User,
-  TrendingUp,
-  Shield,
-  Clock,
-  Zap,
-  Sun,
-  Dumbbell,
-  UtensilsCrossed,
-  Brain,
-  BatteryCharging,
-  Check,
-  X,
-  Lightbulb,
+  Sparkles, Droplets, Moon, Activity, ArrowRight,
+  Scale, Ruler, MapPin, CalendarCheck, TrendingUp, TrendingDown,
+  Shield, Clock, Zap, Sun, Check, RotateCcw, Minus,
+  Calendar, Heart, Utensils, ChevronRight, BarChart3, Lightbulb,
 } from "lucide-react";
 
 // ─── Region config ────────────────────────────────────────────────────────────
@@ -54,7 +39,7 @@ const REGIONS: { val: Region; label: string; emoji: string }[] = [
   { val: "west", label: "West India", emoji: "🏖️" },
 ];
 
-// ─── Time-based greeting ──────────────────────────────────────────────────────
+// ─── Time helpers ─────────────────────────────────────────────────────────────
 
 function getGreeting(): string {
   const hr = new Date().getHours();
@@ -63,123 +48,55 @@ function getGreeting(): string {
   return "Good evening";
 }
 
-function getTimeOfDay(): "morning" | "afternoon" | "evening" {
+function getTimeIcon() {
   const hr = new Date().getHours();
-  if (hr < 12) return "morning";
-  if (hr < 17) return "afternoon";
-  return "evening";
+  if (hr < 12) return <Sun className="w-6 h-6 text-white" />;
+  if (hr < 17) return <Zap className="w-6 h-6 text-white" />;
+  return <Moon className="w-6 h-6 text-white" />;
 }
 
-// ─── Dashboard Helpers (from old Dashboard.tsx) ───────────────────────────────
+// ─── Animated Score Ring ──────────────────────────────────────────────────────
 
-/** Compute a health score 0‒100 from the latest puberty log.
- *  Higher = healthier (fewer symptoms, better mood). */
-function computeHealthScore(latest: PubertyEntry | undefined): number {
-  if (!latest) return 50;
-  let score = 100;
-  if (latest.symptoms.cramps) score -= 20;
-  if (latest.symptoms.fatigue) score -= 15;
-  if (latest.symptoms.moodSwings) score -= 12;
-  if (latest.symptoms.headache) score -= 15;
-  if (latest.symptoms.acne) score -= 8;
-  if (latest.symptoms.breastTenderness) score -= 10;
-  if (latest.mood === "Low") score -= 10;
-  else if (latest.mood === "Okay") score -= 5;
-  if (latest.periodStarted) score -= 5;
-  return Math.max(0, Math.min(100, score));
-}
+function ScoreRing({ score, color }: { score: number; color: string }) {
+  const [animated, setAnimated] = useState(0);
+  const radius = 54;
+  const stroke = 7;
+  const circumference = 2 * Math.PI * radius;
+  const progress = ((100 - animated) / 100) * circumference;
 
-/** Compute probability (0‒100) of a symptom occurring soon
- *  based on recent historical frequency. */
-function symptomProbability(
-  logs: { entry: PubertyEntry }[],
-  getter: (e: PubertyEntry) => boolean,
-): number {
-  if (logs.length === 0) return 30; // baseline
-  const window = logs.slice(0, 7);
-  const hits = window.filter((l) => getter(l.entry)).length;
-  const base = Math.round((hits / window.length) * 100);
-  return Math.max(10, Math.min(95, base + 10));
-}
+  const strokeColor = color === "emerald" ? "#10b981" : color === "amber" ? "#f59e0b" : color === "rose" ? "#f43f5e" : "#94a3b8";
+  const glowColor = color === "emerald" ? "rgba(16,185,129,0.3)" : color === "amber" ? "rgba(245,158,11,0.3)" : "rgba(244,63,94,0.3)";
 
-/** Generate a smart daily insight sentence. */
-function generateInsight(latest: PubertyEntry | undefined): string {
-  if (!latest) return "Log your symptoms today and get personalized insights.";
-  const parts: string[] = [];
-  if (latest.periodStarted) {
-    parts.push("Your body is in its active menstrual phase — prioritize rest and hydration.");
-  } else if (latest.symptoms.cramps || latest.symptoms.breastTenderness) {
-    parts.push("Your body may be preparing for menstruation — take it easy today.");
-  } else if (latest.mood === "Low" || latest.symptoms.moodSwings) {
-    parts.push("Your mood has been fluctuating — try mindfulness or gentle movement.");
-  } else if (latest.symptoms.fatigue) {
-    parts.push("You seem low on energy — an early bedtime could help recharge.");
-  } else {
-    parts.push("You're doing great! Keep up your balanced routine. 🌟");
-  }
-  return parts.join(" ");
-}
-
-// ─── Expandable Card ──────────────────────────────────────────────────────────
-
-function ExpandableCard({
-  id,
-  icon: Icon,
-  iconBg,
-  title,
-  summary,
-  children,
-  defaultOpen = false,
-}: {
-  id: string;
-  icon: any;
-  iconBg: string;
-  title: string;
-  summary: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    let raf: number;
+    const start = performance.now();
+    const animate = (now: number) => {
+      const t = Math.min((now - start) / 1200, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setAnimated(Math.round(eased * score));
+      if (t < 1) raf = requestAnimationFrame(animate);
+    };
+    raf = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf);
+  }, [score]);
 
   return (
-    <div
-      id={id}
-      className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden transition-all duration-300"
-    >
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-muted/30 transition-colors"
-        aria-expanded={open}
-      >
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
-          <Icon className="w-5 h-5" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs text-muted-foreground truncate">{summary}</p>
-        </div>
-        {open ? (
-          <ChevronUp className="w-4 h-4 text-muted-foreground shrink-0" />
-        ) : (
-          <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
-        )}
-      </button>
-      <div
-        className="transition-all duration-300 ease-in-out"
-        style={{
-          maxHeight: open ? "2000px" : "0px",
-          opacity: open ? 1 : 0,
-          overflow: "hidden",
-        }}
-      >
-        <div className="px-5 pb-5 pt-1">{children}</div>
+    <div className="relative w-32 h-32">
+      <svg width="128" height="128" viewBox="0 0 128 128">
+        <circle cx="64" cy="64" r={radius} fill="none" stroke="currentColor" className="text-slate-100" strokeWidth={stroke} />
+        <circle cx="64" cy="64" r={radius} fill="none" stroke={strokeColor} strokeWidth={stroke} strokeLinecap="round"
+          strokeDasharray={circumference} strokeDashoffset={progress} transform="rotate(-90 64 64)"
+          style={{ filter: `drop-shadow(0 0 6px ${glowColor})`, transition: "stroke-dashoffset 0.3s" }} />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-extrabold" style={{ color: strokeColor }}>{animated}</span>
+        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">/ 100</span>
       </div>
     </div>
   );
 }
 
-// ─── Setup Form ───────────────────────────────────────────────────────────────
+// ─── Setup Form (preserved) ───────────────────────────────────────────────────
 
 function SetupForm({
   onComplete,
@@ -197,15 +114,9 @@ function SetupForm({
     const w = parseFloat(weight);
     const h = parseFloat(height);
     const errs: typeof errors = {};
-
     if (!w || w < 20 || w > 200) errs.weight = "Enter a valid weight (20–200 kg)";
     if (!h || h < 80 || h > 250) errs.height = "Enter a valid height (80–250 cm)";
-
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
-      return;
-    }
-
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     onComplete({ weight: w, height: h, region });
   }
 
@@ -225,78 +136,46 @@ function SetupForm({
             </p>
           </div>
         </ScrollReveal>
-
         <ScrollReveal delay={100}>
           <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl border border-slate-100 p-6 sm:p-8 space-y-6">
-            {/* Weight */}
             <div className="space-y-2">
               <label htmlFor="wellness-weight" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <Scale className="w-4 h-4 text-teal-600" /> Weight (kg)
               </label>
-              <input
-                id="wellness-weight"
-                type="number"
-                inputMode="decimal"
-                placeholder="e.g., 55"
-                value={weight}
+              <input id="wellness-weight" type="number" inputMode="decimal" placeholder="e.g., 55" value={weight}
                 onChange={(e) => { setWeight(e.target.value); setErrors((p) => ({ ...p, weight: undefined })); }}
-                className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition-all"
-              />
+                className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition-all" />
               {errors.weight && <p className="text-xs text-red-500 mt-1">{errors.weight}</p>}
             </div>
-
-            {/* Height */}
             <div className="space-y-2">
               <label htmlFor="wellness-height" className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <Ruler className="w-4 h-4 text-teal-600" /> Height (cm)
               </label>
-              <input
-                id="wellness-height"
-                type="number"
-                inputMode="decimal"
-                placeholder="e.g., 160"
-                value={height}
+              <input id="wellness-height" type="number" inputMode="decimal" placeholder="e.g., 160" value={height}
                 onChange={(e) => { setHeight(e.target.value); setErrors((p) => ({ ...p, height: undefined })); }}
-                className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition-all"
-              />
+                className="w-full h-12 rounded-xl border border-slate-200 bg-slate-50 px-4 text-base font-medium focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-teal-400 transition-all" />
               {errors.height && <p className="text-xs text-red-500 mt-1">{errors.height}</p>}
             </div>
-
-            {/* Region */}
             <div className="space-y-2">
               <p className="text-sm font-semibold text-slate-700 flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-teal-600" /> Your Region
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {REGIONS.map((r) => (
-                  <button
-                    key={r.val}
-                    type="button"
-                    onClick={() => setRegion(r.val)}
+                  <button key={r.val} type="button" onClick={() => setRegion(r.val)}
                     className={`flex items-center gap-2 rounded-xl px-3 py-3 text-sm font-medium transition-all active:scale-[0.97] ${
-                      region === r.val
-                        ? "bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-md shadow-teal-200/40"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
+                      region === r.val ? "bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}>
                     <span className="text-base">{r.emoji}</span> {r.label}
                   </button>
                 ))}
               </div>
             </div>
-
-            {/* Submit */}
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="w-full h-12 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-semibold text-base shadow-lg shadow-teal-200/50 hover:shadow-xl hover:shadow-teal-300/50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
+            <button type="button" onClick={handleSubmit}
+              className="w-full h-12 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-semibold text-base shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
               Get My Wellness Plan <ArrowRight className="w-5 h-5" />
             </button>
-
-            <p className="text-[11px] text-slate-400 text-center leading-snug">
-              Your data stays on your device. We don't send anything to a server.
-            </p>
+            <p className="text-[11px] text-slate-400 text-center">Your data stays on your device.</p>
           </div>
         </ScrollReveal>
       </div>
@@ -304,422 +183,383 @@ function SetupForm({
   );
 }
 
-// ─── Water Ring Visual ────────────────────────────────────────────────────────
-
-function WaterRing({ liters }: { liters: number }) {
-  const pct = Math.min(100, (liters / 3.5) * 100);
-  return (
-    <div className="relative w-28 h-28 mx-auto">
-      <svg className="w-28 h-28 -rotate-90" viewBox="0 0 36 36">
-        <path
-          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          fill="none"
-          stroke="hsl(190, 30%, 90%)"
-          strokeWidth="3"
-        />
-        <path
-          d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          fill="none"
-          stroke="url(#waterGradient)"
-          strokeWidth="3"
-          strokeDasharray={`${pct}, 100`}
-          strokeLinecap="round"
-          className="transition-all duration-700"
-        />
-        <defs>
-          <linearGradient id="waterGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(190, 80%, 50%)" />
-            <stop offset="100%" stopColor="hsl(210, 80%, 55%)" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <Droplets className="w-5 h-5 text-cyan-500 mb-0.5" />
-        <span className="text-lg font-bold text-foreground">{liters}L</span>
-      </div>
-    </div>
-  );
-}
-
-// ─── Profile Summary Strip ────────────────────────────────────────────────────
-
-function ProfileStrip({
-  age,
-  weight,
-  height,
-  region,
-  loggedDays,
-}: {
-  age: number;
-  weight: number;
-  height: number;
-  region: Region;
-  loggedDays: number;
-}) {
-  const regionLabel = REGIONS.find((r) => r.val === region)?.label ?? region;
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted/60 rounded-full px-2.5 py-1">
-        <User className="w-3 h-3" /> {age} yrs
-      </span>
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted/60 rounded-full px-2.5 py-1">
-        <Scale className="w-3 h-3" /> {weight} kg
-      </span>
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted/60 rounded-full px-2.5 py-1">
-        <Ruler className="w-3 h-3" /> {height} cm
-      </span>
-      <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-muted/60 rounded-full px-2.5 py-1">
-        <MapPin className="w-3 h-3" /> {regionLabel}
-      </span>
-      {loggedDays > 0 && (
-        <span className="inline-flex items-center gap-1 text-[11px] font-medium bg-primary/10 text-primary rounded-full px-2.5 py-1">
-          <TrendingUp className="w-3 h-3" /> {loggedDays} day{loggedDays > 1 ? "s" : ""} logged
-        </span>
-      )}
-    </div>
-  );
-}
-
-// ─── Main Unified Wellness Tracker ────────────────────────────────────────────
+// ─── Main Wellness Command Center ─────────────────────────────────────────────
 
 export default function WellnessDashboard() {
   const { simpleMode } = useLanguage();
   const { phase, phaseEmoji, phaseName, phaseColor } = usePhase();
   const { user, fullProfile } = useAuth();
-  const { logs } = useHealthLog();
+  const { getPhaseLogs } = useHealthLog();
+  const logs = useMemo(() => getPhaseLogs(phase), [getPhaseLogs, phase]);
   const {
-    profile,
-    recommendation,
-    isProfileComplete,
-    saveProfile,
-    clearProfile,
-    age,
+    profile, recommendation, isProfileComplete, saveProfile, clearProfile, age,
   } = useWellnessRecommendation();
 
-  // Always compute these (hooks must not be conditional)
   const userName = user?.name || fullProfile?.basic?.fullName || "";
   const firstName = userName.split(" ")[0] || "";
   const greeting = getGreeting();
-  const timeOfDay = getTimeOfDay();
 
-  // Count logged days in last 7 days
-  const recentLogCount = useMemo(() => {
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const todayISO = now.toISOString().slice(0, 10);
-    return Object.keys(logs).filter((d) => d >= sevenDaysAgo && d <= todayISO).length;
-  }, [logs]);
-
-  // ── Puberty Logs (from old Dashboard) ──────────────────────
+  // ── Normalized logs for analytics charts ────────────────
   const pubertyLogs = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const todayISO = new Date().toISOString().slice(0, 10);
     return Object.entries(logs)
       .filter(([date, entry]) => {
-        if (entry.phase !== "puberty") return false;
-        if (date > today) return false;
+        if (entry.phase !== "puberty" && entry.phase !== "family-planning") return false;
+        if (date > todayISO) return false;
         if ((entry as any)._periodAutoMarked) return false;
-        const e = entry as PubertyEntry;
-        const hasSymptom = Object.values(e.symptoms).some(Boolean);
-        const hasMood = !!e.mood;
-        const hasNotes = !!(e as any).notes;
-        return hasSymptom || hasMood || hasNotes || e.periodStarted;
+        if (entry.phase === "puberty") {
+          const e = entry as PubertyEntry;
+          return Object.values(e.symptoms).some(Boolean) || !!e.mood || e.periodStarted;
+        }
+        if (entry.phase === "family-planning") {
+          const e = entry as FamilyPlanningEntry;
+          return Object.values(e.symptoms).some(Boolean) || !!e.mood;
+        }
+        return false;
       })
-      .map(([date, entry]) => ({ date, entry: entry as PubertyEntry }))
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      .map(([date, entry]) => {
+        if (entry.phase === "family-planning") {
+          const fp = entry as FamilyPlanningEntry;
+          const norm: PubertyEntry = {
+            phase: "puberty", periodStarted: false, periodEnded: false,
+            flowIntensity: null,
+            symptoms: { cramps: fp.symptoms.ovulationPain, fatigue: fp.symptoms.fatigue, moodSwings: fp.symptoms.moodChanges, headache: fp.symptoms.stress, acne: false, breastTenderness: fp.symptoms.sleepIssues },
+            mood: fp.mood, sleepHours: fp.sleepHours ?? null, sleepQuality: fp.sleepQuality ?? null, notes: fp.notes,
+          };
+          return { date, entry: norm };
+        }
+        return { date, entry: entry as PubertyEntry };
+      })
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [logs]);
 
-  const latestLog = pubertyLogs[0]?.entry;
+  // ── Chart-driven actionable insights ────────────────────
+  const chartInsights = useMemo(() => {
+    const items: { title: string; action: string; tone: "positive" | "warning" | "neutral" }[] = [];
+    if (pubertyLogs.length < 2) return items;
+    const recent = pubertyLogs.slice(0, 7);
+    const moodLowDays = recent.filter(l => l.entry.mood === "Low").length;
+    const fatigueDays = recent.filter(l => l.entry.symptoms.fatigue).length;
+    const highSymDays = recent.filter(l => Object.values(l.entry.symptoms).filter(Boolean).length >= 3).length;
+    const goodDays = recent.filter(l => l.entry.mood === "Good" && !l.entry.symptoms.fatigue).length;
 
-  // ── Health Score Hero data ─────────────────────────────────
-  const heroData = useMemo(() => ({
-    score: computeHealthScore(latestLog),
-    phase: latestLog?.periodStarted ? "Menstruation" : "Follicular / Luteal",
-    dailyInsight: generateInsight(latestLog),
-    predictions: {
-      cramps: symptomProbability(pubertyLogs, (e) => e.symptoms.cramps),
-      moodSwings: symptomProbability(pubertyLogs, (e) => e.symptoms.moodSwings),
-      fatigue: symptomProbability(pubertyLogs, (e) => e.symptoms.fatigue),
-    },
-  }), [pubertyLogs, latestLog]);
+    if (moodLowDays >= 3) items.push({ title: `Low mood detected (${moodLowDays} days)`, action: "Try adding omega-3 rich foods to your meals and getting 15 minutes of direct sunlight today.", tone: "warning" });
+    if (fatigueDays >= 3) items.push({ title: `High fatigue (${fatigueDays} times)`, action: "Prioritize iron-rich meals like spinach or lentils, and aim for a strict 7+ hours of sleep tonight.", tone: "warning" });
+    if (highSymDays >= 2) items.push({ title: `Heavy symptoms (${highSymDays} days)`, action: "Your body is working hard. Consider taking a rest day, stretching, and drinking warm ginger tea.", tone: "warning" });
+    if (goodDays >= 4) items.push({ title: "Excellent wellness streak! 🌟", action: "Your current routine is working perfectly. You had 4+ great days this week. Keep up the great work!", tone: "positive" });
+    if (items.length === 0 && recent.length >= 3) items.push({ title: "Patterns looking steady", action: "Continue logging your daily symptoms to refine these insights.", tone: "neutral" });
+    return items.slice(0, 2);
+  }, [pubertyLogs]);
 
-  // Yesterday's sleep data
-  const yesterdaySleep = useMemo(() => {
-    const yest = new Date();
-    yest.setDate(yest.getDate() - 1);
-    const iso = yest.toISOString().slice(0, 10);
-    const entry = logs[iso] as any;
-    if (entry && entry.sleepHours != null) {
-      return { hours: Number(entry.sleepHours), quality: entry.sleepQuality };
-    }
-    return null;
-  }, [logs]);
+  // ── Engine computations ─────────────────────────────────
+  const wellnessScore = useMemo(() => computeWellnessScore(logs, phase), [logs, phase]);
+  const priorityActions = useMemo(() => generatePriorityActions(logs, phase, profile?.weight ?? null), [logs, phase, profile]);
+  const bodySignals = useMemo(() => computeBodySignals(logs, phase), [logs, phase]);
+  const predictions = useMemo(() => generateSmartPredictions(logs, phase), [logs, phase]);
 
-  const sleepCorrelation = useMemo(() => {
-    if (!yesterdaySleep || !recommendation) return null;
-    const poorSleep = yesterdaySleep.hours < 6 || yesterdaySleep.quality === "Poor";
-    const goodSleep = yesterdaySleep.hours >= 7;
-    const syms = recommendation.dominantSymptoms.map(s => s.toLowerCase());
-    const hasCramps = syms.some(s => s.includes("cramp"));
-    const hasMood = syms.some(s => s.includes("mood"));
-
-    if (poorSleep && hasCramps) return "You experience stronger cramps when sleep is below 6 hours.";
-    if (poorSleep && hasMood) return "Mood drops on days after poor sleep.";
-    if (poorSleep) return "Your body needs more recovery time to reduce symptom severity.";
-    if (goodSleep) return "Energy improves when sleep exceeds 7 hours. Keep it up!";
-    return null;
-  }, [yesterdaySleep, recommendation]);
-
-  // Sleep insights
-  const sleepInsights = useMemo(() => {
-    if (!yesterdaySleep) return null;
-    const poorSleep = yesterdaySleep.hours < 6 || yesterdaySleep.quality === "Poor";
-    const goodSleep = yesterdaySleep.hours >= 7 && (yesterdaySleep.quality === "Good" || !yesterdaySleep.quality);
-    if (poorSleep) return `Low energy (${yesterdaySleep.hours}h sleep last night)`;
-    if (goodSleep) return "Great energy (well rested)";
-    return null;
-  }, [yesterdaySleep]);
-
-  // Daily State Engine
-  const dailyRec = useMemo(() => {
-    return computeDailyRecommendations(logs, phase, recommendation?.cyclePhase ?? null);
-  }, [logs, phase, recommendation]);
-
-  // ── Smart Insights ─────────────────────────────────────────
-  const smartInsights = useMemo((): InsightItem[] => {
-    const items: InsightItem[] = [];
-
-    // BMI insight
-    if (recommendation) {
-      const cat = recommendation.bmi.category;
-      if (cat === "Normal") {
-        items.push({ text: "Your weight is in the optimal range — keep it up!", icon: "scale", tone: "positive" });
-      } else if (cat === "Underweight") {
-        items.push({ text: "Your BMI is below normal — focus on nutrient-dense meals.", icon: "scale", tone: "warning" });
-      } else {
-        items.push({ text: "Your BMI is above normal — consider balanced meals and activity.", icon: "scale", tone: "warning" });
-      }
-    }
-
-    // Energy/Sleep insight
-    if (yesterdaySleep) {
-      const poorSleep = yesterdaySleep.hours < 6 || yesterdaySleep.quality === "Poor";
-      if (poorSleep) {
-        items.push({ text: "You may experience low energy today due to poor sleep.", icon: "energy", tone: "warning" });
-      } else if (yesterdaySleep.hours >= 7) {
-        items.push({ text: "Well rested! You should have good energy today.", icon: "energy", tone: "positive" });
-      }
-    } else if (latestLog?.symptoms?.fatigue) {
-      items.push({ text: "You may experience low energy today — take it easy.", icon: "energy", tone: "warning" });
-    }
-
-    // Mood / symptom insight
-    if (latestLog) {
-      if (latestLog.periodStarted) {
-        items.push({ text: "You're in your active cycle — prioritize rest and hydration.", icon: "mood", tone: "neutral" });
-      } else if (latestLog.mood === "Good" && !latestLog.symptoms.moodSwings) {
-        items.push({ text: "Your mood has been great — keep the positive streak!", icon: "mood", tone: "positive" });
-      } else if (latestLog.symptoms.moodSwings || latestLog.mood === "Low") {
-        items.push({ text: "Mood fluctuations detected — try mindfulness or gentle movement.", icon: "mood", tone: "warning" });
-      }
-    }
-
-    return items.slice(0, 3);
-  }, [recommendation, yesterdaySleep, latestLog]);
+  // ── Action completion state ─────────────────────────────
+  const [completionStore, setCompletionStore] = useState(() => getCompletedActions());
+  const handleToggle = useCallback((id: string) => {
+    setCompletionStore(toggleActionComplete(id));
+  }, []);
 
   // --- Setup phase ---
   if (!isProfileComplete || !recommendation) {
-    return (
-      <SetupForm
-        userName={userName}
-        onComplete={(data) =>
-          saveProfile({ weight: data.weight, height: data.height, region: data.region })
-        }
-      />
-    );
+    return <SetupForm userName={userName} onComplete={(data) => saveProfile({ weight: data.weight, height: data.height, region: data.region })} />;
   }
 
-  const rec = recommendation;
+  const trendIcon = (t: string) => {
+    if (t === "up") return <TrendingUp className="w-3.5 h-3.5" />;
+    if (t === "down") return <TrendingDown className="w-3.5 h-3.5" />;
+    return <Minus className="w-3.5 h-3.5" />;
+  };
 
-  // Personalized insight line
-  let insightLine = rec.dominantSymptoms.length > 0
-    ? `Based on your recent ${rec.dominantSymptoms.join(", ").toLowerCase()} symptoms`
-    : rec.cyclePhaseLabel
-    ? `Tailored for your ${rec.cyclePhaseLabel.toLowerCase()}`
-    : `Tailored for your ${phaseName.toLowerCase()} journey`;
-    
-  if (sleepInsights && sleepInsights.includes("Low energy")) {
-    insightLine = sleepInsights;
-  }
+  const signalColor = (s: string) => {
+    if (s === "good") return { bg: "bg-emerald-50", border: "border-emerald-200", text: "text-emerald-600", bar: "bg-emerald-500" };
+    if (s === "moderate") return { bg: "bg-amber-50", border: "border-amber-200", text: "text-amber-600", bar: "bg-amber-500" };
+    return { bg: "bg-rose-50", border: "border-rose-200", text: "text-rose-600", bar: "bg-rose-500" };
+  };
+
+  const predBarColor = (p: number) => p >= 60 ? "bg-rose-500" : p >= 35 ? "bg-amber-400" : "bg-emerald-400";
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
-      {/* ── Personalized Header ──────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────── */}
       <div className="bg-gradient-to-br from-teal-50 via-emerald-50/30 to-white border-b border-border">
-        <div className="container py-6">
+        <div className="container py-5">
           <ScrollReveal>
-            <div className="flex flex-col gap-4">
-              {/* Greeting */}
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-200/40">
-                    {timeOfDay === "morning" ? (
-                      <Sun className="w-6 h-6 text-white" />
-                    ) : timeOfDay === "afternoon" ? (
-                      <Zap className="w-6 h-6 text-white" />
-                    ) : (
-                      <Moon className="w-6 h-6 text-white" />
-                    )}
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-foreground" id="wellness-title">
-                      {greeting}, {firstName || "there"}! ✨
-                    </h1>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {insightLine}
-                    </p>
-                  </div>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-200/40">
+                  {getTimeIcon()}
                 </div>
-                <button
-                  type="button"
-                  onClick={clearProfile}
-                  title="Reset profile"
-                  className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted/60 border border-border/50 transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-muted-foreground" />
-                </button>
+                <div>
+                  <h1 className="text-xl font-bold" id="wellness-title">{greeting}, {firstName || "there"}! ✨</h1>
+                  <p className="text-xs text-muted-foreground mt-0.5">Your Wellness Command Center</p>
+                </div>
               </div>
-
-              {/* Status badges */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full border px-2.5 py-0.5 ${phaseColor}`}>
-                  {phaseEmoji} {phaseName}
-                </span>
-                {rec.cyclePhaseLabel && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full border border-purple-200 bg-purple-50 text-purple-700 px-2.5 py-0.5">
-                    🔄 {rec.cyclePhaseLabel}
-                  </span>
-                )}
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium rounded-full bg-muted/60 px-2.5 py-0.5 text-muted-foreground">
-                  <Clock className="w-3 h-3" /> {rec.dataFreshness}
-                </span>
-              </div>
-
-              {/* Profile data strip */}
-              <ProfileStrip
-                age={age}
-                weight={profile!.weight}
-                height={profile!.height}
-                region={profile!.region}
-                loggedDays={recentLogCount}
-              />
+            </div>
+            <div className="flex items-center gap-2 flex-wrap mt-3">
+              <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold rounded-full border px-2.5 py-0.5 ${phaseColor}`}>{phaseEmoji} {phaseName}</span>
+              {recommendation.cyclePhaseLabel && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full border border-purple-200 bg-purple-50 text-purple-700 px-2.5 py-0.5">🔄 {recommendation.cyclePhaseLabel}</span>
+              )}
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium rounded-full bg-muted/60 px-2.5 py-0.5 text-muted-foreground">
+                <Clock className="w-3 h-3" /> {recommendation.dataFreshness}
+              </span>
             </div>
           </ScrollReveal>
         </div>
       </div>
 
-      <div className="container py-6 space-y-5">
-        {/* ── 1. Health Score Hero / Empty State ────────────────────────── */}
-        {pubertyLogs.length > 0 ? (
-          <ScrollReveal>
-            <HealthScoreHero data={heroData} />
-          </ScrollReveal>
-        ) : (
-          <ScrollReveal>
-            <div className="rounded-3xl border border-dashed border-teal-200 bg-gradient-to-b from-teal-50/50 to-white p-8 text-center shadow-sm">
-              <div className="w-16 h-16 rounded-2xl bg-teal-100 flex items-center justify-center mx-auto mb-4 drop-shadow-sm">
-                <CalendarCheck className="w-8 h-8 text-teal-600" />
-              </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-2">Start Your Tracking Journey</h3>
-              <p className="text-sm text-slate-500 mb-6 max-w-xs mx-auto leading-relaxed">
-                Log your symptoms today to unlock your personalized health score, intelligent insights, and visual analytics.
-              </p>
-              <Link
-                to="/calendar"
-                className="inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-2xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold text-sm shadow-lg shadow-teal-200/50 hover:shadow-xl hover:shadow-teal-300/50 transition-all active:scale-[0.98]"
-              >
-                Log Today's Symptoms <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </ScrollReveal>
-        )}
-
-        {/* ── 2. Smart Insights ────────────────────────────────────────────── */}
-        {smartInsights.length > 0 && (
-          <ScrollReveal delay={40}>
-            <InsightsCard insights={smartInsights} />
-          </ScrollReveal>
-        )}
-
-        {/* ── 3. BMI Weight Gauge ──────────────────────────────────────────── */}
-        <ScrollReveal delay={60}>
-          <WeightGauge
-            bmi={rec.bmi.value}
-            weight={profile!.weight}
-            height={profile!.height}
-          />
-        </ScrollReveal>
-
-        {/* ── 4. Visual Analytics (UNCHANGED from Dashboard) ───────────────── */}
-        {pubertyLogs.length > 0 && (
-          <ScrollReveal delay={80}>
-            <VisualAnalytics pubertyLogs={pubertyLogs} />
-          </ScrollReveal>
-        )}
-
-        {/* ── 5. Water Intake ───────────────────────────────────────────────── */}
-        <ScrollReveal delay={140}>
-          <ExpandableCard
-            id="wellness-water"
-            icon={Droplets}
-            iconBg="bg-cyan-100 text-cyan-600"
-            title="Water Intake"
-            summary={`${rec.waterIntake.liters}L recommended based on your weight`}
-            defaultOpen
-          >
-            <div className="flex flex-col items-center py-2">
-              <WaterRing liters={rec.waterIntake.liters} />
-              <p className="text-sm font-semibold text-foreground mt-3">{rec.waterIntake.display}</p>
-              <p className="text-xs text-muted-foreground mt-1 text-center max-w-xs">
-                Based on your weight of {profile!.weight}kg.
-                Carry a water bottle and sip throughout the day.
-              </p>
-            </div>
-          </ExpandableCard>
-        </ScrollReveal>
-
-        {/* ── 6. Calendar CTA ──────────────────────────────────────────────── */}
-        <ScrollReveal delay={180}>
-          <Link
-            to="/calendar"
-            className="block rounded-2xl border border-border bg-card p-4 hover:shadow-md transition-shadow group"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <CalendarCheck className="w-5 h-5 text-primary" />
+      <div className="container py-5 space-y-5">
+        {/* ── 1. Daily Wellness Status ───────────────────────────── */}
+        <ScrollReveal>
+          <div className={`rounded-3xl p-6 border-2 relative overflow-hidden ${
+            wellnessScore.color === "emerald" ? "border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50/50"
+            : wellnessScore.color === "amber" ? "border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50/50"
+            : wellnessScore.color === "rose" ? "border-rose-200 bg-gradient-to-br from-rose-50 to-pink-50/50"
+            : "border-border bg-card"
+          }`}>
+            <div className="absolute -top-16 -right-16 w-40 h-40 rounded-full bg-white/20 blur-3xl pointer-events-none" />
+            <div className="flex items-center gap-5">
+              <ScoreRing score={wellnessScore.score} color={wellnessScore.color} />
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Wellness Score</p>
+                <h2 className="text-lg font-bold">{wellnessScore.label}</h2>
+                <p className="text-sm text-foreground/70 mt-1.5 leading-relaxed">{wellnessScore.insight}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-background/60 px-2 py-0.5 rounded-full">
+                    <Sparkles className="w-3 h-3 inline mr-1" />AI Insight
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">{wellnessScore.loggedDays}/{wellnessScore.totalDays} days logged</span>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">Log Today's Symptoms</p>
-                  <p className="text-xs text-muted-foreground">
-                    {recentLogCount > 0
-                      ? `${recentLogCount} log${recentLogCount > 1 ? "s" : ""} this week — keep the streak going!`
-                      : "Tap to open Calendar & update your daily health log"}
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ── 2. Priority Actions ────────────────────────────────── */}
+        <ScrollReveal delay={10}>
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-md">
+                  <Zap className="w-4 h-4 text-white" />
+                </div>
+                <h2 className="text-sm font-bold uppercase tracking-wider">Priority Actions</h2>
+              </div>
+              {completionStore.streak > 0 && (
+                <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
+                  🔥 {completionStore.streak}-day streak
+                </span>
+              )}
+            </div>
+            <div className="space-y-3">
+              {priorityActions.map((action) => {
+                const done = completionStore.completed.includes(action.id);
+                return (
+                  <div key={action.id} className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all ${
+                    done ? "bg-emerald-50/50 border-emerald-200" : "bg-muted/20 border-border/60 hover:border-border"
+                  }`}>
+                    <button type="button" onClick={() => handleToggle(action.id)}
+                      className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                        done ? "bg-emerald-500 border-emerald-500 text-white" : "border-border hover:border-primary"
+                      }`}>
+                      {done && <Check className="w-3.5 h-3.5" />}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{action.icon}</span>
+                        <p className={`text-sm font-semibold ${done ? "line-through text-muted-foreground" : ""}`}>{action.text}</p>
+                        {action.impact === "high" && !done && (
+                          <span className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded bg-rose-100 text-rose-600">High</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{action.detail}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ── 3. Body Signals Grid ───────────────────────────────── */}
+        <ScrollReveal delay={20}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-md">
+              <Activity className="w-4 h-4 text-white" />
+            </div>
+            <h2 className="text-sm font-bold uppercase tracking-wider">Body Signals</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {bodySignals.map((signal) => {
+              const c = signalColor(signal.status);
+              const statusLabel = signal.status === "good" ? "Optimal" : signal.status === "moderate" ? "Fair" : "Needs Attention";
+              const trendLabel = signal.trend === "up" ? "Trending Up" : signal.trend === "down" ? "Trending Down" : "Stable Pattern";
+
+              return (
+                <Link key={signal.id} to="/calendar"
+                  className={`rounded-2xl border p-4 ${c.bg} ${c.border} hover:shadow-md transition-all active:scale-[0.98] group flex flex-col justify-between`}>
+                  
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-white/60 flex items-center justify-center text-2xl shadow-sm group-hover:scale-110 transition-transform">
+                        {signal.emoji}
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider">{signal.label}</h3>
+                        <p className={`text-[10px] font-extrabold uppercase tracking-widest ${c.text}`}>
+                          {statusLabel}
+                        </p>
+                      </div>
+                    </div>
+                    <div className={`flex items-center justify-center w-7 h-7 rounded-full bg-white/60 ${c.text} shadow-sm`}>
+                      {trendIcon(signal.trend)}
+                    </div>
+                  </div>
+
+                  <p className="text-xs font-medium text-slate-700 leading-relaxed mb-4">
+                    {signal.detail}
                   </p>
-                </div>
-              </div>
-              <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
-            </div>
-          </Link>
+
+                  <div className="flex items-center justify-between mt-auto">
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                      {trendLabel}
+                    </span>
+                    <div className="flex gap-1">
+                      <div className={`w-3 h-1.5 rounded-full ${c.bar}`} />
+                      <div className={`w-3 h-1.5 rounded-full ${signal.status === "good" || signal.status === "moderate" ? c.bar : "bg-black/10"}`} />
+                      <div className={`w-3 h-1.5 rounded-full ${signal.status === "good" ? c.bar : "bg-black/10"}`} />
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         </ScrollReveal>
 
-        {/* ── 12. Privacy footer ─────────────────────────────────────────────── */}
-        <ScrollReveal delay={200}>
+        {/* ── 3b. Visual Analytics Charts ────────────────────────── */}
+        {pubertyLogs.length >= 2 && (
+          <ScrollReveal delay={25}>
+            <VisualAnalytics pubertyLogs={pubertyLogs} />
+
+            {/* Chart-driven actionable insights */}
+            {chartInsights.length > 0 && (
+              <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {chartInsights.map((insight, i) => (
+                  <div key={i} className={`flex flex-col p-5 rounded-3xl border transition-all hover:shadow-lg ${
+                    insight.tone === "warning" ? "bg-amber-50/50 border-amber-200 shadow-[0_8px_24px_rgba(251,191,36,0.12)]" : 
+                    insight.tone === "positive" ? "bg-emerald-50/50 border-emerald-200 shadow-[0_8px_24px_rgba(52,211,153,0.12)]" : 
+                    "bg-blue-50/50 border-blue-200 shadow-[0_8px_24px_rgba(96,165,250,0.12)]"
+                  }`}>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`flex items-center justify-center w-10 h-10 rounded-2xl shadow-sm ${
+                        insight.tone === "warning" ? "bg-amber-100 text-amber-600" : 
+                        insight.tone === "positive" ? "bg-emerald-100 text-emerald-600" : 
+                        "bg-blue-100 text-blue-600"
+                      }`}>
+                        <Lightbulb className="w-5 h-5" />
+                      </div>
+                      <h4 className={`text-sm font-bold ${
+                        insight.tone === "warning" ? "text-amber-950" : 
+                        insight.tone === "positive" ? "text-emerald-950" : 
+                        "text-blue-950"
+                      }`}>
+                        {insight.title}
+                      </h4>
+                    </div>
+                    <p className={`text-[13px] font-medium leading-relaxed ${
+                      insight.tone === "warning" ? "text-amber-800" : 
+                      insight.tone === "positive" ? "text-emerald-800" : 
+                      "text-blue-800"
+                    }`}>
+                      {insight.action}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollReveal>
+        )}
+
+        {/* ── 4. Smart Predictions ───────────────────────────────── */}
+        <ScrollReveal delay={30}>
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-md">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <h2 className="text-sm font-bold uppercase tracking-wider">Smart Predictions</h2>
+              <span className="ml-auto text-[10px] text-muted-foreground">Next 1-3 days</span>
+            </div>
+            <div className="space-y-4">
+              {predictions.map((pred) => (
+                <div key={pred.id} className="flex items-start gap-4 p-5 rounded-2xl bg-white border border-border/60 shadow-sm hover:shadow-md transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-muted/30 flex items-center justify-center shrink-0">
+                    <span className="text-2xl">{pred.emoji}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <p className="text-base font-bold text-slate-800">{pred.symptom}</p>
+                        {pred.probability > 0 && (
+                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${
+                            pred.probability >= 60 ? "bg-rose-100 text-rose-700" : 
+                            pred.probability >= 35 ? "bg-amber-100 text-amber-700" : 
+                            "bg-emerald-100 text-emerald-700"
+                          }`}>
+                            <Clock className="w-3 h-3" /> Likely {pred.timeframe}
+                          </span>
+                        )}
+                      </div>
+                      {pred.probability > 0 && (
+                        <span className={`text-sm font-black ${pred.probability >= 60 ? "text-rose-600" : pred.probability >= 35 ? "text-amber-600" : "text-emerald-600"}`}>
+                          {pred.probability}%
+                        </span>
+                      )}
+                    </div>
+                    {pred.probability > 0 && (
+                      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2.5">
+                        <div className={`h-full rounded-full ${predBarColor(pred.probability)}`} style={{ width: `${pred.probability}%` }} />
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center">
+                      <span className="text-xs font-semibold text-slate-500">
+                        {pred.reason}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* ── 5. Quick Actions ──────────────────────────────────── */}
+        <ScrollReveal delay={40}>
+          <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+            {[
+              { to: "/calendar", icon: <CalendarCheck className="w-5 h-5" />, label: "Log Symptoms", color: "from-teal-500 to-emerald-500" },
+              { to: "/nutrition", icon: <Utensils className="w-5 h-5" />, label: "Nutrition", color: "from-violet-500 to-purple-500" },
+              { to: "/calendar", icon: <Heart className="w-5 h-5" />, label: "Track Cycle", color: "from-pink-500 to-rose-500" },
+              { to: "/profile", icon: <Scale className="w-5 h-5" />, label: "Update Weight", color: "from-blue-500 to-cyan-500" },
+            ].map((btn) => (
+              <Link key={btn.label} to={btn.to}
+                className={`flex-none flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r ${btn.color} text-white text-sm font-semibold shadow-md hover:shadow-lg active:scale-[0.97] transition-all`}>
+                {btn.icon} {btn.label}
+              </Link>
+            ))}
+          </div>
+        </ScrollReveal>
+
+        {/* ── Privacy Footer ────────────────────────────────────── */}
+        <ScrollReveal delay={50}>
           <div className="rounded-2xl border border-border bg-muted/30 p-4 flex items-center gap-3">
             <Shield className="w-5 h-5 text-muted-foreground shrink-0" />
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              All your health data is stored locally on your device. Nothing is sent to any server.
-              These recommendations are for guidance only — always consult your doctor for medical advice.
+              All health data stays on your device. These recommendations are for guidance only — always consult your doctor.
             </p>
           </div>
         </ScrollReveal>

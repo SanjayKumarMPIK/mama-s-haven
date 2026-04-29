@@ -93,6 +93,7 @@ export interface FamilyPlanningEntry {
   mood: MoodType | null;
   sleepHours: number | null;
   sleepQuality: SleepQuality | null;
+  hydrationGlasses?: number | null;
   notes?: string;
   /** Single-day irregular entry — does NOT trigger multi-day expansion or predictions */
   _irregular?: boolean;
@@ -742,6 +743,7 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
             mood: null,
             sleepHours: null,
             sleepQuality: null,
+            hydrationGlasses: null,
           };
         }
         return {

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
 import { useNutritionIntelligence } from "@/hooks/useNutritionIntelligence";
@@ -12,6 +12,7 @@ import DeficiencySummaryInline from "@/components/nutrition/DeficiencySummaryInl
 import FitnessCalculatorInline from "@/components/nutrition/FitnessCalculatorInline";
 import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
 import AffirmationBanner from "@/components/nutrition/AffirmationBanner";
+import AccordionSection from "@/components/nutrition/AccordionSection";
 import { Link } from "react-router-dom";
 import {
   Apple, Calendar, ChevronRight, ArrowRight, Activity,
@@ -79,6 +80,23 @@ export default function NutritionGuide() {
   const { result, analyzeSymptom, searchSymptoms, suggestedSymptoms } = useNutritionIntelligence();
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
   const [selectedAnalysis, setSelectedAnalysis] = useState<SymptomAnalysisResult | null>(null);
+  const isFP = phase === "family-planning";
+
+  // ── Accordion state (family-planning only) ──
+  const priorityNutrients = useMemo(
+    () => result.nutrientNeeds.filter(n => n.isPriority),
+    [result.nutrientNeeds],
+  );
+  const otherNutrients = useMemo(
+    () => result.nutrientNeeds.filter(n => !n.isPriority),
+    [result.nutrientNeeds],
+  );
+  const defaultSection = priorityNutrients.length > 0 ? "priority" : "symptoms";
+  const [activeAccordion, setActiveAccordion] = useState<string | null>(defaultSection);
+  const toggleAccordion = useCallback(
+    (key: string) => setActiveAccordion(prev => (prev === key ? null : key)),
+    [],
+  );
 
   const handleSelectSymptom = useCallback((symptomId: string) => {
     const analysis = analyzeSymptom(symptomId);
@@ -178,68 +196,182 @@ export default function NutritionGuide() {
               />
             </ScrollReveal>
 
-            {/* ─── Detected Symptoms ───────────────────────────── */}
-            {result.detectedSymptoms.length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Detected Symptoms" emoji="🔍" />
-                <div className="flex flex-wrap gap-2">
-                  {result.detectedSymptoms.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => handleSelectSymptom(s.id)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border ${accent.border} ${accent.bg} text-sm font-medium hover:shadow-md transition-all active:scale-95 cursor-pointer`}
-                    >
-                      <span>{s.emoji}</span>
-                      <span>{s.label}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${accent.badge}`}>
-                        {s.count}x
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
+            {/* ════════════════════════════════════════════════════
+                FAMILY-PLANNING: Accordion Layout
+               ════════════════════════════════════════════════════ */}
+            {isFP ? (
+              <div className="space-y-3">
+                {/* 1 ── Detected Symptoms ─────────────────────── */}
+                {result.detectedSymptoms.length > 0 && (
+                  <AccordionSection
+                    title="Detected Symptoms"
+                    emoji="🔍"
+                    count={result.detectedSymptoms.length}
+                    countLabel="found"
+                    isOpen={activeAccordion === "symptoms"}
+                    onToggle={() => toggleAccordion("symptoms")}
+                    accentGradient={accent.gradient}
+                    accentBorder={accent.border}
+                  >
+                    <div className="flex flex-wrap gap-2">
+                      {result.detectedSymptoms.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => handleSelectSymptom(s.id)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border ${accent.border} ${accent.bg} text-sm font-medium hover:shadow-md transition-all active:scale-95 cursor-pointer`}
+                        >
+                          <span>{s.emoji}</span>
+                          <span>{s.label}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${accent.badge}`}>
+                            {s.count}x
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </AccordionSection>
+                )}
 
-            {/* ─── Priority Nutrients ──────────────────────────── */}
-            {result.nutrientNeeds.filter(n => n.isPriority).length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Priority Nutrients" emoji="⚡" />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {result.nutrientNeeds.filter(n => n.isPriority).map((nutrient) => (
-                    <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
+                {/* 2 ── Priority Nutrients ────────────────────── */}
+                {priorityNutrients.length > 0 && (
+                  <AccordionSection
+                    title="Priority Nutrients"
+                    emoji="⚡"
+                    count={priorityNutrients.length}
+                    countLabel="nutrients"
+                    isOpen={activeAccordion === "priority"}
+                    onToggle={() => toggleAccordion("priority")}
+                    accentGradient={accent.gradient}
+                    accentBorder={accent.border}
+                  >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {priorityNutrients.map((nutrient) => (
+                        <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                      ))}
+                    </div>
+                  </AccordionSection>
+                )}
 
-            {/* ─── All Nutrient Needs ──────────────────────────── */}
-            {result.nutrientNeeds.filter(n => !n.isPriority).length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Other Nutrient Needs" emoji="🧪" />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {result.nutrientNeeds.filter(n => !n.isPriority).map((nutrient) => (
-                    <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
+                {/* 3 ── Other Nutrient Needs ──────────────────── */}
+                {otherNutrients.length > 0 && (
+                  <AccordionSection
+                    title="Other Nutrient Needs"
+                    emoji="🧪"
+                    count={otherNutrients.length}
+                    countLabel="nutrients"
+                    isOpen={activeAccordion === "other"}
+                    onToggle={() => toggleAccordion("other")}
+                    accentGradient={accent.gradient}
+                    accentBorder={accent.border}
+                  >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {otherNutrients.map((nutrient) => (
+                        <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                      ))}
+                    </div>
+                  </AccordionSection>
+                )}
 
-            {/* ─── Food Recommendations ────────────────────────── */}
-            {result.foodRecommendations.length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Recommended Foods" emoji="🥗" />
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {result.foodRecommendations.slice(0, 8).map((food) => (
-                    <FoodRecommendationCard key={food.name} food={food} />
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
+                {/* 4 ── Food Recommendations ──────────────────── */}
+                {result.foodRecommendations.length > 0 && (
+                  <AccordionSection
+                    title="Recommended Foods"
+                    emoji="🥗"
+                    count={result.foodRecommendations.length}
+                    countLabel="foods"
+                    isOpen={activeAccordion === "foods"}
+                    onToggle={() => toggleAccordion("foods")}
+                    accentGradient={accent.gradient}
+                    accentBorder={accent.border}
+                  >
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {result.foodRecommendations.slice(0, 8).map((food) => (
+                        <FoodRecommendationCard key={food.name} food={food} />
+                      ))}
+                    </div>
+                  </AccordionSection>
+                )}
 
-            {/* ─── Fitness Calculator Inline ───────────────────── */}
-            <ScrollReveal>
-              <FitnessCalculatorInline />
-            </ScrollReveal>
+                {/* 5 ── Fitness & Health ──────────────────────── */}
+                <AccordionSection
+                  title="Fitness & Health"
+                  emoji="💪"
+                  isOpen={activeAccordion === "fitness"}
+                  onToggle={() => toggleAccordion("fitness")}
+                  accentGradient={accent.gradient}
+                  accentBorder={accent.border}
+                >
+                  <FitnessCalculatorInline />
+                </AccordionSection>
+              </div>
+            ) : (
+              /* ════════════════════════════════════════════════════
+                 ALL OTHER PHASES: Original flat layout
+                 ════════════════════════════════════════════════════ */
+              <>
+                {/* ─── Detected Symptoms ───────────────────────── */}
+                {result.detectedSymptoms.length > 0 && (
+                  <ScrollReveal>
+                    <SectionHeader title="Detected Symptoms" emoji="🔍" />
+                    <div className="flex flex-wrap gap-2">
+                      {result.detectedSymptoms.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => handleSelectSymptom(s.id)}
+                          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border ${accent.border} ${accent.bg} text-sm font-medium hover:shadow-md transition-all active:scale-95 cursor-pointer`}
+                        >
+                          <span>{s.emoji}</span>
+                          <span>{s.label}</span>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${accent.badge}`}>
+                            {s.count}x
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </ScrollReveal>
+                )}
+
+                {/* ─── Priority Nutrients ──────────────────────── */}
+                {priorityNutrients.length > 0 && (
+                  <ScrollReveal>
+                    <SectionHeader title="Priority Nutrients" emoji="⚡" />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {priorityNutrients.map((nutrient) => (
+                        <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                      ))}
+                    </div>
+                  </ScrollReveal>
+                )}
+
+                {/* ─── All Nutrient Needs ──────────────────────── */}
+                {otherNutrients.length > 0 && (
+                  <ScrollReveal>
+                    <SectionHeader title="Other Nutrient Needs" emoji="🧪" />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {otherNutrients.map((nutrient) => (
+                        <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                      ))}
+                    </div>
+                  </ScrollReveal>
+                )}
+
+                {/* ─── Food Recommendations ────────────────────── */}
+                {result.foodRecommendations.length > 0 && (
+                  <ScrollReveal>
+                    <SectionHeader title="Recommended Foods" emoji="🥗" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {result.foodRecommendations.slice(0, 8).map((food) => (
+                        <FoodRecommendationCard key={food.name} food={food} />
+                      ))}
+                    </div>
+                  </ScrollReveal>
+                )}
+
+                {/* ─── Fitness Calculator Inline ───────────────── */}
+                <ScrollReveal>
+                  <FitnessCalculatorInline />
+                </ScrollReveal>
+              </>
+            )}
 
             {/* ─── Explore More (phase sub-pages) ──────────────── */}
             {exploreLinks.length > 0 && (

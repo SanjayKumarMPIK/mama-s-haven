@@ -832,6 +832,10 @@ function SymptomLogPanel({
     if (existingEntry && (existingEntry as any).sleepQuality) return (existingEntry as any).sleepQuality;
     return "";
   });
+  const [hydrationGlasses, setHydrationGlasses] = useState<number | "">(() => {
+    if (existingEntry && (existingEntry as any).hydrationGlasses != null) return (existingEntry as any).hydrationGlasses;
+    return "";
+  });
   const [notes, setNotes] = useState<string>(() => {
     if (existingEntry && (existingEntry as any).notes) return (existingEntry as any).notes;
     return "";
@@ -935,11 +939,12 @@ function SymptomLogPanel({
     const hasSymptoms = Object.values(selectedSymptoms).some(Boolean);
     const hasMood = mood !== "";
     const hasSleep = sleepHours !== "" || sleepQuality !== "";
+    const hasHydration = hydrationGlasses !== "";
     const hasNotes = notes.trim().length > 0;
     const hasPeriod = (phase === "puberty" || phase === "family-planning") && periodStarted;
     const hasBloodColor = bloodColor !== "";
     const hasPeriodConcerns = Object.values(periodInfectionSymptoms).some(Boolean);
-    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod && !hasBloodColor && !hasPeriodConcerns) {
+    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod && !hasBloodColor && !hasPeriodConcerns && !hasHydration) {
       toast.error("Please select at least one symptom, sleep log, mood, or add a note before saving.");
       return;
     }
@@ -1011,6 +1016,7 @@ function SymptomLogPanel({
         mood: moodValue,
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
+        hydrationGlasses: hydrationGlasses !== "" ? Number(hydrationGlasses) : null,
         notes: notes || undefined,
       };
     } else {
@@ -1514,53 +1520,87 @@ function SymptomLogPanel({
             </div>
           </section>
 
-          {/* Sleep Tracking */}
-          <section className="space-y-4 rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Moon className="w-4 h-4 text-indigo-500" />
-              Sleep Tracking
-            </h3>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground">Duration (hours)</span>
-                <span className="text-sm font-bold text-indigo-700">{sleepHours !== "" ? sleepHours : "–"} h</span>
-              </div>
-              <EnhancedSlider
-                phase={phase as any}
-                checkpoints={SLEEP_CHECKPOINTS}
-                min={0}
-                max={15}
-                step={0.5}
-                value={sleepHours !== "" ? sleepHours : 0}
-                onChange={(val) => setSleepHours(val)}
-                className="w-full [&_[role=slider]]:bg-indigo-500 [&_[role=slider]]:border-indigo-500 [&_.relative.h-full]:bg-indigo-500"
-              />
-            </div>
-
-            {phase === "menopause" && (
-              <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
-                <span className="text-xs font-medium text-foreground">Quality</span>
-                <div className="flex gap-2">
-                  {(["Good", "Okay", "Poor"] as const).map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
-                      className={cn(
-                        "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
-                        sleepQuality === q
-                          ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                          : "bg-background border-border hover:bg-muted/50 text-foreground"
-                      )}
-                    >
-                      {q}
-                    </button>
-                  ))}
+          {/* Health Trackers (Sleep, Water) */}
+          <div className={cn("grid grid-cols-1 gap-3", phase === "family-planning" ? "sm:grid-cols-2" : "")}>
+            {/* Sleep Tracking */}
+            <section className="space-y-4 rounded-xl border border-border bg-card p-4 h-full">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Moon className="w-4 h-4 text-indigo-500" />
+                Sleep Tracking
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-foreground">Duration (hours)</span>
+                  <span className="text-sm font-bold text-indigo-700">{sleepHours !== "" ? sleepHours : "–"} h</span>
                 </div>
+                <EnhancedSlider
+                  phase={phase as any}
+                  checkpoints={SLEEP_CHECKPOINTS}
+                  min={0}
+                  max={15}
+                  step={0.5}
+                  value={sleepHours !== "" ? sleepHours : 0}
+                  onChange={(val) => setSleepHours(val)}
+                  className="w-full [&_[role=slider]]:bg-indigo-500 [&_[role=slider]]:border-indigo-500 [&_.relative.h-full]:bg-indigo-500"
+                />
               </div>
+
+              {phase === "menopause" && (
+                <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
+                  <span className="text-xs font-medium text-foreground">Quality</span>
+                  <div className="flex gap-2">
+                    {(["Good", "Okay", "Poor"] as const).map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
+                        className={cn(
+                          "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
+                          sleepQuality === q
+                            ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                            : "bg-background border-border hover:bg-muted/50 text-foreground"
+                        )}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Water Tracking (Only Family Planning) */}
+            {phase === "family-planning" && (
+              <section className="space-y-4 rounded-xl border border-border bg-card p-4 h-full">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Droplets className="w-4 h-4 text-blue-500" />
+                  Water Tracking
+                </h3>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-foreground">Intake (glasses)</span>
+                    <span className="text-sm font-bold text-blue-700">{hydrationGlasses !== "" ? hydrationGlasses : "–"}</span>
+                  </div>
+                  <EnhancedSlider
+                    phase={phase as any}
+                    checkpoints={[
+                      { value: 4, label: "4 (Low)", priority: "low" },
+                      { value: 8, label: "8 (Min)", priority: "medium" },
+                      { value: 12, label: "12+ (High)", priority: "high" },
+                    ]}
+                    min={0}
+                    max={15}
+                    step={1}
+                    value={hydrationGlasses !== "" ? hydrationGlasses : 0}
+                    onChange={(val) => setHydrationGlasses(val)}
+                    className="w-full [&_[role=slider]]:bg-blue-500 [&_[role=slider]]:border-blue-500 [&_.relative.h-full]:bg-blue-500"
+                  />
+                </div>
+              </section>
             )}
-          </section>
+          </div>
 
           {/* Notes */}
           <section className="space-y-2">

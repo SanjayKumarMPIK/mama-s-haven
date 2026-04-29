@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { X, Settings, Calendar, Clock, ChevronRight, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { X, Settings, Calendar as CalendarIcon, Clock, ChevronRight, AlertTriangle, CheckCircle2, User, MapPin, Activity, Dumbbell, Moon, Droplets, Apple, FileText } from "lucide-react";
 import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
 import { useHealthLog, type HealthLogEntry, type MaternityEntry } from "@/hooks/useHealthLog";
 import { usePregnancyProfile, getWeekForDate } from "@/hooks/usePregnancyProfile";

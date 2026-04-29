@@ -263,10 +263,31 @@ const PHASE_CONFIGS: Record<ExtendedPhase, PhaseSymptomConfig> = {
       { id: "sleep_issues", name: "Sleep Issues", isCore: true },
     ],
     predefinedLibrary: [
-      { id: "cramping", name: "Cramping", category: "period" },
-      { id: "bloating", name: "Bloating", category: "physical" },
-      { id: "headache", name: "Headache", category: "physical" },
+      // Cycle & Reproductive
+      { id: "spotting", name: "Spotting", category: "period" },
+      { id: "heavy_bleeding", name: "Heavy Bleeding", category: "period" },
+      { id: "missed_period", name: "Missed Period", category: "period" },
+      { id: "cervical_mucus_changes", name: "Cervical Mucus Changes", category: "period" },
+
+      // Hormonal
+      { id: "acne", name: "Acne", category: "hormonal" },
+      { id: "hair_fall", name: "Hair Fall", category: "hormonal" },
+      { id: "hot_flashes", name: "Hot Flashes", category: "hormonal" },
+      { id: "low_libido", name: "Low Libido", category: "hormonal" },
+
+      // Mood
       { id: "anxiety", name: "Anxiety", category: "mental" },
+      { id: "irritability", name: "Irritability", category: "emotional" },
+      { id: "brain_fog", name: "Brain Fog", category: "mental" },
+
+      // Physical
+      { id: "headache", name: "Headache", category: "physical" },
+      { id: "dizziness", name: "Dizziness", category: "physical" },
+
+      // Digestive
+      { id: "bloating", name: "Bloating", category: "digestive" },
+      { id: "constipation", name: "Constipation", category: "digestive" },
+      { id: "cravings", name: "Cravings", category: "digestive" },
     ],
     maxActiveSymptoms: 6,
     localStorageKey: "swasthyasakhi_family_planning_symptoms",

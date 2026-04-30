@@ -704,7 +704,7 @@ function MaternityNutritionView({
       {/* Nutrition Checklist Card */}
       <ScrollReveal delay={45}>
         <Link
-          to="/maternity/nutrition/checklist"
+          to="/nutrition/personalized-diet"
           className={`flex items-center gap-4 rounded-xl border ${accent.border} ${accent.bg} p-5 hover:shadow-md transition-all active:scale-[0.98] group`}
         >
           <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-md shrink-0`}>

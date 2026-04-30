@@ -43,29 +43,29 @@ function getSeverityColor(severity: "None" | "Mild" | "Moderate" | "Severe"): st
   }
 }
 
-// Symptom icon mapping
-const SYMPTOM_ICONS: Record<string, React.ElementType> = {
-  fatigue: Zap,
-  backPain: Bone,
-  heartburn: Flame,
-  swelling: Droplets,
-  headache: Brain,
-  nausea: Activity,
-  dizziness: Activity,
-  legCramps: Bone,
-};
+import {
+  MATERNITY_PHASE_CONFIG,
+  COMMON_CUSTOMIZABLE_SYMPTOMS
+} from "@/modules/maternity/symptoms/maternitySymptomConfig";
 
-// Symptom display names
-const SYMPTOM_NAMES: Record<string, string> = {
-  fatigue: "Fatigue",
-  backPain: "Back Pain",
-  heartburn: "Heartburn",
-  swelling: "Swelling",
-  headache: "Headache",
-  nausea: "Nausea",
-  dizziness: "Dizziness",
-  legCramps: "Leg Cramps",
-};
+// Create a unified dictionary of all maternity symptoms
+function getSymptomDictionary() {
+  const dictionary: Record<string, { label: string; emoji: string }> = {};
+  
+  const allSymptoms = [
+    ...MATERNITY_PHASE_CONFIG.T1,
+    ...MATERNITY_PHASE_CONFIG.T2,
+    ...MATERNITY_PHASE_CONFIG.T3,
+    ...MATERNITY_PHASE_CONFIG.postpartum,
+    ...COMMON_CUSTOMIZABLE_SYMPTOMS
+  ];
+
+  for (const sym of allSymptoms) {
+    dictionary[sym.id] = { label: sym.label, emoji: sym.emoji };
+  }
+
+  return dictionary;
+}
 
 // ─── Component ─────────────────────────────────────────────────────────────────
 
@@ -90,12 +90,15 @@ export default function SymptomsOverviewCard() {
       }
     }
     
+    const dict = getSymptomDictionary();
+
     // Convert to summary array
     const summary: SymptomSummary[] = Object.entries(symptomCounts)
       .map(([key, frequency]) => {
         const severity = getSeverityFromFrequency(frequency);
-        const icon = SYMPTOM_ICONS[key] || Activity;
-        const name = SYMPTOM_NAMES[key] || key;
+        const def = dict[key];
+        const name = def?.label || key;
+        const icon = () => <span className="text-sm">{def?.emoji || "🩺"}</span>;
         
         return { name, severity, frequency, icon };
       })

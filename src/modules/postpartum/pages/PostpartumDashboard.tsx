@@ -2,16 +2,20 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
-import RecoveryScoreCard from "../components/RecoveryScoreCard";
+import RecoveryScoreCard from "../components/RecoveryScoreCard"; // Kept for rollback/validation
 import PostpartumOverviewCard from "../components/PostpartumOverviewCard";
 import PostpartumGrid from "../components/PostpartumGrid";
 import RecoverySummaryCards from "../components/RecoverySummaryCards";
-import PostpartumRecoveryTimeline from "../components/PostpartumRecoveryTimeline";
+import PostpartumRecoveryTimeline from "../components/PostpartumRecoveryTimeline"; // Kept for rollback/validation
 import NutritionTipsCard from "../components/NutritionTipsCard";
 import ActiveAlertsCard from "../components/ActiveAlertsCard";
+import { PostpartumRecoveryCard } from "../recovery/PostpartumRecoveryCard";
+import { PostpartumTimeline } from "../recovery/PostpartumTimeline";
 import MaternityRouteGuard from "@/components/MaternityRouteGuard";
+import VisualAnalytics from "@/components/dashboard/VisualAnalytics";
 import { Heart, ArrowLeft, RotateCcw } from "lucide-react";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useHealthLog } from "@/hooks/useHealthLog";
 
 const accent = {
   gradient: "from-rose-500 to-pink-400",
@@ -23,6 +27,14 @@ const accent = {
 
 export default function PostpartumDashboard() {
   const { clearProfile, profile } = usePregnancyProfile();
+  const { maternityLogs } = useHealthLog();
+
+  // Convert maternityLogs (Record<string, PubertyEntry>) → PubertyLogItem[]
+  // VisualAnalytics expects an array of { date, entry } objects
+  const maternityLogsArray = useMemo(
+    () => Object.entries(maternityLogs).map(([date, entry]) => ({ date, entry })),
+    [maternityLogs]
+  );
 
   // Calculate weeks postpartum from delivery date
   const weeksPostpartum = useMemo(() => {
@@ -67,29 +79,21 @@ export default function PostpartumDashboard() {
         </div>
 
         <div className="container py-6 space-y-6">
-          {/* Hero Section: Recovery Score + Recovery Timeline */}
+          {/* Recovery Summary Cards */}
           <ScrollReveal>
-            <div className="grid gap-4 md:grid-cols-[1fr_3fr]">
-              <RecoveryScoreCard />
-              <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
-                    <Heart className="w-4 h-4 text-rose-700" />
-                  </div>
-                  <div>
-                    <h2 className="font-bold text-sm">Recovery Timeline</h2>
-                    <p className="text-[10px] text-muted-foreground">Week {weeksPostpartum} post-delivery</p>
-                  </div>
-                </div>
-                <PostpartumRecoveryTimeline currentWeek={weeksPostpartum} />
-              </div>
+            <RecoverySummaryCards />
+          </ScrollReveal>
+
+          {/* Dynamic Recovery Score + Recovery Timeline */}
+          <ScrollReveal delay={20}>
+            <div className="grid gap-4 md:grid-cols-[1fr_3fr] md:items-stretch">
+              <PostpartumRecoveryCard />
+              <PostpartumTimeline />
             </div>
           </ScrollReveal>
 
-          {/* Recovery Summary Cards */}
-          <ScrollReveal delay={30}>
-            <RecoverySummaryCards />
-          </ScrollReveal>
+          {/* Visual Analytics */}
+          <VisualAnalytics pubertyLogs={maternityLogsArray} />
 
           {/* Recovery Insight Cards */}
           <ScrollReveal delay={40}>

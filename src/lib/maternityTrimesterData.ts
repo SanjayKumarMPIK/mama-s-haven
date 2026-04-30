@@ -8,12 +8,7 @@
  * Do NOT import in Puberty, Family Planning, or Menopause modules.
  */
 
-import {
-  generatePrioritizedSymptoms,
-  getSymptomsForCondition as engineGetSymptomsForCondition,
-  isConditionSymptom as engineIsConditionSymptom,
-  getConditionForSymptom as engineGetConditionForSymptom
-} from "./maternity/symptomPriorityEngine";
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,45 +28,13 @@ export interface NutritionTip {
   description: string;
 }
 
-export interface PrioritizedSymptomsResult {
-  coreSymptoms: TrimesterSymptom[];
-  customizableSymptoms: TrimesterSymptom[];
-}
 
-// ─── Symptom Definitions (6 per trimester) ────────────────────────────────────
 
-const T1_SYMPTOMS: TrimesterSymptom[] = [
-  { id: "nausea", label: "Nausea / Vomiting", emoji: "🤢" },
-  { id: "fatigue", label: "Fatigue", emoji: "😴" },
-  { id: "breastTenderness", label: "Breast Tenderness", emoji: "💗" },
-  { id: "frequentUrination", label: "Frequent Urination", emoji: "🚻" },
-  { id: "moodSwings", label: "Mood Swings", emoji: "🎭" },
-  { id: "foodAversions", label: "Food Aversions", emoji: "🚫" },
-];
-
-const T2_SYMPTOMS: TrimesterSymptom[] = [
-  { id: "increasedAppetite", label: "Increased Appetite", emoji: "🍽️" },
-  { id: "babyBumpGrowth", label: "Baby Bump Growth", emoji: "🤰" },
-  { id: "fetalMovement", label: "Fetal Movement", emoji: "👶" },
-  { id: "backPain", label: "Back Pain", emoji: "🦴" },
-  { id: "skinChanges", label: "Skin Changes", emoji: "✨" },
-  { id: "mildSwelling", label: "Mild Swelling", emoji: "💧" },
-];
-
-const T3_SYMPTOMS: TrimesterSymptom[] = [
-  { id: "shortnessOfBreath", label: "Shortness of Breath", emoji: "😮‍💨" },
-  { id: "frequentUrination", label: "Frequent Urination", emoji: "🚻" },
-  { id: "practiceContractions", label: "Practice Contractions", emoji: "⚡" },
-  { id: "sleepDifficulty", label: "Sleep Difficulty", emoji: "🌙" },
-  { id: "heartburn", label: "Heartburn", emoji: "🔥" },
-  { id: "swelling", label: "Swelling", emoji: "💧" },
-];
-
-const SYMPTOMS_BY_TRIMESTER: Record<Trimester, TrimesterSymptom[]> = {
-  T1: T1_SYMPTOMS,
-  T2: T2_SYMPTOMS,
-  T3: T3_SYMPTOMS,
-};
+import {
+  MATERNITY_PHASE_CONFIG,
+  COMMON_CUSTOMIZABLE_SYMPTOMS,
+  type ConfigSymptom
+} from "../modules/maternity/symptoms/maternitySymptomConfig";
 
 // ─── Nutrition Definitions (4 tips per trimester) ─────────────────────────────
 
@@ -166,56 +129,10 @@ const NUTRITION_BY_TRIMESTER: Record<Trimester, NutritionTip[]> = {
 
 /** Get the 6 symptoms for a given trimester */
 export function getSymptomsForTrimester(trimester: Trimester): TrimesterSymptom[] {
-  return SYMPTOMS_BY_TRIMESTER[trimester];
+  return MATERNITY_PHASE_CONFIG[trimester];
 }
 
-/**
- * Get prioritized symptoms based on medical conditions.
- * This function integrates the symptomPriorityEngine to inject condition-specific symptoms.
- */
-export function getPrioritizedSymptomsForTrimester(
-  trimester: Trimester,
-  medicalConditions: string[] = [],
-  pregnancyWeek?: number
-): PrioritizedSymptomsResult {
-  const defaultSymptoms = SYMPTOMS_BY_TRIMESTER[trimester];
 
-  // If no medical conditions and not premature care, return defaults unchanged
-  if ((!medicalConditions || medicalConditions.length === 0) && (pregnancyWeek === undefined || pregnancyWeek < 32)) {
-    return {
-      coreSymptoms: defaultSymptoms,
-      customizableSymptoms: [],
-    };
-  }
-
-  try {
-    return generatePrioritizedSymptoms({
-      trimester,
-      medicalConditions,
-      defaultSymptoms,
-      pregnancyWeek,
-    });
-  } catch (error) {
-    console.error("Failed to load symptomPriorityEngine:", error);
-    return {
-      coreSymptoms: defaultSymptoms,
-      customizableSymptoms: [],
-    };
-  }
-}
-
-// Re-export functions from symptomPriorityEngine for convenience
-export function getSymptomsForCondition(condition: string) {
-  return engineGetSymptomsForCondition(condition);
-}
-
-export function isConditionSymptom(symptomId: string) {
-  return engineIsConditionSymptom(symptomId);
-}
-
-export function getConditionForSymptom(symptomId: string) {
-  return engineGetConditionForSymptom(symptomId);
-}
 
 /** Get the 4 nutrition tips for a given trimester */
 export function getNutritionForTrimester(trimester: Trimester): NutritionTip[] {
@@ -225,7 +142,7 @@ export function getNutritionForTrimester(trimester: Trimester): NutritionTip[] {
 /** Convert pregnancy week number to Trimester enum */
 export function weekToTrimester(week: number): Trimester {
   if (week <= 12) return "T1";
-  if (week <= 27) return "T2";
+  if (week <= 26) return "T2";
   return "T3";
 }
 
@@ -294,9 +211,11 @@ export function checkConsecutiveSevereSymptoms(
   if (!latest.symptomSeverities) return [];
 
   const allTrimesterSymptoms = [
-    ...T1_SYMPTOMS,
-    ...T2_SYMPTOMS,
-    ...T3_SYMPTOMS,
+    ...MATERNITY_PHASE_CONFIG.T1,
+    ...MATERNITY_PHASE_CONFIG.T2,
+    ...MATERNITY_PHASE_CONFIG.T3,
+    ...MATERNITY_PHASE_CONFIG.postpartum,
+    ...COMMON_CUSTOMIZABLE_SYMPTOMS
   ];
 
   for (const [symptomId, severity] of Object.entries(latest.symptomSeverities)) {

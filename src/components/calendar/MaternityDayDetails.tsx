@@ -4,12 +4,14 @@ import { toast } from "sonner";
 import { X, Settings, Calendar as CalendarIcon, Clock, ChevronRight, AlertTriangle, CheckCircle2, User, MapPin, Activity, Dumbbell, Moon, Droplets, Apple, FileText } from "lucide-react";
 import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
 import { useHealthLog, type HealthLogEntry, type MaternityEntry } from "@/hooks/useHealthLog";
-import { usePregnancyProfile, getWeekForDate } from "@/hooks/usePregnancyProfile";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useProfile } from "@/hooks/useProfile";
 import { useCustomSymptoms } from "@/hooks/useCustomSymptoms";
 import { useAppointments } from "@/hooks/useAppointments";
-import { getNutritionForTrimester, weekToTrimester, getPrioritizedSymptomsForTrimester, checkConsecutiveSevereSymptoms, getTrimesterLabel, type Trimester, type Severity } from "@/lib/maternityTrimesterData";
+import { getNutritionForTrimester, weekToTrimester, checkConsecutiveSevereSymptoms, getTrimesterLabel, type Trimester, type Severity } from "@/lib/maternityTrimesterData";
 import { SymptomCustomizer } from "./SymptomCustomizer";
+import { useDynamicMaternitySymptoms } from "@/modules/maternity/symptoms/useDynamicMaternitySymptoms";
+import type { MaternityPhaseStage } from "@/modules/maternity/symptoms/maternitySymptomConfig";
 import { APPOINTMENT_TYPE_ICONS, STATUS_CONFIG } from "@/lib/appointments/appointmentTypes";
 import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
 
@@ -72,93 +74,66 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
   const existingEntry = getLog(dateISO) as MaternityEntry | undefined;
   const isMaternity = existingEntry?.phase === "maternity";
 
-  // 1. Determine trimester
+  // 1. Determine trimester dynamically
   const trimester = useMemo<Trimester>(() => {
-    if (isMaternity && existingEntry?.trimester) return existingEntry.trimester;
     const week = getWeekForDate(dateISO, activeEDD);
     return weekToTrimester(week);
-  }, [dateISO, activeEDD, existingEntry, isMaternity]);
+  }, [dateISO, activeEDD]);
 
-  // 2. Fetch Trimester Data with medical condition prioritization
+  // 2. Determine exact maternity phase stage for symptoms
+  const phaseStage = useMemo<MaternityPhaseStage>(() => {
+    if (existingEntry?.phase === "postpartum") return "postpartum";
+    return trimester;
+  }, [existingEntry?.phase, trimester]);
+
+  // 3. Fetch Trimester Data for nutrition
   const nutritionDef = useMemo(() => getNutritionForTrimester(trimester), [trimester]);
 
-  // 3. Get prioritized symptoms based on medical conditions and premature care status
-  const prioritizedSymptoms = useMemo(() => {
-    const medicalConditions = profile?.medicalConditions || [];
-    const week = getWeekForDate(dateISO, activeEDD);
-    return getPrioritizedSymptomsForTrimester(trimester, medicalConditions, week);
-  }, [trimester, profile?.medicalConditions, dateISO, activeEDD]);
+  // 4. Use dynamic symptom engine
+  const dynamicSymptoms = useDynamicMaternitySymptoms?.(phaseStage);
+  
+  const rawActiveSymptoms = dynamicSymptoms?.activeSymptoms || [];
+  const rawLibrary = dynamicSymptoms?.customizableLibrary || [];
+  const swapSymptom = dynamicSymptoms?.swapSymptom || (() => {});
+  const resetToCore = dynamicSymptoms?.resetToCore || (() => {});
 
-  // 4. Maternity Symptom Swaps State (Persisted per trimester)
-  const [swaps, setSwaps] = useState<Record<number, string>>(() => {
-    try {
-      const stored = localStorage.getItem(`maternity_swaps_${trimester}`);
-      return stored ? JSON.parse(stored) : {};
-    } catch {
-      return {};
-    }
-  });
-
-  const handleMaternitySwap = useCallback((slotIndex: number, newSymptomId: string) => {
-    setSwaps((prev) => {
-      const updated = { ...prev, [slotIndex]: newSymptomId };
-      localStorage.setItem(`maternity_swaps_${trimester}`, JSON.stringify(updated));
-      return updated;
-    });
-  }, [trimester]);
-
-  const handleMaternityReset = useCallback(() => {
-    if (confirm("Reset to default maternity symptoms for this trimester?")) {
-      setSwaps({});
-      localStorage.removeItem(`maternity_swaps_${trimester}`);
-    }
-  }, [trimester]);
-
-  // 5. Combine predefined library with displaced symptoms
+  // 5. Map library to format expected by SymptomCustomizer
   const maternityLibrary = useMemo(() => {
-    const displaced = prioritizedSymptoms.customizableSymptoms.map((s) => ({
+    return rawLibrary.map((s) => ({
       id: s.id,
       name: s.label,
-      category: "displaced" as any,
+      category: "physical" as any, // Simple fallback category for customizer UI
     }));
-    return [...displaced, ...ctx.predefinedLibrary];
-  }, [prioritizedSymptoms.customizableSymptoms, ctx.predefinedLibrary]);
+  }, [rawLibrary]);
 
-  // 6. Use prioritized core symptoms + user swaps for display
+  // 6. Map active symptoms to UI options
   const activeSymptomOptions = useMemo(() => {
-    const base = [...prioritizedSymptoms.coreSymptoms];
-    
-    for (const [slotStr, symptomId] of Object.entries(swaps)) {
-      const slotIndex = parseInt(slotStr, 10);
-      if (slotIndex >= 0 && slotIndex < base.length) {
-        const foundLib = maternityLibrary.find((s) => s.id === symptomId);
-        if (foundLib) {
-          const origDisplaced = prioritizedSymptoms.customizableSymptoms.find((s) => s.id === symptomId);
-          base[slotIndex] = {
-            id: foundLib.id,
-            label: foundLib.name,
-            emoji: origDisplaced ? origDisplaced.emoji : "📌",
-          };
-        }
-      }
-    }
-
-    return base.map((symptom) => ({
-      id: symptom.id,
-      label: symptom.label,
-      emoji: symptom.emoji,
+    return rawActiveSymptoms.map((s) => ({
+      id: s.id,
+      label: s.label,
+      emoji: s.emoji,
       description: "Track this symptom",
     }));
-  }, [prioritizedSymptoms.coreSymptoms, swaps, maternityLibrary, prioritizedSymptoms.customizableSymptoms]);
+  }, [rawActiveSymptoms]);
 
   // 7. Adapter for SymptomCustomizer modal
   const customizerActiveSymptoms = useMemo(() => {
-    return activeSymptomOptions.map((opt, idx) => ({
+    return rawActiveSymptoms.map((opt) => ({
       id: opt.id,
       name: opt.label,
-      isCore: !swaps[idx],
+      isCore: opt.isCore,
     }));
-  }, [activeSymptomOptions, swaps]);
+  }, [rawActiveSymptoms]);
+
+  const handleMaternitySwap = useCallback((slotIndex: number, newSymptomId: string) => {
+    swapSymptom(slotIndex, newSymptomId);
+  }, [swapSymptom]);
+
+  const handleMaternityReset = useCallback(() => {
+    if (confirm("Reset to default maternity symptoms for this phase?")) {
+      resetToCore();
+    }
+  }, [resetToCore]);
 
   // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -281,7 +256,6 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
 
     const entry: HealthLogEntry = {
       phase: "maternity",
-      trimester,
       noSymptomsToday,
       fatigueLevel: energyLevel !== "" ? (energyLevel as "Low" | "Medium" | "High") : null,
       hydrationGlasses: hydration !== "" ? Number(hydration) : null,

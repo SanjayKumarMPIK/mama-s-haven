@@ -31,8 +31,8 @@ const TABS: { id: AnalyticsTab; label: string; activeGrad: string; activeShadow:
   {
     id: "symptoms",
     label: "SYMPTOMS",
-    activeGrad: "linear-gradient(135deg, #f472b6, #ec4899)",
-    activeShadow: "0 4px 20px rgba(244, 114, 182, 0.35)",
+    activeGrad: "linear-gradient(135deg, #f43f5e, #db2777)",
+    activeShadow: "0 4px 20px rgba(244, 63, 94, 0.35)",
   },
 ];
 

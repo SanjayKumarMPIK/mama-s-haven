@@ -4,7 +4,9 @@ import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
-import { Link } from "react-router-dom";
+import SymptomGuideSearch from "@/components/symptoms/SymptomGuideSearch";
+import KnowYourSymptomsCard from "@/components/nutrition/KnowYourSymptomsCard";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   Activity, TrendingUp, TrendingDown, Minus, Brain, Lightbulb, Heart,
   ChevronRight, Calendar, Moon, Smile, Sparkles, X, ArrowRight, BarChart3,
@@ -114,6 +116,12 @@ export default function SymptomChecker() {
   const { simpleMode } = useLanguage();
   const { phase } = usePhase();
   const { getPhaseLogs } = useHealthLog();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Read ?query= param for deep-linking from Nutrition Guide
+  const initialQuery = searchParams.get("query") ?? undefined;
+  
+  const [isSearchVisible, setIsSearchVisible] = useState(!!initialQuery);
 
   const phaseLogs = useMemo(() => getPhaseLogs(phase), [getPhaseLogs, phase]);
 
@@ -173,7 +181,38 @@ export default function SymptomChecker() {
       </div>
 
       <div className="container py-6 space-y-6">
-        {!data.hasData ? (
+        {/* ─── Symptom Guide Search (conditionally visible) ─────────────── */}
+        <ScrollReveal>
+          {isSearchVisible ? (
+            <SymptomGuideSearch 
+              phase={phase} 
+              initialQuery={initialQuery} 
+              onClose={() => {
+                setIsSearchVisible(false);
+                setSearchParams({});
+              }}
+            />
+          ) : (
+            <KnowYourSymptomsCard 
+              onExplore={() => setIsSearchVisible(true)}
+              onSymptomClick={(id) => {
+                setSearchParams({ query: id });
+                setIsSearchVisible(true);
+              }}
+            />
+          )}
+        </ScrollReveal>
+
+        {/* ─── Divider & Analytics (Hidden while searching) ────── */}
+        {!isSearchVisible && (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border/40" />
+              <span className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">Your logged data analytics</span>
+              <div className="flex-1 h-px bg-border/40" />
+            </div>
+
+            {!data.hasData ? (
           /* ─── Empty State ──────────────────────────────────────────────── */
           <ScrollReveal>
             <div className="flex flex-col items-center justify-center text-center py-20 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
@@ -491,6 +530,8 @@ export default function SymptomChecker() {
                 </div>
               </ScrollReveal>
             )}
+          </>
+        )}
           </>
         )}
       </div>

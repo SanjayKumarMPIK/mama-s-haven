@@ -18,6 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 import MaternityCalendar from "@/components/calendar/MaternityCalendar";
 import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
+import { useDateSymptomLayout } from "@/hooks/useDateSymptomLayout";
+import { DateSymptomCustomizer } from "@/components/calendar/DateSymptomCustomizer";
 
 type CalendarMode = "year" | "month";
 type SymptomTime = "morning" | "afternoon" | "evening";
@@ -809,6 +811,11 @@ function SymptomLogPanel({
 }: SymptomLogPanelProps) {
   const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
+  // ── Family Planning: per-date symptom layout ──
+  const fpDateLayout = phase === "family-planning" ? useDateSymptomLayout(dateISO) : null;
+  // Use date-specific options for family-planning, global options for everything else
+  const effectiveSymptomOptions = fpDateLayout ? fpDateLayout.symptomOptions : symptomOptions;
+
   // STRICT SEPARATION: the phaseLogs passed here only contain the current phase's data
   const existingEntry = logs[dateISO];
 
@@ -830,6 +837,10 @@ function SymptomLogPanel({
   });
   const [sleepQuality, setSleepQuality] = useState<"Good" | "Okay" | "Poor" | "">(() => {
     if (existingEntry && (existingEntry as any).sleepQuality) return (existingEntry as any).sleepQuality;
+    return "";
+  });
+  const [hydrationGlasses, setHydrationGlasses] = useState<number | "">(() => {
+    if (existingEntry && (existingEntry as any).hydrationGlasses != null) return (existingEntry as any).hydrationGlasses;
     return "";
   });
   const [notes, setNotes] = useState<string>(() => {
@@ -935,11 +946,12 @@ function SymptomLogPanel({
     const hasSymptoms = Object.values(selectedSymptoms).some(Boolean);
     const hasMood = mood !== "";
     const hasSleep = sleepHours !== "" || sleepQuality !== "";
+    const hasHydration = hydrationGlasses !== "";
     const hasNotes = notes.trim().length > 0;
     const hasPeriod = (phase === "puberty" || phase === "family-planning") && periodStarted;
     const hasBloodColor = bloodColor !== "";
     const hasPeriodConcerns = Object.values(periodInfectionSymptoms).some(Boolean);
-    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod && !hasBloodColor && !hasPeriodConcerns) {
+    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod && !hasBloodColor && !hasPeriodConcerns && !hasHydration) {
       toast.error("Please select at least one symptom, sleep log, mood, or add a note before saving.");
       return;
     }
@@ -961,14 +973,7 @@ function SymptomLogPanel({
         flowIntensity: null,
         bloodColor: bloodColor !== "" ? bloodColor : undefined,
         periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
-        symptoms: {
-          cramps: !!selectedSymptoms.cramps,
-          fatigue: !!selectedSymptoms.fatigue,
-          moodSwings: !!selectedSymptoms.moodSwings,
-          headache: !!selectedSymptoms.headache,
-          acne: !!selectedSymptoms.acne,
-          breastTenderness: !!selectedSymptoms.breastTenderness,
-        },
+        symptoms: { ...selectedSymptoms },
         mood: moodValue,
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
@@ -1000,31 +1005,18 @@ function SymptomLogPanel({
         periodStarted: periodStarted,
         bloodColor: bloodColor !== "" ? bloodColor : undefined,
         periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
-        symptoms: {
-          irregularCycle: !!selectedSymptoms.irregularCycle,
-          ovulationPain: !!selectedSymptoms.ovulationPain,
-          moodChanges: !!selectedSymptoms.moodChanges,
-          fatigue: !!selectedSymptoms.fatigue,
-          stress: !!selectedSymptoms.stress,
-          sleepIssues: !!selectedSymptoms.sleepIssues,
-        },
+        symptoms: { ...selectedSymptoms },
         mood: moodValue,
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
+        hydrationGlasses: hydrationGlasses !== "" ? Number(hydrationGlasses) : null,
         notes: notes || undefined,
       };
     } else {
       // menopause
       entry = {
         phase: "menopause",
-        symptoms: {
-          hotFlashes: !!selectedSymptoms.hotFlashes,
-          nightSweats: !!selectedSymptoms.nightSweats,
-          moodSwings: !!selectedSymptoms.moodSwings,
-          jointPain: !!selectedSymptoms.jointPain,
-          sleepDisturbance: !!selectedSymptoms.sleepDisturbance,
-          fatigue: !!selectedSymptoms.fatigue,
-        },
+        symptoms: { ...selectedSymptoms },
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
         mood: moodValue,
@@ -1465,7 +1457,7 @@ function SymptomLogPanel({
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {symptomOptions.map((opt) => {
+              {effectiveSymptomOptions.map((opt) => {
                 const isActive = !!selectedSymptoms[opt.id];
                 return (
                   <button
@@ -1514,53 +1506,87 @@ function SymptomLogPanel({
             </div>
           </section>
 
-          {/* Sleep Tracking */}
-          <section className="space-y-4 rounded-xl border border-border bg-card p-4">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Moon className="w-4 h-4 text-indigo-500" />
-              Sleep Tracking
-            </h3>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground">Duration (hours)</span>
-                <span className="text-sm font-bold text-indigo-700">{sleepHours !== "" ? sleepHours : "–"} h</span>
-              </div>
-              <EnhancedSlider
-                phase={phase as any}
-                checkpoints={SLEEP_CHECKPOINTS}
-                min={0}
-                max={15}
-                step={0.5}
-                value={sleepHours !== "" ? sleepHours : 0}
-                onChange={(val) => setSleepHours(val)}
-                className="w-full [&_[role=slider]]:bg-indigo-500 [&_[role=slider]]:border-indigo-500 [&_.relative.h-full]:bg-indigo-500"
-              />
-            </div>
-
-            {phase === "menopause" && (
-              <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
-                <span className="text-xs font-medium text-foreground">Quality</span>
-                <div className="flex gap-2">
-                  {(["Good", "Okay", "Poor"] as const).map((q) => (
-                    <button
-                      key={q}
-                      type="button"
-                      onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
-                      className={cn(
-                        "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
-                        sleepQuality === q
-                          ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                          : "bg-background border-border hover:bg-muted/50 text-foreground"
-                      )}
-                    >
-                      {q}
-                    </button>
-                  ))}
+          {/* Health Trackers (Sleep, Water) */}
+          <div className={cn("grid grid-cols-1 gap-3", phase === "family-planning" ? "sm:grid-cols-2" : "")}>
+            {/* Sleep Tracking */}
+            <section className="space-y-4 rounded-xl border border-border bg-card p-4 h-full">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Moon className="w-4 h-4 text-indigo-500" />
+                Sleep Tracking
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-foreground">Duration (hours)</span>
+                  <span className="text-sm font-bold text-indigo-700">{sleepHours !== "" ? sleepHours : "–"} h</span>
                 </div>
+                <EnhancedSlider
+                  phase={phase as any}
+                  checkpoints={SLEEP_CHECKPOINTS}
+                  min={0}
+                  max={15}
+                  step={0.5}
+                  value={sleepHours !== "" ? sleepHours : 0}
+                  onChange={(val) => setSleepHours(val)}
+                  className="w-full [&_[role=slider]]:bg-indigo-500 [&_[role=slider]]:border-indigo-500 [&_.relative.h-full]:bg-indigo-500"
+                />
               </div>
+
+              {phase === "menopause" && (
+                <div className="space-y-2 mt-4 pt-4 border-t border-border/50">
+                  <span className="text-xs font-medium text-foreground">Quality</span>
+                  <div className="flex gap-2">
+                    {(["Good", "Okay", "Poor"] as const).map((q) => (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => setSleepQuality(sleepQuality === q ? "" : q)}
+                        className={cn(
+                          "flex-1 py-1.5 rounded-lg border text-xs font-medium transition-all",
+                          sleepQuality === q
+                            ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                            : "bg-background border-border hover:bg-muted/50 text-foreground"
+                        )}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Water Tracking (Only Family Planning) */}
+            {phase === "family-planning" && (
+              <section className="space-y-4 rounded-xl border border-border bg-card p-4 h-full">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Droplets className="w-4 h-4 text-blue-500" />
+                  Water Tracking
+                </h3>
+                
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium text-foreground">Intake (glasses)</span>
+                    <span className="text-sm font-bold text-blue-700">{hydrationGlasses !== "" ? hydrationGlasses : "–"}</span>
+                  </div>
+                  <EnhancedSlider
+                    phase={phase as any}
+                    checkpoints={[
+                      { value: 4, label: "4 (Low)", priority: "low" },
+                      { value: 8, label: "8 (Min)", priority: "medium" },
+                      { value: 12, label: "12+ (High)", priority: "high" },
+                    ]}
+                    min={0}
+                    max={15}
+                    step={1}
+                    value={hydrationGlasses !== "" ? hydrationGlasses : 0}
+                    onChange={(val) => setHydrationGlasses(val)}
+                    className="w-full [&_[role=slider]]:bg-blue-500 [&_[role=slider]]:border-blue-500 [&_.relative.h-full]:bg-blue-500"
+                  />
+                </div>
+              </section>
             )}
-          </section>
+          </div>
 
           {/* Notes */}
           <section className="space-y-2">
@@ -1738,8 +1764,20 @@ function SymptomLogPanel({
         </div>
       </div>
 
-      {/* Global Symptom Customizer */}
-      {showSymptomCustomizer && (
+      {/* Symptom Customizer — date-specific for family-planning, global for others */}
+      {showSymptomCustomizer && phase === "family-planning" && fpDateLayout && (
+        <DateSymptomCustomizer
+          isOpen={showSymptomCustomizer}
+          onClose={() => setShowSymptomCustomizer(false)}
+          dateISO={dateISO}
+          activeSymptoms={fpDateLayout.activeSymptoms}
+          predefinedLibrary={fpDateLayout.predefinedLibrary}
+          onSwap={fpDateLayout.swapActiveSymptom}
+          onReset={fpDateLayout.resetToCore}
+          isCustomized={fpDateLayout.isCustomized}
+        />
+      )}
+      {showSymptomCustomizer && phase !== "family-planning" && (
         <GlobalSymptomCustomizer
           isOpen={showSymptomCustomizer}
           onClose={() => setShowSymptomCustomizer(false)}

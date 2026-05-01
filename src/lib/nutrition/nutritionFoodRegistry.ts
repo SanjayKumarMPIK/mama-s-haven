@@ -149,8 +149,16 @@ export const PHASE_CONFIGS: Record<Phase, PhaseConfig> = {
     gradient: "from-pink-500 to-rose-400",
   },
   maternity: {
-    symptoms: ["fatigue", "dizziness", "weakness", "moodSwings", "anxiety", "brainFog", "sleepIssues", "backPain", "headache", "bloating", "constipation", "swelling", "nausea", "vomiting", "legCramps", "heartburn", "spotting", "breathlessness", "cravings", "skinChanges"],
-    nutrientPriorities: { iron: 1.5, folate: 1.5, calcium: 1.4, protein: 1.3, omega3: 1.3, b6: 1.2 },
+    symptoms: [
+      "fatigue", "dizziness", "weakness", "moodSwings", "anxiety", "brainFog", "sleepIssues", "backPain", "headache", "bloating", "constipation", "swelling",
+      // maternity-specific
+      "nausea", "vomiting", "legCramps", "heartburn", "spotting", "breathlessness", "cravings", "skinChanges",
+      "breastTenderness", "foodAversions", "fetalMovement", "babyBumpGrowth", "increasedAppetite",
+      "practiceContractions", "sleepDifficulty", "frequentUrination", "pelvicPressure", "appetiteChanges", "irritability",
+      // postpartum / lactation
+      "breastPain", "nipplePain", "lowMilkSupply", "lowEnergy", "sleepDeprivation", "bodyAche",
+    ],
+    nutrientPriorities: { iron: 1.5, folate: 1.5, calcium: 1.4, protein: 1.3, omega3: 1.3, b6: 1.2, magnesium: 1.1, potassium: 1.1 },
     title: "Maternity Nutrition Intelligence",
     emoji: "🤰",
     gradient: "from-purple-500 to-violet-400",

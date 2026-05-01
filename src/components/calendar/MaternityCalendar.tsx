@@ -58,7 +58,7 @@ function getWeeklyInsight(week: number): string {
 
 export default function MaternityCalendar() {
   const { maternityLogs, clearAllLogs } = useHealthLog();
-  const { currentWeek, trimester, daysLeft, profile } = usePregnancyProfile();
+  const { currentWeek, trimester, daysLeft, profile, mode: pregnancyMode } = usePregnancyProfile();
   const { calendarReminders, testsWithStatus } = useMaternalTestReminders();
   const { appointments } = useAppointments();
 
@@ -113,9 +113,14 @@ export default function MaternityCalendar() {
     return dayInWeek > 0 ? dayInWeek : 1;
   }, [profile.dueDate]);
 
-  const trimesterLabel = trimester === 1 ? "First" : trimester === 2 ? "Second" : "Third";
-  const trimesterColor =
-    trimester === 1
+  const isPostDelivery = pregnancyMode === "postpartum" || pregnancyMode === "premature";
+
+  const trimesterLabel = isPostDelivery
+    ? (pregnancyMode === "premature" ? "Premature" : "Postpartum")
+    : trimester === 1 ? "First" : trimester === 2 ? "Second" : "Third";
+  const trimesterColor = isPostDelivery
+    ? "bg-rose-50 text-rose-700 border-rose-200"
+    : trimester === 1
       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
       : trimester === 2
       ? "bg-amber-50 text-amber-700 border-amber-200"
@@ -334,7 +339,9 @@ export default function MaternityCalendar() {
                 Maternity Calendar
               </h1>
               <p className="text-sm text-muted-foreground mt-1">
-                Log pregnancy symptoms, nutrition, and track your journey.
+                {isPostDelivery
+                  ? "Log recovery symptoms, nutrition, and track your healing."
+                  : "Log pregnancy symptoms, nutrition, and track your journey."}
               </p>
               <button
                 type="button"
@@ -405,7 +412,7 @@ export default function MaternityCalendar() {
                 </div>
                 <div>
                   <p className="text-[10px] font-semibold uppercase tracking-wider opacity-70">
-                    Trimester
+                    {isPostDelivery ? "Stage" : "Trimester"}
                   </p>
                   <p className="text-sm font-bold">{trimesterLabel}</p>
                 </div>
@@ -419,7 +426,9 @@ export default function MaternityCalendar() {
                   <p className="text-[10px] font-semibold text-rose-500 uppercase tracking-wider">
                     Due Date
                   </p>
-                  <p className="text-sm font-bold text-rose-900">{daysLeft} days left</p>
+                  <p className="text-sm font-bold text-rose-900">
+                    {isPostDelivery ? "Delivered" : `${daysLeft} days left`}
+                  </p>
                 </div>
               </div>
 

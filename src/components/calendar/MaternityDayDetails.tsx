@@ -60,7 +60,7 @@ interface MaternityDayDetailsProps {
 
 export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsProps) {
   const { getLog, saveLog, maternityLogs } = useHealthLog();
-  const { activeEDD } = usePregnancyProfile();
+  const { activeEDD, mode: pregnancyMode } = usePregnancyProfile();
   const { profile } = useProfile();
   const ctx = useCustomSymptoms();
   const { appointments } = useAppointments();
@@ -74,19 +74,27 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
   const existingEntry = getLog(dateISO) as MaternityEntry | undefined;
   const isMaternity = existingEntry?.phase === "maternity";
 
-  // 1. Determine trimester dynamically
+  // 1. Determine lifecycle-aware stage: postpartum/premature → "postpartum", else trimester
+  const isPostDelivery = pregnancyMode === "postpartum" || pregnancyMode === "premature";
+
   const trimester = useMemo<Trimester>(() => {
+    if (isPostDelivery) return "T3"; // fallback only for nutrition tips lookup
     const week = getWeekForDate(dateISO, activeEDD);
     return weekToTrimester(week);
-  }, [dateISO, activeEDD]);
+  }, [dateISO, activeEDD, isPostDelivery]);
 
   // 2. Determine exact maternity phase stage for symptoms
   const phaseStage = useMemo<MaternityPhaseStage>(() => {
-    if (existingEntry?.phase === "postpartum") return "postpartum";
+    if (isPostDelivery) return "postpartum";
     return trimester;
-  }, [existingEntry?.phase, trimester]);
+  }, [isPostDelivery, trimester]);
 
-  // 3. Fetch Trimester Data for nutrition
+  // 3. Stage-aware label for header badge
+  const stageLabel = isPostDelivery
+    ? (pregnancyMode === "premature" ? "Premature Care" : "Postpartum")
+    : getTrimesterLabel(trimester);
+
+  // 4. Fetch Trimester Data for nutrition (postpartum uses T3 tips as closest match)
   const nutritionDef = useMemo(() => getNutritionForTrimester(trimester), [trimester]);
 
   // 4. Use dynamic symptom engine
@@ -312,13 +320,22 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
               <p className="text-xs text-muted-foreground font-medium">
                 {formatDisplayDate(dateISO)}
               </p>
-              <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 text-[10px] font-bold uppercase tracking-wider">
-                {getTrimesterLabel(trimester)}
+              <span className={cn(
+                "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                isPostDelivery
+                  ? "bg-rose-100 text-rose-700"
+                  : "bg-blue-100 text-blue-700"
+              )}>
+                {stageLabel}
               </span>
             </div>
-            <h2 className="text-lg font-bold mt-1.5">Maternity Daily Log</h2>
+            <h2 className="text-lg font-bold mt-1.5">
+              {isPostDelivery ? "Recovery Daily Log" : "Maternity Daily Log"}
+            </h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Track your {getTrimesterLabel(trimester).toLowerCase()} pregnancy symptoms.
+              {isPostDelivery
+                ? `Track your ${stageLabel.toLowerCase()} recovery symptoms.`
+                : `Track your ${stageLabel.toLowerCase()} pregnancy symptoms.`}
             </p>
           </div>
           <button
@@ -599,11 +616,11 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
                 Nutrition Tips
               </h3>
               <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">
-                {trimester}
+                {stageLabel}
               </span>
             </div>
             <p className="text-xs text-muted-foreground pb-1">
-              Check off your {getTrimesterLabel(trimester).toLowerCase()} specific goals:
+              Check off your {stageLabel.toLowerCase()} specific goals:
             </p>
             <div className="grid grid-cols-1 gap-2">
               {nutritionDef.map((item) => (

@@ -85,7 +85,7 @@ export default function NutritionIntelligencePage() {
 
   const dietInput: DietInput = useMemo(() => {
     return {
-      trimester: (trimester || 2) as 1 | 2 | 3,
+      trimester: (mode === "pregnancy" ? (trimester || 2) : 2) as 1 | 2 | 3,
       region: (profile?.region as "north" | "south" | "east" | "west") || "north",
       dietPreference: ((profile as any)?.dietPreference as "vegetarian" | "mixed") || "vegetarian",
       deficiencies: [],

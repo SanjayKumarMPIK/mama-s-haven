@@ -698,3 +698,641 @@
 .pp-confetti {
   animation: pp-confetti 0.6s ease-out both;
 }
+
+/* ═════════════════════════════════════════════════
+   Care Log Dashboard — Premium Card Layout
+   ═════════════════════════════════════════════════ */
+
+/* Page-level bg texture */
+.carelog-page {
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 20%, hsl(260 50% 95% / 0.4), transparent),
+    radial-gradient(ellipse 60% 50% at 90% 80%, hsl(340 40% 95% / 0.35), transparent),
+    hsl(var(--background));
+}
+
+/* ── Pill Badge ── */
+.carelog-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, hsl(260 45% 94%), hsl(280 30% 96%));
+  border: 1px solid hsl(260 30% 88%);
+  color: hsl(260 55% 45%);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.85rem;
+  box-shadow: 0 1px 4px hsl(260 40% 80% / 0.2);
+}
+
+/* ── Hero Title ── */
+.carelog-hero-title {
+  font-size: 2.6rem;
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: hsl(220 25% 14%);
+}
+@media (min-width: 640px) {
+  .carelog-hero-title { font-size: 3.2rem; }
+}
+
+.carelog-hero-gradient {
+  background: linear-gradient(135deg, #7c5cfc 0%, #e74c7a 40%, #f59e0b 70%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Card Grid ── */
+.carelog-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 580px) {
+  .carelog-card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 880px) {
+  .carelog-card-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ── Dashboard Card ── */
+.carelog-dashboard-card {
+  all: unset;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  border-radius: 22px;
+  background: white;
+  border: 1.5px solid hsl(220 20% 93%);
+  box-shadow:
+    0 2px 8px hsl(220 20% 88% / 0.25),
+    0 0 0 0 hsl(260 40% 80% / 0);
+  transition: transform 0.28s cubic-bezier(.22,.61,.36,1),
+              box-shadow 0.28s cubic-bezier(.22,.61,.36,1),
+              border-color 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+.carelog-dashboard-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 22px;
+  background: linear-gradient(135deg, transparent 60%, var(--card-accent-bg, hsl(260 40% 96%)) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.carelog-dashboard-card:hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow:
+    0 8px 28px hsl(220 20% 82% / 0.35),
+    0 0 0 2px var(--card-accent, hsl(260 50% 70%) / 0.15);
+  border-color: hsl(220 20% 88%);
+}
+.carelog-dashboard-card:hover::before {
+  opacity: 1;
+}
+.carelog-dashboard-card:active {
+  transform: translateY(-1px) scale(1.005);
+}
+
+.carelog-card-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.35rem 1.25rem;
+}
+
+/* Icon wrap */
+.carelog-card-icon-wrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.04);
+}
+
+.carelog-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carelog-card-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: white;
+  border: 1.5px solid hsl(220 15% 92%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px hsl(0 0% 0% / 0.06);
+}
+
+/* Content */
+.carelog-card-content {
+  flex: 1;
+  min-width: 0;
+  padding-top: 0.15rem;
+}
+
+.carelog-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: hsl(220 25% 14%);
+  margin-bottom: 0.3rem;
+  line-height: 1.3;
+}
+
+.carelog-card-desc {
+  font-size: 0.8rem;
+  color: hsl(220 10% 50%);
+  line-height: 1.5;
+}
+
+/* Arrow button */
+.carelog-card-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1.5px solid hsl(220 15% 90%);
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.6rem;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+  box-shadow: 0 1px 4px hsl(0 0% 0% / 0.04);
+}
+.carelog-dashboard-card:hover .carelog-card-arrow {
+  transform: translateX(3px);
+  box-shadow: 0 2px 8px hsl(0 0% 0% / 0.08);
+  background: var(--card-accent-bg, hsl(260 40% 96%));
+}
+
+/* ── Tip Banner ── */
+.carelog-tip-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.95rem 1.25rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, hsl(260 40% 96%), hsl(280 35% 97%), hsl(260 45% 98%));
+  border: 1px solid hsl(260 30% 90%);
+  box-shadow: 0 2px 10px hsl(260 40% 85% / 0.15);
+  backdrop-filter: blur(8px);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.carelog-tip-banner:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px hsl(260 40% 85% / 0.25);
+}
+
+.carelog-tip-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(260 50% 90%), hsl(280 40% 92%));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: hsl(260 55% 50%);
+}
+
+.carelog-tip-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: hsl(260 55% 40%);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.carelog-tip-text {
+  flex: 1;
+  font-size: 0.82rem;
+  color: hsl(220 10% 45%);
+  line-height: 1.45;
+}
+
+.carelog-tip-arrow {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: white;
+  border: 1px solid hsl(260 30% 90%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: hsl(260 55% 50%);
+  transition: transform 0.2s ease;
+}
+.carelog-tip-banner:hover .carelog-tip-arrow {
+  transform: translateX(2px);
+}
+
+/* ── Back Button ── */
+.carelog-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  border: 1.5px solid hsl(260 30% 88%);
+  background: linear-gradient(135deg, hsl(260 40% 97%), hsl(280 30% 98%));
+  color: hsl(260 45% 40%);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 4px hsl(260 40% 85% / 0.15);
+}
+.carelog-back-btn:hover {
+  background: linear-gradient(135deg, hsl(260 40% 95%), hsl(280 30% 96%));
+  transform: translateX(-2px);
+  box-shadow: 0 2px 8px hsl(260 40% 85% / 0.25);
+}
+
+/* ── Responsive Tip Banner ── */
+@media (max-width: 640px) {
+  .carelog-tip-banner {
+    border-radius: 18px;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    padding: 1rem;
+  }
+  .carelog-tip-text {
+    flex-basis: 100%;
+    order: 3;
+    margin-top: -0.25rem;
+  }
+  .carelog-tip-arrow {
+    margin-left: auto;
+  }
+  .carelog-hero-title {
+    font-size: 2.2rem;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PREMATURE RECOVERY MODULE — 25/75 layout, signal bars, vertical timeline
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ─── 25/75 Layout ────────────────────────────────────────────────────────── */
+.premature-recovery-layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  border-radius: 1rem;
+  border: 2px solid hsl(263, 62%, 85%);
+  background: linear-gradient(135deg, hsl(263, 80%, 97%), hsl(270, 60%, 96%), hsl(290, 50%, 97%));
+  padding: 1.25rem;
+  box-shadow: 0 2px 12px rgba(139, 92, 246, 0.08);
+}
+
+@media (min-width: 768px) {
+  .premature-recovery-layout {
+    grid-template-columns: 27% 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+}
+
+/* ─── Score Panel (Left) ──────────────────────────────────────────────────── */
+.premature-recovery-score-panel {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border-radius: 0.875rem;
+  padding: 1rem;
+  border: 1px solid hsl(263, 50%, 90%);
+}
+
+/* ─── Timeline Panel (Right) ──────────────────────────────────────────────── */
+.premature-recovery-timeline-panel {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(6px);
+  border-radius: 0.875rem;
+  padding: 1rem;
+  border: 1px solid hsl(230, 40%, 92%);
+}
+
+/* ─── Signal Breakdown Bars ───────────────────────────────────────────────── */
+.premature-signal-row {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.premature-signal-label {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 0;
+  flex: 0 0 auto;
+  max-width: 5.5rem;
+}
+
+@media (min-width: 768px) {
+  .premature-signal-label {
+    max-width: 7rem;
+  }
+}
+
+.premature-signal-bar-bg {
+  flex: 1;
+  height: 5px;
+  background: hsl(220, 15%, 90%);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.premature-signal-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.8s ease-out;
+}
+
+.premature-signal-bar-fill.good {
+  background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+.premature-signal-bar-fill.moderate {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+.premature-signal-bar-fill.low {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.premature-signal-value {
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: hsl(220, 15%, 50%);
+  min-width: 1.5rem;
+  text-align: right;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PREMATURE HORIZONTAL TIMELINE
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+.prem-htl-root {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+/* ── Horizontal scroll track ── */
+.prem-htl-scroll {
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  /* hide scrollbar */
+  scrollbar-width: none;
+}
+.prem-htl-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.prem-htl-track {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  min-width: max-content;
+  padding: 0.5rem 1rem 0.5rem 0;
+}
+
+.prem-htl-rail {
+  position: absolute;
+  top: 1.25rem;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: hsl(220, 15%, 88%);
+  z-index: 0;
+}
+
+.prem-htl-rail-fill {
+  position: absolute;
+  top: 1.25rem;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #22c55e, #8b5cf6);
+  z-index: 1;
+  transition: width 0.8s ease-out;
+}
+
+.prem-htl-nodes {
+  display: flex;
+  align-items: flex-start;
+  gap: 3rem;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.prem-htl-node-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 6rem;
+  text-align: center;
+}
+
+.prem-htl-circle {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border: 2px solid hsl(220, 15%, 82%);
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.prem-htl-circle.completed {
+  background: #22c55e;
+  border-color: #22c55e;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
+}
+
+.prem-htl-circle.current {
+  background: #8b5cf6;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15), 0 2px 12px rgba(139, 92, 246, 0.3);
+  animation: premature-node-pulse 2s ease-in-out infinite;
+}
+
+.prem-htl-circle.upcoming {
+  background: hsl(220, 15%, 95%);
+  border-color: hsl(220, 15%, 82%);
+}
+
+@keyframes premature-node-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15), 0 2px 12px rgba(139, 92, 246, 0.3); }
+  50% { box-shadow: 0 0 0 6px rgba(139, 92, 246, 0.1), 0 2px 16px rgba(139, 92, 246, 0.25); }
+}
+
+.prem-htl-phase-num {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.prem-htl-phase-num.completed {
+  background: hsl(142, 60%, 93%);
+  color: hsl(142, 70%, 32%);
+}
+.prem-htl-phase-num.current {
+  background: hsl(263, 70%, 93%);
+  color: hsl(263, 70%, 40%);
+}
+.prem-htl-phase-num.upcoming {
+  background: hsl(220, 15%, 93%);
+  color: hsl(220, 15%, 55%);
+}
+
+.prem-htl-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.prem-htl-label.completed { color: hsl(220, 25%, 14%); opacity: 0.85; }
+.prem-htl-label.current { color: hsl(220, 25%, 14%); }
+.prem-htl-label.upcoming { color: hsl(220, 15%, 55%); }
+
+/* ── Active phase content panel ── */
+.prem-htl-panel {
+  padding: 1rem;
+  border-radius: 0.875rem;
+  border: 1px solid hsl(263, 50%, 88%);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.04), rgba(217, 70, 239, 0.03));
+  animation: premature-panel-in 0.2s ease-out;
+}
+
+@keyframes premature-panel-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.prem-htl-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.prem-htl-panel-badge {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.125rem 0.375rem;
+  border-radius: 0.25rem;
+  background: hsl(263, 70%, 93%);
+  color: hsl(263, 70%, 40%);
+}
+
+.prem-htl-panel-title {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: hsl(220, 25%, 14%);
+}
+
+.prem-htl-panel-progress {
+  font-size: 0.6rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.25rem;
+  background: hsl(263, 70%, 93%);
+  color: hsl(263, 70%, 45%);
+  margin-left: auto;
+}
+
+.prem-htl-panel-desc {
+  font-size: 0.75rem;
+  color: hsl(220, 15%, 35%);
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.prem-htl-focus {
+  margin-bottom: 0.75rem;
+}
+
+.prem-htl-focus-label {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(220, 15%, 50%);
+  margin-bottom: 0.375rem;
+  display: block;
+}
+
+.prem-htl-focus-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.prem-htl-focus-chip {
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 99px;
+  background: hsl(263, 70%, 93%);
+  color: hsl(263, 60%, 40%);
+  white-space: nowrap;
+}
+
+.prem-htl-prog-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.prem-htl-prog-bg {
+  flex: 1;
+  height: 4px;
+  background: hsl(263, 30%, 90%);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.prem-htl-prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #d946ef);
+  border-radius: 99px;
+  transition: width 0.8s ease-out;
+}
+
+.prem-htl-prog-text {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: hsl(263, 40%, 55%);
+  white-space: nowrap;
+}

@@ -2,13 +2,14 @@
  * usePrematureRecovery.ts
  *
  * React hook for premature baby recovery analytics.
- * Wraps the premature recovery engine with React state management
- * and memoization for performance.
+ * Wraps the inference-based recovery engine with React state management
+ * and memoization for performance. Recalculates only on calendar changes.
  */
 
 import { useMemo, useState, useCallback } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePrematureBabyWeight, type WeightEntry } from "@/hooks/usePrematureBabyWeight";
+import { useMedicineReminder } from "@/hooks/useMedicineReminder";
 import {
   calculatePrematureRecoveryScore,
   getPrematureRecoveryStatus,
@@ -16,21 +17,36 @@ import {
   generatePrematureActivitySuggestions,
   loadPrematureCheckups,
   savePrematureCheckups,
+  SIGNAL_META,
   type PrematureRecoveryScoreBreakdown,
   type PrematureRecoveryStatus,
   type PrematureDailyPriority,
   type PrematureActivitySuggestion,
   type PrematureRecoveryCheckup,
+  type SignalMeta,
 } from "./prematureRecoveryEngine";
+import {
+  getPrematureRecoveryTimeline,
+  getCurrentPhase,
+  type PrematureTimelinePhase,
+} from "./prematureRecoveryTimeline";
 
-export function usePrematureRecovery() {
+export function usePrematureRecovery(weeksPostDelivery: number = 0) {
   const { maternityLogs } = useHealthLog();
   const weightTracker = usePrematureBabyWeight();
+  const { getAdherenceRate, medicines } = useMedicineReminder();
 
-  // ─── Recovery Analytics (memoized) ────────────────────────────────────────
+  // ─── Medicine Adherence (memoized) ─────────────────────────────────────────
+  const medicineAdherence = useMemo(() => {
+    // If no medicines are tracked, return -1 to signal "not applicable"
+    if (medicines.length === 0) return -1;
+    return getAdherenceRate(7);
+  }, [medicines, getAdherenceRate]);
+
+  // ─── Recovery Analytics (memoized, recalculates on log changes) ────────────
   const recoveryBreakdown = useMemo(() => {
-    return calculatePrematureRecoveryScore(maternityLogs, weightTracker.entries);
-  }, [maternityLogs, weightTracker.entries]);
+    return calculatePrematureRecoveryScore(maternityLogs, weightTracker.entries, medicineAdherence);
+  }, [maternityLogs, weightTracker.entries, medicineAdherence]);
 
   const recoveryStatus = useMemo(() => {
     return getPrematureRecoveryStatus(recoveryBreakdown.overall);
@@ -43,6 +59,15 @@ export function usePrematureRecovery() {
   const activitySuggestions = useMemo(() => {
     return generatePrematureActivitySuggestions(recoveryBreakdown);
   }, [recoveryBreakdown]);
+
+  // ─── Adaptive Timeline (memoized) ─────────────────────────────────────────
+  const timelinePhases = useMemo(() => {
+    return getPrematureRecoveryTimeline(weeksPostDelivery, recoveryBreakdown.overall);
+  }, [weeksPostDelivery, recoveryBreakdown.overall]);
+
+  const currentPhase = useMemo(() => {
+    return getCurrentPhase(timelinePhases);
+  }, [timelinePhases]);
 
   // ─── Checkups State ────────────────────────────────────────────────────────
   const [checkups, setCheckups] = useState<PrematureRecoveryCheckup[]>(() => loadPrematureCheckups());
@@ -66,6 +91,11 @@ export function usePrematureRecovery() {
     recoveryStatus,
     dailyPriorities,
     activitySuggestions,
+    // Signal metadata for UI display
+    signalMeta: SIGNAL_META,
+    // Adaptive timeline
+    timelinePhases,
+    currentPhase,
     // Checkups
     checkups,
     toggleCheckup,
@@ -81,4 +111,6 @@ export type {
   PrematureDailyPriority,
   PrematureActivitySuggestion,
   PrematureRecoveryCheckup,
+  PrematureTimelinePhase,
+  SignalMeta,
 };

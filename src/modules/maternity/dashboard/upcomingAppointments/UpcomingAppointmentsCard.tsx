@@ -66,7 +66,7 @@ export default function UpcomingAppointmentsCard() {
           </div>
         </div>
         <Link
-          to="/maternity/care-log/appointments"
+          to="/medicine-reminder"
           className="text-xs font-medium text-primary hover:underline"
         >
           View all
@@ -84,7 +84,7 @@ export default function UpcomingAppointmentsCard() {
           {displayAppointments.map((appointment) => (
             <Link
               key={appointment.id}
-              to={`/maternity/care-log/appointments`}
+              to="/medicine-reminder"
               className="flex items-center gap-3 rounded-xl border border-border/60 bg-background p-3 hover:border-primary/30 hover:bg-primary/5 transition-all"
             >
               {/* Date Tile */}

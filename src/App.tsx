@@ -55,6 +55,7 @@ import FPToolPage from "./pages/FPToolPage";
 import FitnessHealthCalculatorPage from "./pages/maternity/FitnessHealthCalculatorPage";
 import PersonalizedDietPage from "./pages/nutrition/PersonalizedDietPage";
 import NutritionChecklistPage from "./pages/nutrition/NutritionChecklistPage";
+import NutritionIntelligencePage from "./pages/nutrition/NutritionIntelligencePage";
 import PostpartumDashboard from "./modules/postpartum/pages/PostpartumDashboard";
 import PubertyDeficiencyPage from "./pages/puberty/PubertyDeficiencyPage";
 import PubertyNutrientRecommendationsPage from "./pages/puberty/PubertyNutrientRecommendationsPage";
@@ -105,6 +106,7 @@ const router = createBrowserRouter(
         { path: "assistant", element: <Assistant /> },
         { path: "dashboard", element: <WeeklyGuide /> },
         { path: "nutrition", element: <NutritionGuide /> },
+        { path: "nutrition-intelligence", element: <NutritionIntelligencePage /> },
         { path: "symptom-checker", element: <SymptomChecker /> },
         { path: "emergency", element: <EmergencyGuidance /> },
         { path: "wellness", element: <WellnessDashboard /> },
@@ -191,6 +193,7 @@ const App = () => (
                         <Route path="/assistant" element={<Assistant />} />
                         <Route path="/dashboard" element={<WeeklyGuide />} />
                         <Route path="/nutrition" element={<NutritionGuide />} />
+                        <Route path="/nutrition-intelligence" element={<NutritionIntelligencePage />} />
                         <Route path="/symptom-checker" element={<SymptomChecker />} />
                         <Route path="/emergency" element={<EmergencyGuidance />} />
                         <Route path="/wellness" element={<WellnessDashboard />} />

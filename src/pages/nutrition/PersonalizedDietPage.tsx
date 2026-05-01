@@ -2,10 +2,12 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useNutritionIntelligence } from "@/hooks/useNutritionIntelligence";
 import { generateDiet, type DietPlan, type DietInput, getDefaultDietInput } from "@/lib/nutrition/dietGenerator";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import NutritionChecklistSection from "@/components/nutrition/NutritionChecklistSection";
+import FoodRecommendationCard from "@/components/nutrition/FoodRecommendationCard";
 import {
   Utensils, Clock, ArrowLeft, RefreshCw, ChevronRight, Info,
 } from "lucide-react";
@@ -64,7 +66,9 @@ function MealCard({
 export default function PersonalizedDietPage() {
   const { profile } = useProfile();
   const { trimester } = usePregnancyProfile();
+  const { result } = useNutritionIntelligence();
   const [regenerateKey, setRegenerateKey] = useState(0);
+  const [activeDietSegment, setActiveDietSegment] = useState<"mealPlan" | "foodGuidance" | "checklist">("mealPlan");
 
   const accent = {
     gradient: "from-purple-500 to-violet-400",
@@ -129,108 +133,154 @@ export default function PersonalizedDietPage() {
       <div className="container py-6 space-y-6">
         {/* Profile Snapshot */}
         <ScrollReveal>
-          <div className={`rounded-2xl border ${accent.border} ${accent.bg} p-5`}>
-            <div className="flex items-center gap-2 mb-3">
-              <Info className={`w-4 h-4 ${accent.text}`} />
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Your Profile
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <span className="text-sm text-foreground/90">
-                <strong>Trimester:</strong> {dietPlan.profile.trimester}
-              </span>
-              <span className="text-sm text-foreground/90">
-                <strong>Region:</strong> {dietPlan.profile.region === "north" ? "North India" : dietPlan.profile.region === "south" ? "South India" : dietPlan.profile.region === "east" ? "East India" : "West India"}
-              </span>
-              <span className="text-sm text-foreground/90">
-                <strong>Diet:</strong> {dietPlan.profile.dietPreference === "vegetarian" ? "Vegetarian" : "Mixed (Veg + Non-Veg)"}
-              </span>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* Nutritional Highlights */}
-        <ScrollReveal delay={50}>
-          <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
-            <div className="flex items-center gap-2 mb-4">
-              <Utensils className={`w-5 h-5 ${accent.text}`} />
-              <h2 className="text-base font-bold">Nutritional Highlights</h2>
-            </div>
-            <ul className="space-y-2 text-sm text-foreground/85">
-              {dietPlan.nutritionalHighlights.map((highlight, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="text-primary mt-0.5">•</span>
-                  <span>{highlight}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </ScrollReveal>
-
-        {/* Generated Diet Chart */}
-        <ScrollReveal delay={100}>
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Clock className={`w-5 h-5 ${accent.text}`} />
-              <h2 className="text-base font-bold">Daily Meal Plan</h2>
-            </div>
-            <div className="grid gap-4">
-              {dietPlan.meals.map((meal, i) => (
-                <MealCard key={i} meal={meal} accent={accent} />
-              ))}
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* Foods Recommended For You */}
-        <ScrollReveal delay={150}>
-          <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
-            <div className="flex items-center gap-2 mb-4">
-              <Utensils className={`w-5 h-5 ${accent.text}`} />
-              <h2 className="text-base font-bold">Foods Recommended For You</h2>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {dietPlan.recommendedFoods.slice(0, 20).map((food) => (
-                <span
-                  key={food}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-sm"
-                >
-                  {food}
-                </span>
-              ))}
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* Foods To Reduce */}
-        {dietPlan.foodsToReduce.length > 0 && (
-          <ScrollReveal delay={200}>
-            <div className="rounded-2xl border border-amber-200/60 bg-amber-50/50 p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <Info className="w-5 h-5 text-amber-600" />
-                <h2 className="text-base font-bold text-amber-900">Foods To Reduce</h2>
+          <div className="flex items-center justify-between">
+            <div className={`rounded-2xl border ${accent.border} ${accent.bg} p-5 flex-1`}>
+              <div className="flex items-center gap-2 mb-3">
+                <Info className={`w-4 h-4 ${accent.text}`} />
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Your Profile
+                </p>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {dietPlan.foodsToReduce.map((food) => (
-                  <span
-                    key={food}
-                    className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-amber-100 text-amber-800 border-amber-300"
-                  >
-                    {food}
-                  </span>
+              <div className="flex flex-wrap gap-3">
+                <span className="text-sm text-foreground/90">
+                  <strong>Trimester:</strong> {dietPlan.profile.trimester}
+                </span>
+                <span className="text-sm text-foreground/90">
+                  <strong>Region:</strong> {dietPlan.profile.region === "north" ? "North India" : dietPlan.profile.region === "south" ? "South India" : dietPlan.profile.region === "east" ? "East India" : "West India"}
+                </span>
+                <span className="text-sm text-foreground/90">
+                  <strong>Diet:</strong> {dietPlan.profile.dietPreference === "vegetarian" ? "Vegetarian" : "Mixed (Veg + Non-Veg)"}
+                </span>
+              </div>
+            </div>
+          </div>
+        </ScrollReveal>
+
+        {/* Segmented Control */}
+        <ScrollReveal delay={50}>
+          <div className="flex p-1 bg-muted/30 rounded-2xl border border-border/50 shadow-inner max-w-2xl mx-auto mb-8 relative">
+            <button
+              onClick={() => setActiveDietSegment("mealPlan")}
+              className={`flex-1 py-3 text-sm font-semibold rounded-xl transition-all duration-300 relative z-10 flex items-center justify-center gap-2 ${
+                activeDietSegment === "mealPlan" 
+                  ? "bg-white text-purple-700 shadow-sm border border-purple-100" 
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <Utensils className="w-4 h-4" /> Daily Meal Plan
+            </button>
+            <button
+              onClick={() => setActiveDietSegment("foodGuidance")}
+              className={`flex-1 py-3 text-sm font-semibold rounded-xl transition-all duration-300 relative z-10 flex items-center justify-center gap-2 ${
+                activeDietSegment === "foodGuidance" 
+                  ? "bg-white text-purple-700 shadow-sm border border-purple-100" 
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <Info className="w-4 h-4" /> Food Guidance
+            </button>
+            <button
+              onClick={() => setActiveDietSegment("checklist")}
+              className={`flex-1 py-3 text-sm font-semibold rounded-xl transition-all duration-300 relative z-10 flex items-center justify-center gap-2 ${
+                activeDietSegment === "checklist" 
+                  ? "bg-white text-purple-700 shadow-sm border border-purple-100" 
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+              }`}
+            >
+              <Clock className="w-4 h-4" /> Checklist
+            </button>
+          </div>
+        </ScrollReveal>
+
+        {/* ─── SEGMENT 1: Daily Meal Plan ──────────────────────────── */}
+        {activeDietSegment === "mealPlan" && (
+          <ScrollReveal delay={100}>
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Clock className={`w-5 h-5 ${accent.text}`} />
+                <h2 className="text-base font-bold">Daily Meal Plan</h2>
+              </div>
+              <div className="grid gap-4">
+                {dietPlan.meals.map((meal, i) => (
+                  <MealCard key={i} meal={meal} accent={accent} />
                 ))}
               </div>
             </div>
           </ScrollReveal>
         )}
 
-        {/* Nutrition Checklist Section */}
-        <ScrollReveal delay={250}>
-          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-            <NutritionChecklistSection />
+        {/* ─── SEGMENT 2: Food Guidance ────────────────────────────── */}
+        {activeDietSegment === "foodGuidance" && (
+          <div className="space-y-6">
+            {/* Foods Recommended For You */}
+            <ScrollReveal delay={150}>
+              <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
+                <div className="flex items-center gap-2 mb-4">
+                  <Utensils className={`w-5 h-5 ${accent.text}`} />
+                  <h2 className="text-base font-bold">Foods Recommended For You</h2>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {dietPlan.recommendedFoods.slice(0, 20).map((food) => (
+                    <span
+                      key={food}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r from-purple-500 to-violet-500 text-white shadow-sm"
+                    >
+                      {food}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </ScrollReveal>
+
+            {/* Dynamic Food Recommendations from Nutrition Intelligence */}
+            {result.foodRecommendations.length > 0 && (
+              <ScrollReveal delay={160}>
+                <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Utensils className={`w-5 h-5 ${accent.text}`} />
+                    <h2 className="text-base font-bold">Personalized Food Recommendations</h2>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {result.foodRecommendations.slice(0, 8).map((food) => (
+                      <FoodRecommendationCard key={food.name} food={food} />
+                    ))}
+                  </div>
+                </div>
+              </ScrollReveal>
+            )}
+
+            {/* Foods To Reduce */}
+            {dietPlan.foodsToReduce.length > 0 && (
+              <ScrollReveal delay={200}>
+                <div className="rounded-2xl border border-amber-200/60 bg-amber-50/50 p-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Info className="w-5 h-5 text-amber-600" />
+                    <h2 className="text-base font-bold text-amber-900">Foods To Avoid / Reduce</h2>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {dietPlan.foodsToReduce.map((food) => (
+                      <span
+                        key={food}
+                        className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-amber-100 text-amber-800 border-amber-300"
+                      >
+                        {food}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </ScrollReveal>
+            )}
           </div>
-        </ScrollReveal>
+        )}
+
+        {/* ─── SEGMENT 3: Checklist ────────────────────────────────── */}
+        {activeDietSegment === "checklist" && (
+          <ScrollReveal delay={250}>
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <NutritionChecklistSection />
+            </div>
+          </ScrollReveal>
+        )}
 
         {/* Back to Nutrition Guide */}
         <ScrollReveal delay={250}>

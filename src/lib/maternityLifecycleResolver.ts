@@ -115,3 +115,56 @@ export function shouldNavigateToPrematureDashboard(profile: MaternityProfile): b
   const lifecycleState = resolveMaternityLifecycle(profile);
   return lifecycleState === "premature";
 }
+
+// ─── Nutrition Lifecycle Helpers ──────────────────────────────────────────────
+// Used by deficiency/nutrition hooks to resolve lifecycle-aware phase & trimester
+
+import type { MaternityMode } from "@/hooks/usePregnancyProfile";
+
+export type NutritionLifecycleStage =
+  | "pregnancy_trimester_1"
+  | "pregnancy_trimester_2"
+  | "pregnancy_trimester_3"
+  | "premature_phase"
+  | "postpartum_phase";
+
+/**
+ * Resolves the nutrition lifecycle stage from MaternityMode + trimester.
+ * Used for stage-specific nutrient priority rendering.
+ */
+export function resolveNutritionLifecycleStage(
+  mode: MaternityMode,
+  trimester: number,
+): NutritionLifecycleStage {
+  if (mode === "postpartum") return "postpartum_phase";
+  if (mode === "premature") return "premature_phase";
+  if (trimester === 1) return "pregnancy_trimester_1";
+  if (trimester === 2) return "pregnancy_trimester_2";
+  return "pregnancy_trimester_3";
+}
+
+/**
+ * Maps the maternity mode to the correct HealthPhase for the deficiency engine.
+ *
+ * - "pregnancy" → "maternity" (uses pregnancy multipliers)
+ * - "postpartum" → "postpartum" (uses postpartum multipliers — already defined in engine)
+ * - "premature" → "postpartum" (closest match — recovery-focused multipliers)
+ */
+export function getDeficiencyPhase(mode: MaternityMode): "maternity" | "postpartum" {
+  if (mode === "postpartum" || mode === "premature") return "postpartum";
+  return "maternity";
+}
+
+/**
+ * Returns the effective trimester for the deficiency engine.
+ *
+ * - During pregnancy: returns the actual trimester (1, 2, or 3)
+ * - During postpartum/premature: returns undefined (stops trimester-specific recommendations)
+ */
+export function getEffectiveTrimester(
+  mode: MaternityMode,
+  trimester: number,
+): number | undefined {
+  if (mode === "postpartum" || mode === "premature") return undefined;
+  return trimester;
+}

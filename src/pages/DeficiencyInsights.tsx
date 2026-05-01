@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { ArrowLeft, Circle, Flame, Info, Leaf, Moon, Shield, Sparkles, Sun, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Flame, Info, Leaf, Moon, Shield, Sparkles, Sun } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import { useSymptomDerivedRisks } from "@/hooks/useSymptomDerivedRisks";
@@ -279,95 +279,6 @@ export default function DeficiencyInsights() {
                 recommendations={deficiency.recommendations || []}
               />
             ))}
-          </div>
-        </section>
-
-        <section className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
-          <h2 className="text-base font-semibold">Your Nutrient Risk Trend</h2>
-          <div className="mt-4 grid gap-4 md:grid-cols-[1.4fr_0.8fr]">
-            <div className="rounded-2xl border border-[#efe8f4] bg-[#fefcff] p-4">
-              <div className="mb-2 flex justify-between text-[11px] text-muted-foreground">
-                <span>Week 1</span><span>Week 2</span><span>Week 3</span><span>Week 4</span>
-              </div>
-              <div className="h-28 rounded-xl bg-[linear-gradient(to_bottom,#f9f4fb_1px,transparent_1px)] bg-[size:100%_25%] p-4">
-                <div className="relative h-full">
-                  {insights.topDeficiencies.slice(0, 3).map((deficiency, index) => (
-                    <div
-                      key={deficiency.nutrient}
-                      className={`absolute left-0 h-[2px] rounded ${nutrientBarColor[deficiency.nutrient] || "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]"}`}
-                      style={{
-                        top: `${(index + 1) * 16}px`,
-                        width: `${deficiency.probability}%`,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="rounded-2xl border border-[#efe8f4] bg-[#fff8fc] p-4">
-              <div className="space-y-2 text-xs">
-                {insights.topDeficiencies.slice(0, 3).map((deficiency) => (
-                  <p key={deficiency.nutrient} className="flex items-center gap-2">
-                    <Circle className={`h-2.5 w-2.5 fill-${deficiency.nutrient === "Iron" ? "[#e26b98]" : deficiency.nutrient === "Vitamin D" ? "[#e2a43d]" : "[#8b72c8]"} text-${deficiency.nutrient === "Iron" ? "[#e26b98]" : deficiency.nutrient === "Vitamin D" ? "[#e2a43d]" : "[#8b72c8]"}`} /> {deficiency.nutrient}
-                  </p>
-                ))}
-              </div>
-              <div className="mt-5 rounded-xl bg-white p-3">
-                <p className="text-sm font-semibold">
-                  {symptomPatterns.symptomTrend === "improving" ? "You're improving!" : symptomPatterns.symptomTrend === "worsening" ? "Needs attention" : "Stable"}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {symptomPatterns.symptomTrend === "improving"
-                    ? "Your nutrition is getting better. Keep continuing your healthy habits."
-                    : symptomPatterns.symptomTrend === "worsening"
-                    ? "Your symptoms are increasing. Consider adjusting your diet."
-                    : "Your nutrition status is stable. Maintain your current habits."}
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-          <div className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
-            <h2 className="text-base font-semibold">Today&apos;s Missing Nutrients</h2>
-            <p className="text-xs text-muted-foreground">Nutrients your body needs more of today</p>
-            <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-              {insights.topDeficiencies.slice(0, 5).map((deficiency) => (
-                <div key={deficiency.nutrient} className="rounded-xl border border-[#efe8f4] bg-[#fefcff] p-3 text-center">
-                  {nutrientIcon[deficiency.nutrient] || <Sparkles className="mx-auto h-4 w-4 text-[#8d73c7]" />}
-                  <p className="mt-1 text-xs font-semibold">{deficiency.nutrient}</p>
-                  <p className={`text-[11px] text-muted-foreground ${severityTone[deficiency.severity]}`}>{deficiency.severity}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
-            <p className="text-sm font-semibold">Nutrient Gap Summary</p>
-            <div className="mt-2 flex items-end gap-3">
-              <div className="grid h-16 w-16 place-content-center rounded-full border-4 border-[#f2dbe8] bg-white text-2xl font-bold">
-                {insights.nutrientRisks.filter(r => r.probability >= 40).length}
-              </div>
-              <p className="text-xs text-muted-foreground">Nutrients at risk</p>
-            </div>
-            <p className="mt-3 text-sm text-foreground/85">
-              {insights.priorityNutrient
-                ? `Focus on ${insights.priorityNutrient} first. Keep a balanced diet to reduce gaps.`
-                : "Keep a balanced diet to reduce the gaps and fuel your best every day."}
-            </p>
-            <button type="button" className="mt-4 rounded-full bg-[#f7ebf4] px-4 py-2 text-xs font-semibold text-[#9c5f84]">
-              View Full Nutrient Gaps
-            </button>
-          </div>
-        </section>
-
-        <section className="rounded-[24px] border border-[#eee7f3] bg-white p-4">
-          <h2 className="text-base font-semibold">Nutrient Deficiency Severity Guide</h2>
-          <div className="mt-3 grid gap-2 md:grid-cols-4">
-            <div className="rounded-xl border border-[#e7f4ea] bg-[#f4fff6] p-3"><p className="text-sm font-semibold text-[#3f9f58]">Mild</p><p className="mt-1 text-xs text-[#51765c]">Minor deficiency. Manage with diet and lifestyle.</p></div>
-            <div className="rounded-xl border border-[#f8edd9] bg-[#fffaf0] p-3"><p className="text-sm font-semibold text-[#b4852d]">Moderate</p><p className="mt-1 text-xs text-[#7d6943]">Noticeable deficiency. Needs attention and consistency.</p></div>
-            <div className="rounded-xl border border-[#f8e3e6] bg-[#fff5f6] p-3"><p className="text-sm font-semibold text-[#c35a66]">High</p><p className="mt-1 text-xs text-[#865761]">High risk deficiency. Take action and improve your diet.</p></div>
-            <div className="rounded-xl border border-[#f4dde8] bg-[#fff4fb] p-3"><p className="text-sm font-semibold text-[#bf4e91]">Critical</p><p className="mt-1 text-xs text-[#815b72]">Severe deficiency. Consult a healthcare professional.</p></div>
           </div>
         </section>
 

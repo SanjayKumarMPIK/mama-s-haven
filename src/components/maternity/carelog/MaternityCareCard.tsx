@@ -27,12 +27,25 @@ interface MaternityCareCardProps {
 export default function MaternityCareCard({ data, onClick, route, onNavigate }: MaternityCareCardProps) {
   const Icon = data.icon;
 
+  // Single resolved destination: data.to takes priority over route prop
+  const resolvedRoute = data.to || route;
+
   const handleInteraction = (e?: React.MouseEvent | React.KeyboardEvent) => {
     if (e && 'key' in e && e.key !== 'Enter' && e.key !== ' ') {
       return;
     }
-    if (route && onNavigate) {
-      onNavigate(route);
+
+    // Debug log
+    console.log("[CareCard] Click:", {
+      clickedCard: data.id,
+      title: data.title,
+      resolvedRoute,
+      dataTo: data.to,
+      routeProp: route,
+    });
+
+    if (resolvedRoute && onNavigate) {
+      onNavigate(resolvedRoute);
     } else if (onClick) {
       onClick();
     }
@@ -86,22 +99,11 @@ export default function MaternityCareCard({ data, onClick, route, onNavigate }: 
     </>
   );
 
-  // If route is provided, use Link for direct navigation
-  if (route) {
+  // Use Link for direct navigation if we have a resolved route
+  if (resolvedRoute) {
     return (
       <Link
-        to={route}
-        className="group relative block rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-      >
-        {CardContent}
-      </Link>
-    );
-  }
-
-  if (data.to) {
-    return (
-      <Link
-        to={data.to}
+        to={resolvedRoute}
         className="group relative block rounded-2xl border border-border/60 bg-card p-6 shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden"
       >
         {CardContent}

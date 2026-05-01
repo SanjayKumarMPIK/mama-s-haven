@@ -378,6 +378,26 @@ export default function FamilyPlanning() {
             <DynamicToolsPanel />
           </ScrollReveal>
 
+          {/* Care Log */}
+          <ScrollReveal delay={120}>
+            <Link to="/family-planning/care-log" className="block rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50 to-emerald-50 p-6 shadow-sm hover:shadow-md transition-all group">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                  <span className="text-2xl">💗</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base font-bold text-teal-900 mb-1">Care Log</h3>
+                  <p className="text-sm text-teal-700 leading-relaxed">
+                    Post-procedure recovery support — track your healing, log symptoms, and get care guidance after a reproductive health procedure.
+                  </p>
+                  <span className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-teal-600 group-hover:gap-2 transition-all">
+                    Open Care Log →
+                  </span>
+                </div>
+              </div>
+            </Link>
+          </ScrollReveal>
+
           {/* Consultation */}
           <ScrollReveal delay={160}>
             <ConsultationTrigger />

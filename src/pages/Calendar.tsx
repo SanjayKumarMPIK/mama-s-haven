@@ -18,6 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 import MaternityCalendar from "@/components/calendar/MaternityCalendar";
 import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
+import { useDateSymptomLayout } from "@/hooks/useDateSymptomLayout";
+import { DateSymptomCustomizer } from "@/components/calendar/DateSymptomCustomizer";
 
 type CalendarMode = "year" | "month";
 type SymptomTime = "morning" | "afternoon" | "evening";
@@ -809,6 +811,11 @@ function SymptomLogPanel({
 }: SymptomLogPanelProps) {
   const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
+  // ── Family Planning: per-date symptom layout ──
+  const fpDateLayout = phase === "family-planning" ? useDateSymptomLayout(dateISO) : null;
+  // Use date-specific options for family-planning, global options for everything else
+  const effectiveSymptomOptions = fpDateLayout ? fpDateLayout.symptomOptions : symptomOptions;
+
   // STRICT SEPARATION: the phaseLogs passed here only contain the current phase's data
   const existingEntry = logs[dateISO];
 
@@ -966,14 +973,7 @@ function SymptomLogPanel({
         flowIntensity: null,
         bloodColor: bloodColor !== "" ? bloodColor : undefined,
         periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
-        symptoms: {
-          cramps: !!selectedSymptoms.cramps,
-          fatigue: !!selectedSymptoms.fatigue,
-          moodSwings: !!selectedSymptoms.moodSwings,
-          headache: !!selectedSymptoms.headache,
-          acne: !!selectedSymptoms.acne,
-          breastTenderness: !!selectedSymptoms.breastTenderness,
-        },
+        symptoms: { ...selectedSymptoms },
         mood: moodValue,
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
@@ -1005,14 +1005,7 @@ function SymptomLogPanel({
         periodStarted: periodStarted,
         bloodColor: bloodColor !== "" ? bloodColor : undefined,
         periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
-        symptoms: {
-          irregularCycle: !!selectedSymptoms.irregularCycle,
-          ovulationPain: !!selectedSymptoms.ovulationPain,
-          moodChanges: !!selectedSymptoms.moodChanges,
-          fatigue: !!selectedSymptoms.fatigue,
-          stress: !!selectedSymptoms.stress,
-          sleepIssues: !!selectedSymptoms.sleepIssues,
-        },
+        symptoms: { ...selectedSymptoms },
         mood: moodValue,
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
@@ -1023,14 +1016,7 @@ function SymptomLogPanel({
       // menopause
       entry = {
         phase: "menopause",
-        symptoms: {
-          hotFlashes: !!selectedSymptoms.hotFlashes,
-          nightSweats: !!selectedSymptoms.nightSweats,
-          moodSwings: !!selectedSymptoms.moodSwings,
-          jointPain: !!selectedSymptoms.jointPain,
-          sleepDisturbance: !!selectedSymptoms.sleepDisturbance,
-          fatigue: !!selectedSymptoms.fatigue,
-        },
+        symptoms: { ...selectedSymptoms },
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
         mood: moodValue,
@@ -1471,7 +1457,7 @@ function SymptomLogPanel({
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              {symptomOptions.map((opt) => {
+              {effectiveSymptomOptions.map((opt) => {
                 const isActive = !!selectedSymptoms[opt.id];
                 return (
                   <button
@@ -1778,8 +1764,20 @@ function SymptomLogPanel({
         </div>
       </div>
 
-      {/* Global Symptom Customizer */}
-      {showSymptomCustomizer && (
+      {/* Symptom Customizer — date-specific for family-planning, global for others */}
+      {showSymptomCustomizer && phase === "family-planning" && fpDateLayout && (
+        <DateSymptomCustomizer
+          isOpen={showSymptomCustomizer}
+          onClose={() => setShowSymptomCustomizer(false)}
+          dateISO={dateISO}
+          activeSymptoms={fpDateLayout.activeSymptoms}
+          predefinedLibrary={fpDateLayout.predefinedLibrary}
+          onSwap={fpDateLayout.swapActiveSymptom}
+          onReset={fpDateLayout.resetToCore}
+          isCustomized={fpDateLayout.isCustomized}
+        />
+      )}
+      {showSymptomCustomizer && phase !== "family-planning" && (
         <GlobalSymptomCustomizer
           isOpen={showSymptomCustomizer}
           onClose={() => setShowSymptomCustomizer(false)}

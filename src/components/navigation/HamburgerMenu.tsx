@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,8 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/dashboard", label: "Dashboard", icon: Calendar },
   { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
   { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
-  { to: "/medicine-reminder", label: "Care Log", icon: Pill },
+  { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
+  { to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList },
 ];
 
 // Routes to hide when phase is menopause (menopause has its own dedicated pages)
@@ -44,9 +45,14 @@ const MENOPAUSE_HIDDEN_ROUTES = new Set([
   "/medicine-reminder",
 ]);
 
-// Routes to show only in maternity phase
 const MATERNITY_ONLY_ROUTES = new Set([
   "/medicine-reminder",
+  "/pregnancy-dashboard",
+]);
+
+// Routes to show only in family planning phase
+const FAMILY_PLANNING_ONLY_ROUTES = new Set([
+  "/family-planning/care-log",
 ]);
 
 
@@ -203,6 +209,8 @@ export default function HamburgerMenu({
                 if (item.to === "/wellness" && phase === "maternity") return false;
                 // Show maternity-only routes only in maternity phase
                 if (MATERNITY_ONLY_ROUTES.has(item.to) && phase !== "maternity") return false;
+                // Show family-planning-only routes only in family-planning phase
+                if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
                 // Hide general phase items when in menopause
                 if (phase === "menopause" && MENOPAUSE_HIDDEN_ROUTES.has(item.to)) return false;
                 return true;

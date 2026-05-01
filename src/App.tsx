@@ -69,6 +69,7 @@ import FPHormonalNutritionPage from "./pages/familyplanning/FPHormonalNutritionP
 import FPCycleNutritionPage from "./pages/familyplanning/FPCycleNutritionPage";
 import FPLifestyleMetabolismPage from "./pages/familyplanning/FPLifestyleMetabolismPage";
 import FPFoodsToAvoidPage from "./pages/familyplanning/FPFoodsToAvoidPage";
+import CareLog from "./pages/familyplanning/CareLog";
 import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
 
 
@@ -138,6 +139,7 @@ const router = createBrowserRouter(
         { path: "family-planning/nutrition/cycle-plan", element: <FPCycleNutritionPage /> },
         { path: "family-planning/nutrition/lifestyle", element: <FPLifestyleMetabolismPage /> },
         { path: "family-planning/nutrition/foods-to-avoid", element: <FPFoodsToAvoidPage /> },
+        { path: "family-planning/care-log", element: <CareLog /> },
 
         // Menopause phase routes
         { path: "menopause/onboarding", element: <MenopauseOnboarding /> },
@@ -223,6 +225,7 @@ const App = () => (
                         <Route path="/family-planning/nutrition/cycle-plan" element={<FPCycleNutritionPage />} />
                         <Route path="/family-planning/nutrition/lifestyle" element={<FPLifestyleMetabolismPage />} />
                         <Route path="/family-planning/nutrition/foods-to-avoid" element={<FPFoodsToAvoidPage />} />
+                        <Route path="/family-planning/care-log" element={<CareLog />} />
 
                         {/* Menopause phase routes */}
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />

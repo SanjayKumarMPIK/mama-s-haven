@@ -9,7 +9,7 @@
  * real health-log data via recoveryScoreEngine.
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   usePregnancyProfile,
@@ -23,16 +23,10 @@ import {
   INFECTION_PREVENTION,
 } from "@/lib/prematureCareData";
 import {
-  calculateRecoveryScore,
-  getRecoveryStatus,
-  generateDailyPriorities,
-  getHighConcernSymptoms,
-  generateActivitySuggestions,
-  getRecoveryTimeline,
-  loadCheckups,
-  saveCheckups,
-  type RecoveryCheckup,
-} from "@/lib/premature/recoveryScoreEngine";
+  getPrematureRecoveryTimeline,
+  type PrematureRecoveryTimelineWeek,
+} from "@/modules/premature/recovery/prematureRecoveryTimeline";
+import { usePrematureRecovery } from "@/modules/premature/recovery/usePrematureRecovery";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import HealthSummaryCards from "@/components/shared/HealthSummaryCards";
@@ -47,6 +41,7 @@ import {
   ArrowLeft, RotateCcw, Activity, Droplets, Moon,
   Zap, Brain, CheckCircle2, Circle, Flame,
 } from "lucide-react";
+import VisualAnalytics from "./VisualAnalytics";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -64,8 +59,6 @@ function riskBadge(risk: ReturnType<typeof getRiskLevel>) {
   return null;
 }
 
-
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // Main Component
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -78,12 +71,8 @@ export default function PrematureCareView() {
   const riskInfo = riskBadge(risk);
   const weightTracker = usePrematureBabyWeight();
 
-  // ─── Recovery Analytics (memoized) ────────────────────────────────────────
-  const recoveryBreakdown = useMemo(() => calculateRecoveryScore(maternityLogs), [maternityLogs]);
-  const recoveryStatus = useMemo(() => getRecoveryStatus(recoveryBreakdown.overall), [recoveryBreakdown.overall]);
-  const dailyPriorities = useMemo(() => generateDailyPriorities(recoveryBreakdown), [recoveryBreakdown]);
-  const highConcernSymptoms = useMemo(() => getHighConcernSymptoms(maternityLogs), [maternityLogs]);
-  const activitySuggestions = useMemo(() => generateActivitySuggestions(recoveryBreakdown), [recoveryBreakdown]);
+  // ─── Premature Recovery Analytics (memoized) ────────────────────────────────
+  const prematureRecovery = usePrematureRecovery();
 
   const weeksPostDelivery = useMemo(() => {
     if (!delivery.birthDate) return 0;
@@ -92,10 +81,9 @@ export default function PrematureCareView() {
     return Math.max(0, Math.floor((now.getTime() - birth.getTime()) / (7 * 24 * 60 * 60 * 1000)));
   }, [delivery.birthDate]);
 
-  const recoveryTimeline = useMemo(() => getRecoveryTimeline(weeksPostDelivery), [weeksPostDelivery]);
+  const recoveryTimeline = useMemo(() => getPrematureRecoveryTimeline(weeksPostDelivery), [weeksPostDelivery]);
 
   // ─── Health Summary Stats for Premature Dashboard ────────────────────────
-  // Reuse the same metrics adapter as Pregnancy Dashboard
   const healthSummaryStats = useMemo(() => {
     const metrics = getMaternityDashboardMetrics(maternityLogs);
     return {
@@ -106,18 +94,17 @@ export default function PrematureCareView() {
     };
   }, [maternityLogs]);
 
-  const [checkups, setCheckups] = useState<RecoveryCheckup[]>(() => loadCheckups());
-  const toggleCheckup = useCallback((id: string) => {
-    setCheckups(prev => {
-      const updated = prev.map(c => c.id === id ? { ...c, completed: !c.completed } : c);
-      saveCheckups(updated);
-      return updated;
-    });
-  }, []);
+  // Convert maternityLogs (Record<string, PubertyEntry>) → PubertyLogItem[]
+  // VisualAnalytics expects an array of { date, entry } objects
+  const maternityLogsArray = useMemo(
+    () =>
+      Object.entries(maternityLogs).map(([date, entry]) => ({ date, entry })),
+    [maternityLogs]
+  );
 
   // Radial gauge constants
   const circumference = 2 * Math.PI * 54;
-  const strokeDashoffset = circumference - (recoveryBreakdown.overall / 100) * circumference;
+  const strokeDashoffset = circumference - (prematureRecovery.recoveryBreakdown.overall / 100) * circumference;
 
   // Weight input state
   const [showWeightForm, setShowWeightForm] = useState(false);
@@ -189,8 +176,6 @@ export default function PrematureCareView() {
         </div>
       </div>
 
-
-
       {/* ─── Helpline strip ───────────────────────────────────────────── */}
       <div className="bg-red-600 text-white">
         <div className="container py-2 flex items-center justify-center gap-6 text-xs">
@@ -246,32 +231,28 @@ export default function PrematureCareView() {
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <span className="text-3xl font-bold text-foreground">{recoveryBreakdown.overall}</span>
+                    <span className="text-3xl font-bold text-foreground">{prematureRecovery.recoveryBreakdown.overall}</span>
                     <span className="text-sm text-muted-foreground font-medium">/100</span>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </ScrollReveal>
 
-              {/* Breakdown Bars */}
-              <div className="flex-1 w-full space-y-2">
-                {[
-                  { label: "Symptoms", value: recoveryBreakdown.symptom, color: "bg-rose-400" },
-                  { label: "Hydration", value: recoveryBreakdown.hydration, color: "bg-sky-400" },
-                  { label: "Sleep", value: recoveryBreakdown.sleep, color: "bg-indigo-400" },
-                  { label: "Energy", value: recoveryBreakdown.energy, color: "bg-amber-400" },
-                  { label: "Emotional", value: recoveryBreakdown.emotional, color: "bg-purple-400" },
-                  { label: "Breastfeeding", value: recoveryBreakdown.breastfeeding, color: "bg-pink-400" },
-                ].map(bar => (
-                  <div key={bar.label} className="flex items-center gap-2">
-                    <span className="text-[10px] font-medium text-muted-foreground w-20 text-right shrink-0">{bar.label}</span>
-                    <div className="flex-1 h-2 rounded-full bg-muted/40 overflow-hidden">
-                      <div className={`h-full rounded-full ${bar.color} transition-all duration-700 ease-out`} style={{ width: `${bar.value}%` }} />
-                    </div>
-                    <span className="text-[10px] font-bold text-foreground w-7 text-right">{bar.value}</span>
-                  </div>
-                ))}
+        {/* ═══ Recovery Timeline ════════════════════════════════════════════ */}
+        <ScrollReveal delay={180}>
+          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                <Calendar className="w-4 h-4 text-indigo-700" />
+              </div>
+              <div>
+                <h2 className="font-bold text-sm">Recovery Timeline</h2>
+                <p className="text-[10px] text-muted-foreground">Week {weeksPostDelivery} post-delivery</p>
               </div>
             </div>
+            <PrematureRecoveryTimeline timeline={recoveryTimeline} currentWeek={weeksPostDelivery} />
           </div>
         </ScrollReveal>
 
@@ -284,6 +265,8 @@ export default function PrematureCareView() {
             avgMood={healthSummaryStats.avgMood}
           />
         </ScrollReveal>
+
+        <VisualAnalytics pubertyLogs={maternityLogsArray} />
 
         {/* ═══ Recovery Insight Cards ═════════════════════════════════════ */}
         <ScrollReveal delay={45}>
@@ -305,22 +288,22 @@ export default function PrematureCareView() {
                 <h2 className="font-bold text-sm">Recovery Status</h2>
               </div>
               <div className={`rounded-xl p-4 border text-center ${
-                recoveryStatus.level === "critical" ? "bg-red-50 border-red-200" :
-                recoveryStatus.level === "slow" ? "bg-orange-50 border-orange-200" :
-                recoveryStatus.level === "moderate" ? "bg-amber-50 border-amber-200" :
-                recoveryStatus.level === "stable" ? "bg-green-50 border-green-200" :
+                prematureRecovery.recoveryStatus.level === "critical" ? "bg-red-50 border-red-200" :
+                prematureRecovery.recoveryStatus.level === "slow" ? "bg-orange-50 border-orange-200" :
+                prematureRecovery.recoveryStatus.level === "moderate" ? "bg-amber-50 border-amber-200" :
+                prematureRecovery.recoveryStatus.level === "stable" ? "bg-green-50 border-green-200" :
                 "bg-emerald-50 border-emerald-200"
               }`}>
-                <span className="text-3xl block mb-2">{recoveryStatus.emoji}</span>
+                <span className="text-3xl block mb-2">{prematureRecovery.recoveryStatus.emoji}</span>
                 <p className={`text-sm font-bold ${
-                  recoveryStatus.level === "critical" ? "text-red-800" :
-                  recoveryStatus.level === "slow" ? "text-orange-800" :
-                  recoveryStatus.level === "moderate" ? "text-amber-800" :
-                  recoveryStatus.level === "stable" ? "text-green-800" :
+                  prematureRecovery.recoveryStatus.level === "critical" ? "text-red-800" :
+                  prematureRecovery.recoveryStatus.level === "slow" ? "text-orange-800" :
+                  prematureRecovery.recoveryStatus.level === "moderate" ? "text-amber-800" :
+                  prematureRecovery.recoveryStatus.level === "stable" ? "text-green-800" :
                   "text-emerald-800"
-                }`}>{recoveryStatus.label}</p>
+                }`}>{prematureRecovery.recoveryStatus.label}</p>
                 <p className="text-[11px] text-muted-foreground mt-1">
-                  Score: {recoveryBreakdown.overall} / 100
+                  Score: {prematureRecovery.recoveryBreakdown.overall} / 100
                 </p>
               </div>
             </div>
@@ -339,7 +322,7 @@ export default function PrematureCareView() {
                 </div>
               </div>
               <div className="space-y-2">
-                {dailyPriorities.map(p => (
+                {prematureRecovery.dailyPriorities.map(p => (
                   <div key={p.id} className="flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-background">
                     <span className="text-lg shrink-0">{p.emoji}</span>
                     <div>
@@ -352,42 +335,6 @@ export default function PrematureCareView() {
             </div>
           </ScrollReveal>
         </div>
-
-        {/* ═══ Symptom Summary ══════════════════════════════════════════════ */}
-        {highConcernSymptoms.length > 0 && (
-          <ScrollReveal delay={120}>
-            <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
-                  <Activity className="w-4 h-4 text-rose-700" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-sm">Symptom Summary</h2>
-                  <p className="text-[10px] text-muted-foreground">High-concern symptoms from recent logs</p>
-                </div>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {highConcernSymptoms.map(s => (
-                  <div key={s.id} className={`flex items-center gap-3 p-3 rounded-xl border ${
-                    s.severity === "severe" ? "bg-red-50 border-red-200" :
-                    s.severity === "moderate" ? "bg-amber-50 border-amber-200" :
-                    "bg-background border-border/60"
-                  }`}>
-                    <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${
-                      s.severity === "severe" ? "bg-red-500" :
-                      s.severity === "moderate" ? "bg-amber-500" :
-                      "bg-green-500"
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-foreground truncate">{s.label}</p>
-                      <p className="text-[10px] text-muted-foreground">{s.dayCount} day(s) • {s.severity}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </ScrollReveal>
-        )}
 
         {/* ═══ Activity Suggestions ═════════════════════════════════════════ */}
         <ScrollReveal delay={150}>
@@ -402,7 +349,7 @@ export default function PrematureCareView() {
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              {activitySuggestions.map(a => (
+              {prematureRecovery.activitySuggestions.map(a => (
                 <div key={a.id} className="flex items-start gap-3 p-3 rounded-xl border border-border/60 bg-background hover:bg-muted/30 transition-colors">
                   <span className="text-lg shrink-0 mt-0.5">{a.emoji}</span>
                   <div>
@@ -412,22 +359,6 @@ export default function PrematureCareView() {
                 </div>
               ))}
             </div>
-          </div>
-        </ScrollReveal>
-
-        {/* ═══ Recovery Timeline ════════════════════════════════════════════ */}
-        <ScrollReveal delay={180}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-indigo-700" />
-              </div>
-              <div>
-                <h2 className="font-bold text-sm">Recovery Timeline</h2>
-                <p className="text-[10px] text-muted-foreground">Week {weeksPostDelivery} post-delivery</p>
-              </div>
-            </div>
-            <PrematureRecoveryTimeline timeline={recoveryTimeline} currentWeek={weeksPostDelivery} />
           </div>
         </ScrollReveal>
 
@@ -441,15 +372,15 @@ export default function PrematureCareView() {
               <div>
                 <h2 className="font-bold text-sm">Recovery Checkups</h2>
                 <p className="text-[10px] text-muted-foreground">
-                  {checkups.filter(c => c.completed).length} / {checkups.length} completed
+                  {prematureRecovery.checkups.filter(c => c.completed).length} / {prematureRecovery.checkups.length} completed
                 </p>
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-              {checkups.map(c => (
+              {prematureRecovery.checkups.map(c => (
                 <button
                   key={c.id}
-                  onClick={() => toggleCheckup(c.id)}
+                  onClick={() => prematureRecovery.toggleCheckup(c.id)}
                   className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all active:scale-[0.98] ${
                     c.completed
                       ? "bg-green-50 border-green-200 shadow-sm"
@@ -475,9 +406,8 @@ export default function PrematureCareView() {
         </ScrollReveal>
 
         {/* ═══════════════════════════════════════════════════════════════════
-             BABY CARE SECTIONS (existing)
+             BABY CARE SECTIONS
            ═══════════════════════════════════════════════════════════════════ */}
-
 
         {/* ═══ Section 5: Weight Tracker ═══════════════════════════════════ */}
         <ScrollReveal delay={240}>

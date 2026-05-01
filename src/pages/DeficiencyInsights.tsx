@@ -84,31 +84,7 @@ export default function DeficiencyInsights() {
   const insights = useDeficiencyInsights();
   const symptomPatterns = useSymptomDerivedRisks();
 
-  // Phase gate: only allow access in maternity phase
-  if (phase !== "maternity") {
-    return (
-      <main className="min-h-screen bg-gradient-to-b from-[#fff9fc] via-[#fcfbff] to-[#f9fffc] py-5">
-        <div className="container mx-auto max-w-6xl px-4 md:px-6">
-          <div className="flex flex-col items-center justify-center py-32 text-center">
-            <div className="w-20 h-20 rounded-2xl bg-amber-50 flex items-center justify-center mb-6">
-              <AlertTriangle className="w-10 h-10 text-amber-500" />
-            </div>
-            <h2 className="text-2xl font-bold mb-3">Feature Not Available</h2>
-            <p className="text-sm text-muted-foreground mb-8 max-w-md">
-              Deficiency Insights are only available during the Maternity phase.
-            </p>
-            <Link
-              to="/"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-violet-600 text-white text-sm font-semibold shadow-md hover:shadow-lg transition-all"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Go to Home
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
+  // Deficiency Insights now works for ALL phases (unified nutrition system)
 
   const severityTone: Record<string, string> = {
     Low: "text-[#41a25f]",

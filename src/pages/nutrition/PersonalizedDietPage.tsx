@@ -5,6 +5,7 @@ import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { generateDiet, type DietPlan, type DietInput, getDefaultDietInput } from "@/lib/nutrition/dietGenerator";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
+import NutritionChecklistSection from "@/components/nutrition/NutritionChecklistSection";
 import {
   Utensils, Clock, ArrowLeft, RefreshCw, ChevronRight, Info,
 } from "lucide-react";
@@ -223,6 +224,13 @@ export default function PersonalizedDietPage() {
             </div>
           </ScrollReveal>
         )}
+
+        {/* Nutrition Checklist Section */}
+        <ScrollReveal delay={250}>
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <NutritionChecklistSection />
+          </div>
+        </ScrollReveal>
 
         {/* Back to Nutrition Guide */}
         <ScrollReveal delay={250}>

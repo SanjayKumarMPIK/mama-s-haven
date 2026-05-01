@@ -1,15 +1,19 @@
 import { usePhase } from "@/hooks/usePhase";
 import MenstrualGuide from "@/components/guidance/MenstrualGuide";
 import MaternalGuide from "@/components/guidance/MaternalGuide";
+import PubertyGuide from "@/components/guidance/PubertyGuide";
 
 export default function WeeklyGuide() {
   const { phase } = usePhase();
+
+  if (phase === "puberty") {
+    return <PubertyGuide />;
+  }
 
   if (phase === "maternity") {
     return <MaternalGuide />;
   }
 
-  // Ensure fully functional functionality for puberty users,
-  // falling back to MenstrualGuide for all non-maternity phases in this context
+  // For all other phases, show the standard MenstrualGuide
   return <MenstrualGuide />;
 }

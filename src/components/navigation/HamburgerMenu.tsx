@@ -49,6 +49,8 @@ const MATERNITY_ONLY_ROUTES = new Set([
   "/medicine-reminder",
 ]);
 
+
+
 // Menopause-specific menu items
 const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause/calendar", label: "Calendar", icon: Calendar },
@@ -215,6 +217,8 @@ export default function HamburgerMenu({
                 />
               ))}
 
+              
+              
               {/* Menopause-specific menu items */}
               {phase === "menopause" && (
                 <>

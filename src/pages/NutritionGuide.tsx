@@ -15,7 +15,7 @@ import AffirmationBanner from "@/components/nutrition/AffirmationBanner";
 import { Link } from "react-router-dom";
 import {
   Apple, Calendar, ChevronRight, ArrowRight, Activity,
-  Sparkles, ShieldCheck, Search,
+  Sparkles, ShieldCheck, Search, ClipboardList, Scale, Salad
 } from "lucide-react";
 import type { SymptomAnalysisResult } from "@/lib/nutrition/nutritionTypes";
 
@@ -89,7 +89,73 @@ export default function NutritionGuide() {
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
-      {/* ─── Header ─────────────────────────────────────────────── */}
+      {phase === "maternity" ? (
+        <>
+          <div className="border-b border-border bg-card/60 backdrop-blur-sm">
+            <div className="container py-6">
+              <ScrollReveal>
+                <div className="flex items-center gap-3">
+                  <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-lg shadow-primary/10`}>
+                    <Apple className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold tracking-tight">Nutrition Guide</h1>
+                    <p className="text-sm text-muted-foreground">
+                      Personalized nutrition guidance for a healthy pregnancy
+                    </p>
+                  </div>
+                </div>
+              </ScrollReveal>
+            </div>
+          </div>
+
+          <div className="container py-6 space-y-8">
+            <ScrollReveal>
+              <AffirmationBanner />
+            </ScrollReveal>
+
+            <ScrollReveal delay={50}>
+              <div>
+                <h2 className="text-xl font-bold tracking-tight mb-1">Explore Nutrition Tools</h2>
+                <p className="text-sm text-muted-foreground mb-6">Use these tools to track, analyze and improve your nutrition and overall well-being.</p>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                  <FeatureCard 
+                    to="/deficiency-insights"
+                    icon={<div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center shrink-0"><ClipboardList className="w-8 h-8 text-purple-600" /></div>}
+                    title="Deficiency Insights"
+                    titleColor="text-purple-700"
+                    desc="Analyze your symptoms and discover potential nutrient deficiencies with personalized recommendations."
+                  />
+                  <FeatureCard 
+                    to="/maternity/nutrition/fitness-health-calculator"
+                    icon={<div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center shrink-0"><Scale className="w-8 h-8 text-blue-600" /></div>}
+                    title="Fitness Calculator"
+                    titleColor="text-blue-700"
+                    desc="Calculate your daily calorie needs, protein, water intake and track your fitness goals during pregnancy."
+                  />
+                  <FeatureCard 
+                    to="/maternity/nutrition/personalized-diet"
+                    icon={<div className="w-16 h-16 rounded-full bg-emerald-50 flex items-center justify-center shrink-0"><Salad className="w-8 h-8 text-emerald-600" /></div>}
+                    title="Personalized Diet"
+                    titleColor="text-emerald-700"
+                    desc="Get a customized diet plan tailored to your needs, preferences and pregnancy stage."
+                  />
+                  <FeatureCard 
+                    to="/nutrition-intelligence"
+                    icon={<div className="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center shrink-0"><Apple className="w-8 h-8 text-rose-600" /></div>}
+                    title="Nutrition Intelligence"
+                    titleColor="text-rose-600"
+                    desc="Advanced analysis of symptoms, nutrient risks and personalized food recommendations for smarter nutrition."
+                  />
+                </div>
+              </div>
+            </ScrollReveal>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* ─── Header ─────────────────────────────────────────────── */}
       <div className="border-b border-border bg-card/60 backdrop-blur-sm">
         <div className="container py-6">
           <ScrollReveal>
@@ -303,6 +369,8 @@ export default function NutritionGuide() {
           </div>
         </ScrollReveal>
       </div>
+      </>
+      )}
 
       <SafetyDisclaimer />
     </main>
@@ -317,5 +385,20 @@ function SectionHeader({ title, emoji }: { title: string; emoji: string }) {
       <span className="text-base">{emoji}</span>
       <h2 className="text-base font-bold tracking-tight">{title}</h2>
     </div>
+  );
+}
+
+function FeatureCard({ to, icon, title, titleColor, desc }: any) {
+  return (
+    <Link to={to} className="group relative rounded-[24px] border border-border/50 bg-card p-6 flex items-start gap-5 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
+      {icon}
+      <div className="flex-1 min-w-0 pr-10">
+        <h3 className={`text-lg font-bold mb-2 ${titleColor}`}>{title}</h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">{desc}</p>
+      </div>
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-muted/50 flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+        <ArrowRight className="w-5 h-5" />
+      </div>
+    </Link>
   );
 }

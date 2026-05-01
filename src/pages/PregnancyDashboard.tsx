@@ -653,7 +653,7 @@ function DashboardView({
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {[
               { to: "/weekly-guide", label: "Weekly Guide", emoji: "📅", color: "bg-blue-50 border-blue-100" },
-              { to: "/nutrition", label: "Nutrition", emoji: "🍎", color: "bg-green-50 border-green-100" },
+              { to: "/nutrition-intelligence", label: "Nutrition", emoji: "🍎", color: "bg-green-50 border-green-100" },
               { to: "/vaccine-tracker", label: "Vaccines", emoji: "💉", color: "bg-purple-50 border-purple-100" },
               { to: "/symptom-checker", label: "Symptoms", emoji: "🔍", color: "bg-rose-50 border-rose-100" },
             ].map((link) => (

@@ -27,7 +27,7 @@ import {
   Sparkles, Droplets, Moon, Activity, ArrowRight,
   Scale, Ruler, MapPin, CalendarCheck, TrendingUp, TrendingDown,
   Shield, Clock, Zap, Sun, Check, RotateCcw, Minus,
-  Calendar, Heart, Utensils, ChevronRight, BarChart3, Lightbulb,
+  Calendar, Heart, Utensils, ChevronRight, BarChart3, Lightbulb, AlertTriangle,
 } from "lucide-react";
 
 // ─── Region config ────────────────────────────────────────────────────────────
@@ -192,7 +192,7 @@ export default function WellnessDashboard() {
   const { getPhaseLogs } = useHealthLog();
   const logs = useMemo(() => getPhaseLogs(phase), [getPhaseLogs, phase]);
   const {
-    profile, recommendation, isProfileComplete, saveProfile, clearProfile, age,
+    profile: wellnessProfile, recommendation, isProfileComplete, saveProfile, clearProfile, age,
   } = useWellnessRecommendation();
 
   const userName = user?.name || fullProfile?.basic?.fullName || "";
@@ -253,7 +253,7 @@ export default function WellnessDashboard() {
 
   // ── Engine computations ─────────────────────────────────
   const wellnessScore = useMemo(() => computeWellnessScore(logs, phase), [logs, phase]);
-  const priorityActions = useMemo(() => generatePriorityActions(logs, phase, profile?.weight ?? null), [logs, phase, profile]);
+  const priorityActions = useMemo(() => generatePriorityActions(logs, phase, wellnessProfile?.weight ?? null), [logs, phase, wellnessProfile]);
   const bodySignals = useMemo(() => computeBodySignals(logs, phase), [logs, phase]);
   const predictions = useMemo(() => generateSmartPredictions(logs, phase), [logs, phase]);
 
@@ -263,6 +263,8 @@ export default function WellnessDashboard() {
     setCompletionStore(toggleActionComplete(id));
   }, []);
 
+  
+  
   // --- Setup phase ---
   if (!isProfileComplete || !recommendation) {
     return <SetupForm userName={userName} onComplete={(data) => saveProfile({ weight: data.weight, height: data.height, region: data.region })} />;
@@ -554,6 +556,7 @@ export default function WellnessDashboard() {
           </div>
         </ScrollReveal>
 
+        
         {/* ── Privacy Footer ────────────────────────────────────── */}
         <ScrollReveal delay={50}>
           <div className="rounded-2xl border border-border bg-muted/30 p-4 flex items-center gap-3">

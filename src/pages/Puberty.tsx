@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { usePhase } from "@/hooks/usePhase";
-import { useOnboarding, type PubertyGoal } from "@/hooks/useOnboarding";
-import { ArrowLeft, CalendarDays, AlertTriangle, Droplets, Sparkles, CheckCircle2, Info } from "lucide-react";
+import { useOnboarding } from "@/hooks/useOnboarding";
+import type { PubertyGoal } from "@/hooks/useOnboarding";
 import ScrollReveal from "@/components/ScrollReveal";
+import { ArrowLeft, Sparkles, Calendar, CalendarDays, Utensils, Activity, Heart, AlertTriangle, CheckCircle2, Droplets, Info } from "lucide-react";
 import EducationCards from "@/components/puberty/EducationCards";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -569,6 +570,7 @@ function MoodSupport({
 export default function Puberty() {
   const { setPhase } = usePhase();
   const { config } = useOnboarding();
+  
   useEffect(() => {
     setPhase("puberty");
   }, [setPhase]);
@@ -681,6 +683,9 @@ export default function Puberty() {
               <SuggestionPanel suggestions={suggestions} />
             </ScrollReveal>
           )}
+
+          
+          
           {/* Wellness Dashboard link */}
           <ScrollReveal delay={200}>
             <Link

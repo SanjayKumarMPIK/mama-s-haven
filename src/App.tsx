@@ -108,7 +108,7 @@ const router = createBrowserRouter(
         { path: "emergency", element: <EmergencyGuidance /> },
         { path: "wellness", element: <WellnessDashboard /> },
         { path: "puberty", element: <Puberty /> },
-        { path: "maternity", element: <Maternity /> },
+                { path: "maternity", element: <Maternity /> },
         { path: "family-planning", element: <FamilyPlanning /> },
         { path: "phc-nearby", element: <PhcNearby /> },
         { path: "vaccine-tracker", element: <VaccineTracker /> },

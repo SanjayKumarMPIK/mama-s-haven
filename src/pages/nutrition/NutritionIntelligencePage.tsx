@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
@@ -6,16 +6,15 @@ import { useProfile } from "@/hooks/useProfile";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useNutritionIntelligence } from "@/hooks/useNutritionIntelligence";
 import { generateDiet, type DietInput, type DietPlan } from "@/lib/nutrition/dietGenerator";
+import PriorityNutritionOverview from "@/components/nutrition/PriorityNutritionOverview";
+import { MATERNITY_PRIORITY_NUTRIENTS, type MaternityStage } from "@/lib/nutrition/nutritionPriorityData";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
-import SymptomSearchBar from "@/components/nutrition/SymptomSearchBar";
-import SymptomAnalysisCard from "@/components/nutrition/SymptomAnalysisCard";
 import NutrientCard from "@/components/nutrition/NutrientCard";
 import FoodRecommendationCard from "@/components/nutrition/FoodRecommendationCard";
 import DeficiencySummaryInline from "@/components/nutrition/DeficiencySummaryInline";
 import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
 import { Apple, Calendar, ArrowRight, ArrowLeft, Utensils } from "lucide-react";
-import type { SymptomAnalysisResult } from "@/lib/nutrition/nutritionTypes";
 
 // ─── Phase accent map ─────────────────────────────────────────────────────
 const phaseAccent: Record<string, {
@@ -56,17 +55,33 @@ function SectionHeader({ title, emoji }: { title: string; emoji: string }) {
 export default function NutritionIntelligencePage() {
   const { simpleMode } = useLanguage();
   const { phase, phaseName, phaseEmoji } = usePhase();
-  const { result, analyzeSymptom, searchSymptoms, suggestedSymptoms } = useNutritionIntelligence();
+  const { result } = useNutritionIntelligence();
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
-  const [selectedAnalysis, setSelectedAnalysis] = useState<SymptomAnalysisResult | null>(null);
-
-  const handleSelectSymptom = useCallback((symptomId: string) => {
-    const analysis = analyzeSymptom(symptomId);
-    setSelectedAnalysis(analysis);
-  }, [analyzeSymptom]);
 
   const { profile } = useProfile();
-  const { trimester } = usePregnancyProfile();
+  const { trimester, mode } = usePregnancyProfile();
+
+  const maternityStage: MaternityStage | null = useMemo(() => {
+    if (phase !== "maternity") return null;
+    if (mode === "postpartum") return "postpartum";
+    if (mode === "premature") return "premature";
+    if (trimester === 3) return "trimester3";
+    if (trimester === 2) return "trimester2";
+    return "trimester1";
+  }, [phase, mode, trimester]);
+
+  const symptomPriorityIds = useMemo(() => {
+    return result.nutrientNeeds.filter(n => n.isPriority).map(n => n.nutrientId);
+  }, [result.nutrientNeeds]);
+
+  const overviewNutrientIds = useMemo(() => {
+    if (!maternityStage) return [];
+    return MATERNITY_PRIORITY_NUTRIENTS[maternityStage]?.map(n => n.id) || [];
+  }, [maternityStage]);
+
+  const detailedNutrientNeeds = useMemo(() => {
+    return result.nutrientNeeds.filter(n => !overviewNutrientIds.includes(n.nutrientId));
+  }, [result.nutrientNeeds, overviewNutrientIds]);
 
   const dietInput: DietInput = useMemo(() => {
     return {
@@ -107,27 +122,6 @@ export default function NutritionIntelligencePage() {
       </div>
 
       <div className="container py-6 space-y-6">
-        {/* ─── Symptom Search ─────────────────────────────────── */}
-        <ScrollReveal>
-          <SymptomSearchBar
-            onSearch={searchSymptoms}
-            onSelectSymptom={handleSelectSymptom}
-            suggestedSymptoms={suggestedSymptoms}
-            accentColor={phase}
-          />
-        </ScrollReveal>
-
-        {/* ─── Symptom Analysis Card (when selected) ──────────── */}
-        {selectedAnalysis && (
-          <ScrollReveal>
-            <SymptomAnalysisCard
-              analysis={selectedAnalysis}
-              accentGradient={accent.gradient}
-              onClose={() => setSelectedAnalysis(null)}
-            />
-          </ScrollReveal>
-        )}
-
         {/* ─── Safety Warnings ────────────────────────────────── */}
         {result.safetyWarnings.length > 0 && (
           <ScrollReveal>
@@ -170,6 +164,17 @@ export default function NutritionIntelligencePage() {
               />
             </ScrollReveal>
 
+            {/* ─── Priority Nutrition Overview ─────────────────── */}
+            {maternityStage && (
+              <ScrollReveal delay={50}>
+                <PriorityNutritionOverview 
+                  stage={maternityStage} 
+                  symptomPriorityIds={symptomPriorityIds} 
+                  accentGradient={accent.gradient} 
+                />
+              </ScrollReveal>
+            )}
+
             {/* ─── Nutritional Highlights ──────────────────────── */}
             {phase === "maternity" && dietPlan.nutritionalHighlights.length > 0 && (
               <ScrollReveal delay={50}>
@@ -190,34 +195,12 @@ export default function NutritionIntelligencePage() {
               </ScrollReveal>
             )}
 
-            {/* ─── Detected Symptoms ───────────────────────────── */}
-            {result.detectedSymptoms.length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Detected Symptoms" emoji="🔍" />
-                <div className="flex flex-wrap gap-2">
-                  {result.detectedSymptoms.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => handleSelectSymptom(s.id)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border ${accent.border} ${accent.bg} text-sm font-medium hover:shadow-md transition-all active:scale-95 cursor-pointer`}
-                    >
-                      <span>{s.emoji}</span>
-                      <span>{s.label}</span>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${accent.badge}`}>
-                        {s.count}x
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
-
             {/* ─── Priority Nutrients ──────────────────────────── */}
-            {result.nutrientNeeds.filter(n => n.isPriority).length > 0 && (
+            {detailedNutrientNeeds.filter(n => n.isPriority).length > 0 && (
               <ScrollReveal>
-                <SectionHeader title="Priority Nutrients" emoji="⚡" />
+                <SectionHeader title="Symptom Priority Nutrients" emoji="⚡" />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {result.nutrientNeeds.filter(n => n.isPriority).map((nutrient) => (
+                  {detailedNutrientNeeds.filter(n => n.isPriority).map((nutrient) => (
                     <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
                   ))}
                 </div>
@@ -225,11 +208,11 @@ export default function NutritionIntelligencePage() {
             )}
 
             {/* ─── All Nutrient Needs ──────────────────────────── */}
-            {result.nutrientNeeds.filter(n => !n.isPriority).length > 0 && (
+            {detailedNutrientNeeds.filter(n => !n.isPriority).length > 0 && (
               <ScrollReveal>
                 <SectionHeader title="Other Nutrient Needs" emoji="🧪" />
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {result.nutrientNeeds.filter(n => !n.isPriority).map((nutrient) => (
+                  {detailedNutrientNeeds.filter(n => !n.isPriority).map((nutrient) => (
                     <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
                   ))}
                 </div>

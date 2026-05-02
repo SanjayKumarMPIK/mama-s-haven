@@ -30,13 +30,6 @@ export default function PostpartumDashboard() {
   const { clearProfile, profile } = usePregnancyProfile();
   const { maternityLogs } = useHealthLog();
 
-  const weeksPostpartum = useMemo(() => {
-    if (!profile.delivery?.birthDate) return 1;
-    const birth = new Date(profile.delivery.birthDate + "T00:00:00");
-    const now = new Date();
-    return Math.max(1, Math.floor((now.getTime() - birth.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-  }, [profile.delivery?.birthDate]);
-
   const deliveryDateISO = profile.delivery?.birthDate || new Date().toISOString().split("T")[0];
 
   // Convert maternityLogs using the unified adapter to strictly isolate postpartum phase

@@ -1,20 +1,19 @@
 import { TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
 import { usePostpartumRecovery } from "./usePostpartumRecovery";
 
-const accent = {
-  gradient: "from-rose-500 to-pink-400",
-  bg: "bg-rose-50",
-  text: "text-rose-700",
-  border: "border-rose-200/60",
-  cardBg: "bg-gradient-to-br from-rose-50 to-pink-50",
-};
-
 export function PostpartumRecoveryCard() {
-  const { scoreResult, selectedWeek } = usePostpartumRecovery();
+  const { scoreResult, selectedWeek, currentWeek } = usePostpartumRecovery();
   const { score, statusLabel, trendPercent, dynamicRecommendations, hasInsufficientData } = scoreResult;
 
   const circumference = 2 * Math.PI * 45; // radius = 45
   const strokeDashoffset = hasInsufficientData ? circumference : circumference - (score / 100) * circumference;
+
+  // Dynamic gradient based on score
+  const gradientColors = score >= 75
+    ? { start: "#10b981", end: "#34d399", border: "border-emerald-200/60", bg: "bg-gradient-to-br from-emerald-50 to-teal-50", iconBg: "from-emerald-500 to-teal-400" }
+    : score < 40
+      ? { start: "#f59e0b", end: "#fbbf24", border: "border-amber-200/60", bg: "bg-gradient-to-br from-amber-50 to-orange-50", iconBg: "from-amber-500 to-orange-400" }
+      : { start: "#f43f5e", end: "#ec4899", border: "border-rose-200/60", bg: "bg-gradient-to-br from-rose-50 to-pink-50", iconBg: "from-rose-500 to-pink-400" };
 
   const statusColor = 
     statusLabel === "Strong Recovery" ? "text-emerald-600" :
@@ -26,13 +25,15 @@ export function PostpartumRecoveryCard() {
   const trendLabel = trendPercent > 0 ? `+${trendPercent}%` : `${trendPercent}%`;
 
   return (
-    <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6 flex flex-col h-full`}>
+    <div className={`rounded-2xl border-2 ${gradientColors.border} ${gradientColors.bg} p-6 flex flex-col h-full`}>
       <div className="flex items-center justify-between mb-4">
         <div>
           <h3 className="text-lg font-bold text-foreground">Recovery Score</h3>
-          <p className="text-sm text-muted-foreground">Week {selectedWeek} Insights</p>
+          <p className="text-sm text-muted-foreground">
+            {selectedWeek === currentWeek ? `Week ${selectedWeek} · Now` : `Week ${selectedWeek}`}
+          </p>
         </div>
-        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-md`}>
+        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradientColors.iconBg} flex items-center justify-center shadow-md`}>
           <Activity className="w-6 h-6 text-white" />
         </div>
       </div>
@@ -63,8 +64,8 @@ export function PostpartumRecoveryCard() {
             />
             <defs>
               <linearGradient id="gradient-recovery" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#f43f5e" />
-                <stop offset="100%" stopColor="#ec4899" />
+                <stop offset="0%" stopColor={gradientColors.start} />
+                <stop offset="100%" stopColor={gradientColors.end} />
               </linearGradient>
             </defs>
           </svg>
@@ -82,7 +83,7 @@ export function PostpartumRecoveryCard() {
         </div>
       </div>
 
-      <div className="space-y-3 mb-6">
+      <div className="space-y-3 mb-4">
         <div className="text-center">
           <p className={`text-sm font-semibold ${hasInsufficientData ? "text-muted-foreground" : statusColor}`}>
             {hasInsufficientData ? "Start Logging to Track Recovery" : statusLabel}
@@ -100,13 +101,32 @@ export function PostpartumRecoveryCard() {
         )}
       </div>
 
-      {/* Dynamic Motivational Note / Recommendation */}
-      <div className="mt-auto">
-        <div className="bg-white/60 backdrop-blur-sm rounded-xl p-3 border border-rose-100/50">
-          <p className="text-xs text-rose-800 leading-relaxed font-medium">
-            💡 {dynamicRecommendations[0]}
-          </p>
+      {/* Score Breakdown Signals */}
+      {!hasInsufficientData && (
+        <div className="grid grid-cols-2 gap-1.5 mb-4">
+          {[
+            { label: "Symptoms", weight: "40%" },
+            { label: "Energy", weight: "20%" },
+            { label: "Mood", weight: "15%" },
+            { label: "Sleep", weight: "15%" },
+          ].map(({ label, weight }) => (
+            <div key={label} className="flex items-center justify-between px-2 py-1 rounded-md bg-white/50 border border-border/30">
+              <span className="text-[9px] font-medium text-foreground/70">{label}</span>
+              <span className="text-[9px] text-muted-foreground">{weight}</span>
+            </div>
+          ))}
         </div>
+      )}
+
+      {/* Dynamic Recommendations */}
+      <div className="mt-auto space-y-2">
+        {dynamicRecommendations.slice(0, 2).map((rec, i) => (
+          <div key={i} className="bg-white/60 backdrop-blur-sm rounded-xl p-2.5 border border-border/30">
+            <p className="text-[11px] text-foreground/80 leading-relaxed font-medium">
+              {i === 0 ? "💡" : "🌱"} {rec}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   );

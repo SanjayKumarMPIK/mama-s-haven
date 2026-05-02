@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { getPostpartumNormalizedMetricsForWeek } from "./postpartumRecoveryAdapter";
@@ -25,6 +25,11 @@ export function usePostpartumRecovery() {
   // Interactive timeline state: allows user to select a week on the timeline
   const [selectedWeek, setSelectedWeek] = useState<number>(currentWeek);
 
+  // Sync selectedWeek when currentWeek changes (e.g., date rollover)
+  useEffect(() => {
+    setSelectedWeek(currentWeek);
+  }, [currentWeek]);
+
   // Analytics cache layer: Memoize metric calculations to avoid recalculating on every render
   const currentMetrics = useMemo(() => {
     return getPostpartumNormalizedMetricsForWeek(maternityLogs, deliveryDateISO, selectedWeek);
@@ -45,12 +50,22 @@ export function usePostpartumRecovery() {
     return getMilestoneForWeek(selectedWeek);
   }, [selectedWeek]);
 
+  // Days postpartum for overview card
+  const daysPostpartum = useMemo(() => {
+    const delivery = new Date(deliveryDateISO + "T00:00:00");
+    const now = new Date();
+    if (isNaN(delivery.getTime()) || now < delivery) return 0;
+    return Math.floor((now.getTime() - delivery.getTime()) / (1000 * 60 * 60 * 24));
+  }, [deliveryDateISO]);
+
   return {
     currentWeek,
     selectedWeek,
     setSelectedWeek,
     scoreResult,
     activeMilestone,
-    milestones: postpartumMilestones
+    milestones: postpartumMilestones,
+    daysPostpartum,
+    deliveryDateISO,
   };
 }

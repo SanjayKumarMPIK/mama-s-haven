@@ -32,13 +32,23 @@ import {
   type PrematureTimelinePhase,
 } from "./prematureRecoveryTimeline";
 
-export function usePrematureRecovery(weeksPostDelivery: number = 0) {
+export function usePrematureRecovery(externalWeeks?: number) {
   const { maternityLogs } = useHealthLog();
   const { profile } = usePregnancyProfile();
   const weightTracker = usePrematureBabyWeight();
   const { getAdherenceRate, medicines } = useMedicineReminder();
 
   const deliveryDateISO = profile.delivery?.birthDate || new Date().toISOString().split("T")[0];
+
+  // ─── Dynamic week/day calculation from delivery date ────────────────────────
+  const { weeksPostDelivery, daysPostDelivery } = useMemo(() => {
+    const birth = new Date(deliveryDateISO + "T00:00:00");
+    const now = new Date();
+    const diffMs = now.getTime() - birth.getTime();
+    const totalDays = Math.max(0, Math.floor(diffMs / (24 * 60 * 60 * 1000)));
+    const weeks = Math.max(0, Math.floor(totalDays / 7));
+    return { weeksPostDelivery: externalWeeks ?? weeks, daysPostDelivery: totalDays };
+  }, [deliveryDateISO, externalWeeks]);
 
   // ─── Medicine Adherence (memoized) ─────────────────────────────────────────
   const medicineAdherence = useMemo(() => {
@@ -100,6 +110,10 @@ export function usePrematureRecovery(weeksPostDelivery: number = 0) {
     // Adaptive timeline
     timelinePhases,
     currentPhase,
+    // Dynamic date calculations
+    weeksPostDelivery,
+    daysPostDelivery,
+    deliveryDateISO,
     // Checkups
     checkups,
     toggleCheckup,

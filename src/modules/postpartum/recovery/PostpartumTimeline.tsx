@@ -1,13 +1,30 @@
-import { CheckCircle2, Circle, Heart } from "lucide-react";
+import { CheckCircle2, Circle, Heart, AlertTriangle } from "lucide-react";
 import { usePostpartumRecovery } from "./usePostpartumRecovery";
 
 export function PostpartumTimeline() {
-  const { currentWeek, selectedWeek, setSelectedWeek, activeMilestone, milestones } = usePostpartumRecovery();
+  const { currentWeek, selectedWeek, setSelectedWeek, activeMilestone, milestones, scoreResult } = usePostpartumRecovery();
+  const recoveryScore = scoreResult.score;
 
-  // Find the index of the current week to calculate progress line fill
-  const currentIndex = milestones.findIndex(m => m.week >= currentWeek);
-  const fillIndex = currentIndex === -1 ? milestones.length - 1 : currentIndex;
-  const fillPercentage = milestones.length > 1 ? (fillIndex / (milestones.length - 1)) * 100 : 0;
+  // Find the index of the current milestone based on range-based matching
+  const currentMilestoneIndex = milestones.findIndex(
+    m => currentWeek >= m.weekStart && currentWeek <= m.weekEnd
+  );
+  // If beyond all milestones, treat last as current
+  const activeMilestoneIndex = currentMilestoneIndex === -1
+    ? (currentWeek > milestones[milestones.length - 1].weekEnd ? milestones.length : -1)
+    : currentMilestoneIndex;
+
+  // Progress fill calculation: fill up to and including the current milestone
+  const fillPercentage = milestones.length > 1
+    ? Math.min(100, ((activeMilestoneIndex + 0.5) / (milestones.length - 1)) * 100)
+    : 0;
+
+  // Score-aware accent: green when recovery > 75, amber when < 40, default rose
+  const scoreAccent = recoveryScore >= 75
+    ? { ring: "ring-emerald-200/60", glow: "shadow-emerald-400/40", dot: "bg-emerald-500 border-emerald-500", badge: "bg-emerald-100 text-emerald-800" }
+    : recoveryScore < 40
+      ? { ring: "ring-amber-200/60", glow: "shadow-amber-400/40", dot: "bg-amber-500 border-amber-500", badge: "bg-amber-100 text-amber-800" }
+      : { ring: "ring-pink-200/50", glow: "shadow-pink-500/30", dot: "bg-pink-500 border-pink-500", badge: "bg-rose-200 text-rose-800" };
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-sm h-full flex flex-col">
@@ -15,10 +32,22 @@ export function PostpartumTimeline() {
         <div className="w-8 h-8 rounded-lg bg-rose-100 flex items-center justify-center">
           <Heart className="w-4 h-4 text-rose-700" />
         </div>
-        <div>
+        <div className="flex-1">
           <h2 className="font-bold text-sm">Recovery Timeline</h2>
           <p className="text-[10px] text-muted-foreground">Week {currentWeek} post-delivery</p>
         </div>
+        {/* Score confidence badge */}
+        {recoveryScore < 40 && (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-semibold">
+            <AlertTriangle className="w-3 h-3" />
+            Recovery Warning
+          </div>
+        )}
+        {recoveryScore >= 75 && (
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-semibold">
+            ✓ Strong
+          </div>
+        )}
       </div>
 
       <div className="w-full mb-2">
@@ -38,30 +67,41 @@ export function PostpartumTimeline() {
 
               {/* Milestone nodes */}
               <div className="relative flex justify-between gap-2 sm:gap-4">
-                {milestones.map((milestone) => {
-                  const isCompleted = currentWeek > milestone.week;
-                  const isCurrent = currentWeek === milestone.week;
-                  const isSelected = selectedWeek === milestone.week;
+                {milestones.map((milestone, index) => {
+                  const isCompleted = currentWeek > milestone.weekEnd;
+                  const isCurrent = currentWeek >= milestone.weekStart && currentWeek <= milestone.weekEnd;
+                  const isSelected = selectedWeek >= milestone.weekStart && selectedWeek <= milestone.weekEnd;
+                  const weekLabel = milestone.weekStart === milestone.weekEnd
+                    ? `Week ${milestone.weekStart}`
+                    : `Week ${milestone.weekStart}–${milestone.weekEnd}`;
 
                   return (
                     <div 
-                      key={milestone.week} 
-                      onClick={() => setSelectedWeek(milestone.week)}
+                      key={milestone.weekStart} 
+                      onClick={() => setSelectedWeek(milestone.weekStart)}
                       className="flex flex-col items-center flex-1 min-w-[70px] sm:min-w-[80px] group cursor-pointer"
                     >
+                      {/* Current phase badge */}
+                      {isCurrent && (
+                        <span className={`text-[8px] font-bold uppercase tracking-wider mb-1 px-1.5 py-0.5 rounded-full ${scoreAccent.badge}`}>
+                          Current
+                        </span>
+                      )}
+                      {!isCurrent && <div className="h-[18px]" />}
+
                       {/* Node circle */}
                       <div 
                         className={`
                           relative z-10 w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 flex items-center justify-center
                           transition-all duration-300 ease-out
-                          ${isSelected ? "ring-4 ring-pink-200/50 scale-110" : ""}
+                          ${isSelected && !isCurrent ? "ring-4 ring-pink-200/50 scale-110" : ""}
                           ${isCompleted 
                             ? "bg-rose-500 border-rose-500 shadow-md shadow-rose-500/20" 
                             : isCurrent 
-                              ? "bg-pink-500 border-pink-500 shadow-lg shadow-pink-500/30" 
-                              : "bg-background border-border"
+                              ? `${scoreAccent.dot} shadow-lg ${scoreAccent.glow} ring-4 ${scoreAccent.ring} scale-110 animate-pulse` 
+                              : "bg-background border-border opacity-50"
                           }
-                          group-hover:scale-110
+                          group-hover:scale-110 group-hover:opacity-100
                         `}
                       >
                         {isCompleted && <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />}
@@ -71,15 +111,15 @@ export function PostpartumTimeline() {
                       {/* Week number */}
                       <p className={`
                         text-[10px] sm:text-xs font-bold mt-3
-                        ${isSelected ? "text-pink-700" : isCompleted ? "text-rose-700" : isCurrent ? "text-pink-600" : "text-muted-foreground"}
+                        ${isSelected ? "text-pink-700" : isCompleted ? "text-rose-700" : isCurrent ? "text-pink-600" : "text-muted-foreground/50"}
                       `}>
-                        Week {milestone.week}
+                        {weekLabel}
                       </p>
 
                       {/* Label */}
                       <p className={`
                         text-[9px] sm:text-[10px] mt-0.5 text-center leading-tight max-w-[80px]
-                        ${isSelected ? "text-foreground font-semibold" : "text-muted-foreground"}
+                        ${isSelected ? "text-foreground font-semibold" : isCompleted ? "text-muted-foreground" : isCurrent ? "text-foreground font-medium" : "text-muted-foreground/40"}
                       `}>
                         {milestone.title}
                       </p>
@@ -98,7 +138,9 @@ export function PostpartumTimeline() {
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-sm font-bold text-rose-900">{activeMilestone.title}</h4>
             <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-rose-200 text-rose-800">
-              Week {activeMilestone.week}
+              {activeMilestone.weekStart === activeMilestone.weekEnd
+                ? `Week ${activeMilestone.weekStart}`
+                : `Week ${activeMilestone.weekStart}–${activeMilestone.weekEnd}`}
             </span>
           </div>
           <p className="text-xs text-rose-800/80 leading-relaxed mb-3">

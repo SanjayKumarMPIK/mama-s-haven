@@ -4,6 +4,7 @@ import { filterLogsByPhase } from "@/shared/symptom-sync/symptomAnalyticsAdapter
 export interface PostpartumNormalizedMetrics {
   week: number;
   daysLogged: number;
+  daysInWeek: number; // total days available in this week (7, or fewer if partial current week)
   avgSleepHours: number | null;
   avgHydrationGlasses: number | null;
   avgMoodScore: number | null; // 0-100
@@ -20,6 +21,17 @@ export function getPostpartumNormalizedMetricsForWeek(
   const deliveryDate = new Date(deliveryDateISO + "T00:00:00");
   if (isNaN(deliveryDate.getTime())) {
     return createEmptyMetrics(targetWeek);
+  }
+
+  // Calculate how many days exist in the target week (7 for completed weeks, fewer for current partial week)
+  const weekStartDate = new Date(deliveryDate.getTime() + (targetWeek - 1) * 7 * 24 * 60 * 60 * 1000);
+  const weekEndDate = new Date(weekStartDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  let daysInWeek = 7;
+  if (now < weekEndDate) {
+    // Current (partial) week
+    const elapsed = Math.max(1, Math.ceil((now.getTime() - weekStartDate.getTime()) / (1000 * 60 * 60 * 24)));
+    daysInWeek = Math.min(7, elapsed);
   }
 
   let totalSleep = 0;
@@ -96,6 +108,7 @@ export function getPostpartumNormalizedMetricsForWeek(
   return {
     week: targetWeek,
     daysLogged,
+    daysInWeek,
     avgSleepHours: sleepCount > 0 ? totalSleep / sleepCount : null,
     avgHydrationGlasses: hydrationCount > 0 ? totalHydration / hydrationCount : null,
     avgMoodScore: moodCount > 0 ? totalMood / moodCount : null,
@@ -109,6 +122,7 @@ function createEmptyMetrics(week: number): PostpartumNormalizedMetrics {
   return {
     week,
     daysLogged: 0,
+    daysInWeek: 7,
     avgSleepHours: null,
     avgHydrationGlasses: null,
     avgMoodScore: null,

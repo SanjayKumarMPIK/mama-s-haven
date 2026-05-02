@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useOnboarding, type Goal, type OnboardingConfig } from "@/hooks/useOnboarding";
 import { useAuth } from "@/hooks/useAuth";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { usePregnancyProfile, isValidLMP } from "@/hooks/usePregnancyProfile";
 import { useProfile } from "@/hooks/useProfile";
 import type { Phase } from "@/hooks/usePhase";
-import { X, ChevronRight, ChevronLeft, AlertTriangle, Check, Info } from "lucide-react";
+import { X, ChevronRight, ChevronLeft, AlertTriangle, Check, Info, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import PubertyQuestions from "./PubertyQuestions";
 import { toast } from "sonner";
@@ -184,7 +184,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 export default function OnboardingFlow() {
   const { config, showOnboarding, setShowOnboarding, saveConfig } = useOnboarding();
   const { fullProfile, updateProfile } = useAuth();
-  const { saveProfile } = usePregnancyProfile();
+  const { saveProfile, clearProfile } = usePregnancyProfile();
   const { profile: userProfile } = useProfile();
   const navigate = useNavigate();
 
@@ -200,6 +200,7 @@ export default function OnboardingFlow() {
 
   // Maternity setup form state
   const [maternityLmp, setMaternityLmp] = useState("");
+  const [lmpError, setLmpError] = useState("");
   const name = userProfile?.name || "User";
 
   // Pre-fill when re-opening
@@ -343,7 +344,12 @@ export default function OnboardingFlow() {
   const handleMaternitySetupSubmit = () => {
     if (!maternityLmp) return;
 
-    // Save pregnancy profile data
+    // Clear stale pregnancy data (delivery, GDM, etc.) so the profile
+    // starts clean — identical to what happens when user clicks "Clear Data"
+    // then re-enters LMP from the SetupScreen.
+    clearProfile();
+
+    // Save pregnancy profile with the new LMP (re-creates fresh profile)
     saveProfile({ name, lmp: maternityLmp, region: "north" });
 
     // Save onboarding config
@@ -355,6 +361,10 @@ export default function OnboardingFlow() {
     };
     saveConfig(cfg);
     setShowOnboarding(false);
+
+    // Navigate to home — the route resolver will detect pregnancy mode
+    // and redirect to PregnancyDashboard correctly
+    navigate("/", { replace: true });
   };
 
   const handlePubertyComplete = (pubertyData: any) => {
@@ -518,14 +528,48 @@ export default function OnboardingFlow() {
                   <input
                     type="date"
                     value={maternityLmp}
-                    onChange={(e) => setMaternityLmp(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setMaternityLmp(val);
+                      setLmpError("");
+                      if (val && !isValidLMP(val)) {
+                        setLmpError("LMP cannot be a future date.");
+                      }
+                    }}
                     max={new Date().toISOString().slice(0, 10)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className={`w-full rounded-xl border bg-slate-50 px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all ${
+                      lmpError
+                        ? "border-red-400 focus:ring-red-300"
+                        : "border-slate-200 focus:ring-primary/30"
+                    }`}
                   />
+                  {lmpError && (
+                    <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1">
+                      <AlertTriangle className="w-3 h-3" /> {lmpError}
+                    </p>
+                  )}
                 </div>
 
+                {/* Auto-calculated EDD Preview — matches SetupScreen */}
+                {maternityLmp && !lmpError && (() => {
+                  const d = new Date(maternityLmp + "T00:00:00");
+                  d.setDate(d.getDate() + 280);
+                  const previewEDD = d.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+                  return (
+                    <div className="rounded-xl bg-gradient-to-r from-primary/5 to-violet-50 border border-primary/20 p-4 flex items-center gap-3 animate-fadeIn">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <CalendarDays className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground font-medium">Your estimated due date</p>
+                        <p className="text-sm font-bold text-primary">{previewEDD}</p>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Info Note */}
-                <div className="flex items-start gap-2 bg-blue-50 rounded-lg p-3 border border-blue-100 text-left mb-2">
+                <div className="flex items-start gap-2 bg-blue-50 rounded-lg p-3 border border-blue-100 text-left">
                   <Info className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
                   <p className="text-[11px] text-blue-700 leading-relaxed">
                     Your due date is auto-calculated from LMP (LMP&nbsp;+&nbsp;280&nbsp;days). You can adjust it later from the dashboard if your doctor gives a different date.
@@ -533,7 +577,7 @@ export default function OnboardingFlow() {
                 </div>
                 <button
                   onClick={handleMaternitySetupSubmit}
-                  disabled={!maternityLmp}
+                  disabled={!maternityLmp || !!lmpError}
                   className="w-full rounded-xl bg-primary text-white py-3 font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Start Tracking →

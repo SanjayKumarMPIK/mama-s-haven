@@ -139,7 +139,7 @@ export default function NutritionGuide() {
                 
                 <div className="grid md:grid-cols-2 gap-4">
                   <FeatureCard 
-                    to="/deficiency-insights"
+                    to="/nutrition-intelligence"
                     icon={<div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center shrink-0"><ClipboardList className="w-8 h-8 text-purple-600" /></div>}
                     title="Deficiency Insights"
                     titleColor="text-purple-700"
@@ -469,7 +469,7 @@ export default function NutritionGuide() {
                   <div className="flex-1"><p className="text-sm font-semibold">Symptoms</p><p className="text-[11px] text-muted-foreground">See patterns</p></div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                 </Link>
-                <Link to="/deficiency-insights" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
+                <Link to="/nutrition-intelligence" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
                   <Sparkles className={`w-5 h-5 ${accent.text}`} />
                   <div className="flex-1"><p className="text-sm font-semibold">Deficiency</p><p className="text-[11px] text-muted-foreground">Full analysis</p></div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />

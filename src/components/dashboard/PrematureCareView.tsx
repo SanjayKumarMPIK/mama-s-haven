@@ -64,16 +64,9 @@ export default function PrematureCareView() {
   const riskInfo = riskBadge(risk);
   const weightTracker = usePrematureBabyWeight();
 
-  // ─── Weeks post delivery ────────────────────────────────────────────────────
-  const weeksPostDelivery = useMemo(() => {
-    if (!delivery.birthDate) return 0;
-    const birth = new Date(delivery.birthDate + "T00:00:00");
-    const now = new Date();
-    return Math.max(0, Math.floor((now.getTime() - birth.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-  }, [delivery.birthDate]);
-
   // ─── Premature Recovery Analytics (memoized) ────────────────────────────────
-  const prematureRecovery = usePrematureRecovery(weeksPostDelivery);
+  const prematureRecovery = usePrematureRecovery();
+  const weeksPostDelivery = prematureRecovery.weeksPostDelivery;
 
   // ─── Health Summary Stats for Premature Dashboard ────────────────────────
   const healthSummaryStats = useMemo(() => {
@@ -267,13 +260,19 @@ export default function PrematureCareView() {
                 <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
                   <Calendar className="w-4 h-4 text-indigo-700" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <h2 className="font-bold text-sm">Recovery Timeline</h2>
-                  <p className="text-[10px] text-muted-foreground">
-                    Week {weeksPostDelivery} post-delivery
-                    {prematureRecovery.recoveryBreakdown.overall >= 85 && " • Accelerated"}
-                    {prematureRecovery.recoveryBreakdown.overall < 45 && " • Monitoring pace"}
-                  </p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-[10px] text-muted-foreground">
+                      Week {weeksPostDelivery} · Day {prematureRecovery.daysPostDelivery}
+                    </p>
+                    {prematureRecovery.recoveryBreakdown.overall >= 85 && (
+                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">✓ Accelerated</span>
+                    )}
+                    {prematureRecovery.recoveryBreakdown.overall < 45 && (
+                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">⚠ Monitoring</span>
+                    )}
+                  </div>
                 </div>
               </div>
               <PrematureRecoveryTimeline

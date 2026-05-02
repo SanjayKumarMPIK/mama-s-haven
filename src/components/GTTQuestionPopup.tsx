@@ -10,16 +10,18 @@ import { X, CheckCircle2, Calendar, AlertCircle, Stethoscope } from "lucide-reac
 type GTTView = "question" | "result" | "reminder" | "confirmation";
 
 export function GTTQuestionPopup() {
-  const { profile, currentWeek, setGDMStatus, markGTTQuestionCompleted, isGTTPopupOpen, openGTTPopup, closeGTTPopup } = usePregnancyProfile();
+  const { profile, currentWeek, mode, setGDMStatus, markGTTQuestionCompleted, isGTTPopupOpen, openGTTPopup, closeGTTPopup } = usePregnancyProfile();
   const { completeTest, scheduleReminder } = useMaternalTestReminders();
   
   const [slideIn, setSlideIn] = useState(false);
   const [view, setView] = useState<GTTView>("question");
 
-  // Auto-trigger condition: week >= 25 AND gdmStatus is null AND gttQuestionCompleted is false
+  // Auto-trigger condition: weeks 24-34, pregnancy mode only, gdmStatus is null AND gttQuestionCompleted is false
   useEffect(() => {
     if (
-      currentWeek >= 25 &&
+      mode === "pregnancy" &&
+      currentWeek >= 24 &&
+      currentWeek <= 34 &&
       profile.isSetup &&
       !profile.gttQuestionCompleted &&
       profile.gdmStatus === null &&
@@ -31,7 +33,7 @@ export function GTTQuestionPopup() {
       }, 1500);
       return () => clearTimeout(timer);
     }
-  }, [currentWeek, profile.isSetup, profile.gttQuestionCompleted, profile.gdmStatus, isGTTPopupOpen, openGTTPopup]);
+  }, [currentWeek, mode, profile.isSetup, profile.gttQuestionCompleted, profile.gdmStatus, isGTTPopupOpen, openGTTPopup]);
 
   // Handle slide animation
   useEffect(() => {

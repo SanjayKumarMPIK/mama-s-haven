@@ -1,4 +1,5 @@
 import type { HealthLogs, MaternityEntry } from "@/hooks/useHealthLog";
+import { filterLogsByPhase } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
 
 export interface PostpartumNormalizedMetrics {
   week: number;
@@ -7,6 +8,8 @@ export interface PostpartumNormalizedMetrics {
   avgHydrationGlasses: number | null;
   avgMoodScore: number | null; // 0-100
   avgFatigueScore: number | null; // 0-100
+  symptomSeverityPenalty: number;
+  symptomFrequencies: Record<string, number>;
 }
 
 export function getPostpartumNormalizedMetricsForWeek(
@@ -28,16 +31,15 @@ export function getPostpartumNormalizedMetricsForWeek(
   let totalFatigue = 0;
   let fatigueCount = 0;
 
+  let totalSymptomPenalty = 0;
+  const symptomFrequencies: Record<string, number> = {};
+
   let daysLogged = 0;
 
-  for (const [dateISO, entry] of Object.entries(logs)) {
-    // Postpartum-only isolation rule: ignore non-maternity logs
-    if (entry.phase !== "maternity") continue;
+  const filteredLogs = filterLogsByPhase(logs, "postpartum", deliveryDateISO);
 
+  for (const { date: dateISO, entry } of filteredLogs) {
     const logDate = new Date(dateISO + "T12:00:00");
-    // Only process logs that occur on or after delivery date (postpartum logs)
-    // Pregnancy data must NOT influence postpartum recovery score.
-    if (logDate < deliveryDate) continue;
 
     // Calculate week postpartum
     const daysSinceDelivery = Math.floor((logDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -71,6 +73,24 @@ export function getPostpartumNormalizedMetricsForWeek(
       else if (e.fatigueLevel === "High") totalFatigue += 0;
       fatigueCount++;
     }
+
+    if (!e.noSymptomsToday && e.symptoms) {
+      let dayPenalty = 0;
+      const severities = e.symptomSeverities || {};
+
+      Object.entries(e.symptoms).forEach(([symptomId, isActive]) => {
+        if (!isActive) return;
+
+        symptomFrequencies[symptomId] = (symptomFrequencies[symptomId] || 0) + 1;
+
+        const sev = severities[symptomId];
+        if (sev === "severe") dayPenalty += 15;
+        else if (sev === "moderate") dayPenalty += 8;
+        else dayPenalty += 3; // mild or undefined
+      });
+
+      totalSymptomPenalty += dayPenalty;
+    }
   }
 
   return {
@@ -80,6 +100,8 @@ export function getPostpartumNormalizedMetricsForWeek(
     avgHydrationGlasses: hydrationCount > 0 ? totalHydration / hydrationCount : null,
     avgMoodScore: moodCount > 0 ? totalMood / moodCount : null,
     avgFatigueScore: fatigueCount > 0 ? totalFatigue / fatigueCount : null,
+    symptomSeverityPenalty: daysLogged > 0 ? totalSymptomPenalty / daysLogged : 0,
+    symptomFrequencies,
   };
 }
 
@@ -91,5 +113,7 @@ function createEmptyMetrics(week: number): PostpartumNormalizedMetrics {
     avgHydrationGlasses: null,
     avgMoodScore: null,
     avgFatigueScore: null,
+    symptomSeverityPenalty: 0,
+    symptomFrequencies: {},
   };
 }

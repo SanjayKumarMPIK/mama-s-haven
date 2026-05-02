@@ -56,6 +56,8 @@ export interface PubertyEntry {
 
 export interface MaternityEntry {
   phase: "maternity";
+  /** The stage of maternity this log was recorded in */
+  maternityStage?: "pregnancy" | "postpartum" | "premature";
   /** Which trimester this log was recorded in */
   trimester?: "T1" | "T2" | "T3";
   fatigueLevel: FatigueLevel | null;

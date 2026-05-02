@@ -264,6 +264,7 @@ export function MaternityDayDetails({ dateISO, onClose }: MaternityDayDetailsPro
 
     const entry: HealthLogEntry = {
       phase: "maternity",
+      maternityStage: isPostDelivery ? (pregnancyMode === "premature" ? "premature" : "postpartum") : "pregnancy",
       noSymptomsToday,
       fatigueLevel: energyLevel !== "" ? (energyLevel as "Low" | "Medium" | "High") : null,
       hydrationGlasses: hydration !== "" ? Number(hydration) : null,

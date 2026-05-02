@@ -689,6 +689,87 @@ export const SYMPTOM_GUIDE_REGISTRY: SymptomGuideEntry[] = [
   },
 ];
 
+// ─── Postpartum / Premature Symptom Guide Entries ─────────────────────────
+// Appended separately for clarity — these are part of SYMPTOM_GUIDE_REGISTRY
+
+SYMPTOM_GUIDE_REGISTRY.push(
+  {
+    id: "breastPain",
+    name: "Breast Pain",
+    emoji: "💗",
+    shortDescription:
+      "Pain or soreness in the breasts, common during breastfeeding or when milk comes in. Usually temporary and improves with proper technique.",
+    possibleCauses: [
+      "Breast engorgement (milk buildup)",
+      "Improper latch during breastfeeding",
+      "Blocked milk duct",
+      "Hormonal changes post-delivery",
+    ],
+    phaseTags: ["maternity"],
+    category: "core",
+  },
+  {
+    id: "nipplePain",
+    name: "Nipple Pain",
+    emoji: "⚡",
+    shortDescription:
+      "Soreness, cracking, or sensitivity in the nipples, often experienced during the early days of breastfeeding.",
+    possibleCauses: [
+      "Shallow latch during breastfeeding",
+      "Dry or cracked skin",
+      "Tongue-tie in baby affecting latch",
+      "Sensitivity due to hormonal changes",
+    ],
+    phaseTags: ["maternity"],
+    category: "core",
+  },
+  {
+    id: "lowMilkSupply",
+    name: "Low Milk Supply",
+    emoji: "🍼",
+    shortDescription:
+      "Feeling that breast milk production is insufficient. Often related to feeding frequency, hydration, or stress levels.",
+    possibleCauses: [
+      "Infrequent feeding or pumping",
+      "Dehydration or poor nutrition",
+      "Stress or fatigue",
+      "Hormonal imbalances post-delivery",
+    ],
+    phaseTags: ["maternity"],
+    category: "core",
+  },
+  {
+    id: "lowEnergy",
+    name: "Low Energy",
+    emoji: "🔋",
+    shortDescription:
+      "Feeling persistently drained or lacking physical energy. Very common in the postpartum and premature recovery period.",
+    possibleCauses: [
+      "Sleep deprivation from newborn care",
+      "Iron or B12 deficiency",
+      "Insufficient caloric intake",
+      "Hormonal shifts after delivery",
+    ],
+    phaseTags: ["maternity"],
+    category: "core",
+  },
+  {
+    id: "sleepDeprivation",
+    name: "Sleep Deprivation",
+    emoji: "🥱",
+    shortDescription:
+      "Chronic lack of adequate sleep, commonly caused by newborn feeding schedules and night waking.",
+    possibleCauses: [
+      "Frequent nighttime feedings",
+      "Baby's irregular sleep patterns",
+      "Anxiety or hypervigilance about the baby",
+      "Physical discomfort post-delivery",
+    ],
+    phaseTags: ["maternity"],
+    category: "core",
+  },
+);
+
 // ─── Search & Lookup Utilities ────────────────────────────────────────────
 
 /**

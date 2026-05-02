@@ -90,6 +90,13 @@ const SYMPTOM_EMOJI: Record<string, string> = {
   hotFlashes: "🔥",
   nightSweats: "💧",
   jointPain: "🦴",
+  // Postpartum / Premature
+  breastPain: "💗",
+  nipplePain: "⚡",
+  lowMilkSupply: "🍼",
+  lowEnergy: "🔋",
+  sleepDeprivation: "🥱",
+  bodyAche: "🤕",
 };
 
 const SYMPTOM_SUGGESTIONS: Record<string, string[]> = {
@@ -188,6 +195,37 @@ const SYMPTOM_SUGGESTIONS: Record<string, string[]> = {
     "Include turmeric and ginger in your cooking",
     "Use warm compresses for stiff or sore joints",
   ],
+  // Postpartum / Premature
+  breastPain: [
+    "Apply a warm compress before breastfeeding for relief",
+    "Ensure a proper latch — seek lactation support if needed",
+    "Wear a supportive, comfortable nursing bra",
+  ],
+  nipplePain: [
+    "Check baby's latch position — a shallow latch increases pain",
+    "Apply expressed breast milk or lanolin after feeds",
+    "Allow nipples to air-dry after feeding when possible",
+  ],
+  lowMilkSupply: [
+    "Increase feeding frequency — supply follows demand",
+    "Stay well hydrated with water, milk, and soups",
+    "Include galactagogue foods: fenugreek, oats, garlic",
+  ],
+  lowEnergy: [
+    "Accept help — rest when the baby rests",
+    "Eat nutrient-dense meals at regular intervals",
+    "Stay hydrated and prioritize iron-rich foods",
+  ],
+  sleepDeprivation: [
+    "Sleep when the baby sleeps — even short naps help",
+    "Share nighttime duties with a partner or support person",
+    "Create a dark, quiet sleep environment for rest periods",
+  ],
+  bodyAche: [
+    "Gentle postnatal stretches for back and shoulders",
+    "Use a supportive pillow during breastfeeding",
+    "Warm baths can help relieve overall soreness",
+  ],
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -208,7 +246,7 @@ function daysBetween(a: string, b: string): number {
   return Math.round(Math.abs(db.getTime() - da.getTime()) / MS_PER_DAY);
 }
 
-function getSymptomLabel(phase: Phase, id: string): string {
+function getSymptomLabel(phase: string, id: string): string {
   const syms = KEY_SYMPTOMS_BY_PHASE[phase] ?? [];
   const found = syms.find((s) => s.id === id);
   if (found) return found.label;
@@ -221,16 +259,18 @@ const MOOD_SCORE: Record<string, number> = { Good: 3, Okay: 2, Low: 1 };
 
 export function computeSymptomInsights(
   logs: HealthLogs,
-  phase: Phase,
+  phase: string,
 ): SymptomInsightsData {
   const todayISO = toISODate(new Date());
   const d7 = getDaysAgoISO(7);
   const d14 = getDaysAgoISO(14);
   const d30 = getDaysAgoISO(30);
 
+  const basePhase = phase.startsWith("maternity_") ? "maternity" : phase;
+
   // Collect entries for this phase
   const entries = Object.entries(logs)
-    .filter(([, e]) => e.phase === phase)
+    .filter(([, e]) => e.phase === basePhase)
     .filter(([d]) => d <= todayISO)
     .sort(([a], [b]) => a.localeCompare(b));
 
@@ -335,7 +375,7 @@ export function computeSymptomInsights(
     };
 
     const entry = logs[iso];
-    if (entry && entry.phase === phase && entry.symptoms) {
+    if (entry && entry.phase === basePhase && entry.symptoms) {
       let total = 0;
       for (const symId of topIds) {
         const val = (entry.symptoms as Record<string, boolean>)[symId] ? 1 : 0;
@@ -399,7 +439,7 @@ export function computeSymptomInsights(
     }
   }
 
-  if (phase === "maternity") {
+  if (basePhase === "maternity") {
     if ((counts7d["nausea"] || 0) >= 2 && (counts7d["fatigue"] || 0) >= 1) {
       insights.push({
         icon: "🤰",
@@ -515,7 +555,7 @@ export function computeSymptomInsights(
 
 export function getSymptomDetail(
   logs: HealthLogs,
-  phase: Phase,
+  phase: string,
   symptomId: string,
 ): SymptomDetailData {
   const todayISO = toISODate(new Date());
@@ -523,6 +563,7 @@ export function getSymptomDetail(
   const d14 = getDaysAgoISO(14);
   const d30 = getDaysAgoISO(30);
   const label = getSymptomLabel(phase, symptomId);
+  const basePhase = phase.startsWith("maternity_") ? "maternity" : phase;
 
   let c7 = 0, c30 = 0, cPrev = 0;
   let lastOcc: string | null = null;
@@ -532,7 +573,7 @@ export function getSymptomDetail(
   let lowSleepDays = 0, symptomOnLowSleep = 0;
 
   for (const [dateISO, entry] of Object.entries(logs)) {
-    if (entry.phase !== phase || dateISO > todayISO) continue;
+    if (entry.phase !== basePhase || dateISO > todayISO) continue;
     const syms = entry.symptoms as Record<string, boolean>;
     if (!syms || !syms[symptomId]) continue;
 

@@ -4,6 +4,7 @@
 
 import { useMemo } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { getPostpartumMetrics, type PostpartumMetrics } from "../adapters/postpartumMetricsAdapter";
 import { Activity, Moon, Smile, AlertTriangle } from "lucide-react";
 
@@ -49,11 +50,13 @@ function RecoveryCard({ label, value, trend, icon: Icon }: RecoveryCardProps) {
 
 export default function RecoverySummaryCards() {
   const { getPhaseLogs } = useHealthLog();
+  const { profile } = usePregnancyProfile();
   const logs = getPhaseLogs("maternity");
 
   const metrics = useMemo(() => {
-    return getPostpartumMetrics(logs);
-  }, [logs]);
+    const deliveryDateISO = profile.delivery?.birthDate || new Date().toISOString().split("T")[0];
+    return getPostpartumMetrics(logs, deliveryDateISO);
+  }, [logs, profile.delivery?.birthDate]);
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

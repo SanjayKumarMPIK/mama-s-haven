@@ -70,6 +70,13 @@ const SYMPTOM_EMOJI: Record<string, string> = {
   hotFlashes: "🔥",
   nightSweats: "💧",
   jointPain: "🦴",
+  // Postpartum / Premature
+  breastPain: "💗",
+  nipplePain: "⚡",
+  lowMilkSupply: "🍼",
+  lowEnergy: "🔋",
+  sleepDeprivation: "🥱",
+  bodyAche: "🤕",
 };
 
 /** Soft, non-alarming message templates keyed by symptom */
@@ -93,6 +100,13 @@ const PREDICTION_MESSAGES: Record<string, { short: string; withTime: (days: stri
   hotFlashes:        { short: "Hot flashes may occur",               withTime: d => `Hot flashes possible in ${d}` },
   nightSweats:       { short: "Night sweats may occur",              withTime: d => `Night sweats possible in ${d}` },
   jointPain:         { short: "Joint discomfort possible",           withTime: d => `Joint discomfort may occur in ${d}` },
+  // Postpartum / Premature
+  breastPain:        { short: "Breast discomfort possible",           withTime: d => `Breast discomfort may occur in ${d}` },
+  nipplePain:        { short: "Nipple soreness possible",             withTime: d => `Nipple soreness may occur in ${d}` },
+  lowMilkSupply:     { short: "Milk supply may dip",                  withTime: d => `Milk supply may dip in ${d}` },
+  lowEnergy:         { short: "Energy levels may dip",                withTime: d => `Low energy possible in ${d}` },
+  sleepDeprivation:  { short: "Sleep disruption likely",              withTime: d => `Sleep disruption likely in ${d}` },
+  bodyAche:          { short: "Body ache possible",                   withTime: d => `Body ache may continue in ${d}` },
 };
 
 const CONFIDENCE_LABELS: Record<PredictionConfidence, string> = {
@@ -128,7 +142,7 @@ function daysBetween(a: string, b: string): number {
   );
 }
 
-function getSymptomLabel(phase: Phase, id: string): string {
+function getSymptomLabel(phase: string, id: string): string {
   const syms = KEY_SYMPTOMS_BY_PHASE[phase] ?? [];
   const found = syms.find((s) => s.id === id);
   if (found) return found.label;
@@ -137,7 +151,7 @@ function getSymptomLabel(phase: Phase, id: string): string {
 
 function makePrediction(
   symptomId: string,
-  phase: Phase,
+  phase: string,
   predictedDate: string,
   confidence: PredictionConfidence,
   basedOn: PredictionBasis,
@@ -179,7 +193,7 @@ interface SymptomTimeline {
 
 function extractTimelines(
   logs: HealthLogs,
-  phase: Phase,
+  phase: string,
 ): { timelines: Record<string, SymptomTimeline>; loggedDays30d: number } {
   const today = todayISO();
   const d30 = addDays(today, -30);
@@ -187,8 +201,10 @@ function extractTimelines(
   const timelines: Record<string, SymptomTimeline> = {};
   let loggedDays = 0;
 
+  const basePhase = phase.startsWith("maternity_") ? "maternity" : phase;
+
   const entries = Object.entries(logs)
-    .filter(([d, e]) => e.phase === phase && d <= today && d >= d30)
+    .filter(([d, e]) => e.phase === basePhase && d <= today && d >= d30)
     .sort(([a], [b]) => a.localeCompare(b));
 
   for (const [dateISO, entry] of entries) {
@@ -215,10 +231,11 @@ function extractTimelines(
 
 function predictByCyclePhase(
   logs: HealthLogs,
-  phase: Phase,
+  phase: string,
   timelines: Record<string, SymptomTimeline>,
 ): SymptomPrediction[] {
-  if (phase !== "puberty" && phase !== "family-planning") return [];
+  const basePhase = phase.startsWith("maternity_") ? "maternity" : phase;
+  if (basePhase !== "puberty" && basePhase !== "family-planning") return [];
 
   // Get period start dates
   let periodStarts: string[] = [];
@@ -346,7 +363,7 @@ function predictByCyclePhase(
 // interval (±1 day tolerance), predict the next occurrence.
 
 function predictByFrequency(
-  phase: Phase,
+  phase: string,
   timelines: Record<string, SymptomTimeline>,
 ): SymptomPrediction[] {
   const today = todayISO();
@@ -394,7 +411,7 @@ function predictByFrequency(
 // seen ≥3 times in the last 7 days, predict it may continue.
 
 function predictByRecency(
-  phase: Phase,
+  phase: string,
   timelines: Record<string, SymptomTimeline>,
 ): SymptomPrediction[] {
   const today = todayISO();
@@ -428,7 +445,7 @@ function predictByRecency(
 
 export function computeSymptomPredictions(
   logs: HealthLogs,
-  phase: Phase,
+  phase: string,
 ): PredictionResult {
   const { timelines, loggedDays30d } = extractTimelines(logs, phase);
 

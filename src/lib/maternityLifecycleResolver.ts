@@ -31,14 +31,18 @@ export function resolveMaternityLifecycle(profile: MaternityProfile): MaternityL
       const birth = new Date(birthDate + "T00:00:00");
       birth.setHours(0, 0, 0, 0);
 
-      // If birth date is today or in the past, user is in postpartum
+      // If birth date is today or in the past
       if (birth.getTime() <= today.getTime()) {
+        // Check premature FIRST (weeksAtBirth < 37) before generic postpartum
+        if (profile.delivery.weeksAtBirth && profile.delivery.weeksAtBirth < 37) {
+          return "premature";
+        }
         return "postpartum";
       }
     }
   }
 
-  // Case 2: EDD reached or passed
+  // Case 2: EDD reached or passed (no delivery recorded)
   if (profile.activeEDD) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -61,13 +65,6 @@ export function resolveMaternityLifecycle(profile: MaternityProfile): MaternityL
     // If EDD is in the future, user is in active pregnancy
     if (dueDate.getTime() > today.getTime()) {
       return "pregnancy";
-    }
-  }
-
-  // Case 4: Premature birth (if weeksAtBirth < 37)
-  if (profile.delivery?.isDelivered && profile.delivery.weeksAtBirth) {
-    if (profile.delivery.weeksAtBirth < 37) {
-      return "premature";
     }
   }
 

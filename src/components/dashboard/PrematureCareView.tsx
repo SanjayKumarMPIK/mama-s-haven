@@ -19,6 +19,7 @@ import {
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePrematureBabyWeight, type WeightEntry } from "@/hooks/usePrematureBabyWeight";
 import { usePrematureRecovery } from "@/modules/premature/recovery/usePrematureRecovery";
+import { filterLogsByPhase, buildChartDataset } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import HealthSummaryCards from "@/components/shared/HealthSummaryCards";
@@ -85,13 +86,12 @@ export default function PrematureCareView() {
     };
   }, [maternityLogs]);
 
-  // Convert maternityLogs (Record<string, PubertyEntry>) → PubertyLogItem[]
-  // VisualAnalytics expects an array of { date, entry } objects
-  const maternityLogsArray = useMemo(
-    () =>
-      Object.entries(maternityLogs).map(([date, entry]) => ({ date, entry })),
-    [maternityLogs]
-  );
+  // Convert maternityLogs using the unified adapter to strictly isolate premature phase
+  const maternityLogsArray = useMemo(() => {
+    const deliveryDateISO = delivery.birthDate || new Date().toISOString().split("T")[0];
+    const filtered = filterLogsByPhase(maternityLogs, "premature", deliveryDateISO);
+    return buildChartDataset(filtered);
+  }, [maternityLogs, delivery.birthDate]);
 
   // Weight input state
   const [showWeightForm, setShowWeightForm] = useState(false);

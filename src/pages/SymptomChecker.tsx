@@ -2,6 +2,8 @@ import { useState, useMemo, useCallback } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { filterLogsByPhase } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
 import SymptomGuideSearch from "@/components/symptoms/SymptomGuideSearch";
@@ -116,6 +118,7 @@ export default function SymptomChecker() {
   const { simpleMode } = useLanguage();
   const { phase } = usePhase();
   const { getPhaseLogs } = useHealthLog();
+  const { profile, mode } = usePregnancyProfile();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Read ?query= param for deep-linking from Nutrition Guide
@@ -123,26 +126,40 @@ export default function SymptomChecker() {
   
   const [isSearchVisible, setIsSearchVisible] = useState(!!initialQuery);
 
-  const phaseLogs = useMemo(() => getPhaseLogs(phase), [getPhaseLogs, phase]);
+  const rawPhaseLogs = useMemo(() => getPhaseLogs(phase), [getPhaseLogs, phase]);
+
+  const phaseLogs = useMemo(() => {
+    if (phase === "maternity" && (mode === "postpartum" || mode === "premature")) {
+      const filteredArr = filterLogsByPhase(rawPhaseLogs, mode, profile.delivery.birthDate);
+      const filteredObj: any = {};
+      filteredArr.forEach(item => {
+        filteredObj[item.date] = item.entry;
+      });
+      return filteredObj;
+    }
+    return rawPhaseLogs;
+  }, [rawPhaseLogs, phase, mode, profile.delivery.birthDate]);
+
+  const effectivePhase = phase === "maternity" && mode !== "pregnancy" ? `maternity_${mode}` : phase;
 
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
 
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
 
   // ── Compute analytics (memoized) ──
-  const data = useMemo(() => computeSymptomInsights(phaseLogs, phase), [phaseLogs, phase]);
+  const data = useMemo(() => computeSymptomInsights(phaseLogs, effectivePhase), [phaseLogs, effectivePhase]);
 
   // ── Compute predictions (memoized) ──
   const predictionResult = useMemo(
-    () => computeSymptomPredictions(phaseLogs, phase),
-    [phaseLogs, phase],
+    () => computeSymptomPredictions(phaseLogs, effectivePhase),
+    [phaseLogs, effectivePhase],
   );
 
   // ── Compute symptom detail (memoized) ──
   const detail = useMemo<SymptomDetailData | null>(() => {
     if (!selectedSymptomId) return null;
-    return getSymptomDetail(phaseLogs, phase, selectedSymptomId);
-  }, [phaseLogs, phase, selectedSymptomId]);
+    return getSymptomDetail(phaseLogs, effectivePhase, selectedSymptomId);
+  }, [phaseLogs, effectivePhase, selectedSymptomId]);
 
   const handleSymptomClick = useCallback((id: string) => {
     setSelectedSymptomId((prev) => (prev === id ? null : id));

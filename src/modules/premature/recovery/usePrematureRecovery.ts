@@ -8,6 +8,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
+import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { usePrematureBabyWeight, type WeightEntry } from "@/hooks/usePrematureBabyWeight";
 import { useMedicineReminder } from "@/hooks/useMedicineReminder";
 import {
@@ -33,8 +34,11 @@ import {
 
 export function usePrematureRecovery(weeksPostDelivery: number = 0) {
   const { maternityLogs } = useHealthLog();
+  const { profile } = usePregnancyProfile();
   const weightTracker = usePrematureBabyWeight();
   const { getAdherenceRate, medicines } = useMedicineReminder();
+
+  const deliveryDateISO = profile.delivery?.birthDate || new Date().toISOString().split("T")[0];
 
   // ─── Medicine Adherence (memoized) ─────────────────────────────────────────
   const medicineAdherence = useMemo(() => {
@@ -45,8 +49,8 @@ export function usePrematureRecovery(weeksPostDelivery: number = 0) {
 
   // ─── Recovery Analytics (memoized, recalculates on log changes) ────────────
   const recoveryBreakdown = useMemo(() => {
-    return calculatePrematureRecoveryScore(maternityLogs, weightTracker.entries, medicineAdherence);
-  }, [maternityLogs, weightTracker.entries, medicineAdherence]);
+    return calculatePrematureRecoveryScore(maternityLogs, weightTracker.entries, deliveryDateISO, medicineAdherence);
+  }, [maternityLogs, weightTracker.entries, deliveryDateISO, medicineAdherence]);
 
   const recoveryStatus = useMemo(() => {
     return getPrematureRecoveryStatus(recoveryBreakdown.overall);

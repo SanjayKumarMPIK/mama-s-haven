@@ -3,6 +3,7 @@
 // STRICTLY isolated to Postpartum Dashboard only
 
 import type { HealthLogs, HealthLogEntry } from "@/hooks/useHealthLog";
+import { filterLogsByPhase } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
 
 export interface PostpartumMetrics {
   symptomsLogged: number;
@@ -21,14 +22,10 @@ export interface PostpartumMetrics {
  * Aggregates recovery metrics from maternity calendar entries for postpartum recovery.
  * Uses adaptive rolling window (7 days, expand to 14 days if low data).
  */
-export function getPostpartumMetrics(logs: HealthLogs): PostpartumMetrics {
-  // Filter for maternity phase entries only
-  const maternityLogs = Object.entries(logs)
-    .filter(([, log]) => {
-      const entry = log as HealthLogEntry;
-      return 'phase' in entry && entry.phase === 'maternity';
-    })
-    .map(([date, log]) => ({ date, log: log as HealthLogEntry }));
+export function getPostpartumMetrics(logs: HealthLogs, deliveryDateISO: string): PostpartumMetrics {
+  // Filter for postpartum phase entries only using the adapter
+  const maternityLogs = filterLogsByPhase(logs, "postpartum", deliveryDateISO)
+    .map(({ date, entry }) => ({ date, log: entry as unknown as HealthLogEntry }));
 
   // Determine adaptive window
   const windowDays = maternityLogs.length >= 7 ? 7 : 14;

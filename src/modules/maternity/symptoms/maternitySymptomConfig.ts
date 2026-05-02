@@ -1,4 +1,4 @@
-export type MaternityPhaseStage = "T1" | "T2" | "T3" | "postpartum";
+export type MaternityPhaseStage = "T1" | "T2" | "T3" | "postpartum" | "premature";
 
 export interface ConfigSymptom {
   id: string;
@@ -43,6 +43,16 @@ export const POSTPARTUM_CORE_SYMPTOMS: ConfigSymptom[] = [
   { id: "bodyAche", label: "Body ache", emoji: "🤕" },
 ];
 
+// Premature Core 6 — identical to Postpartum per design spec
+export const PREMATURE_CORE_SYMPTOMS: ConfigSymptom[] = [
+  { id: "breastPain", label: "Breast pain", emoji: "💗" },
+  { id: "nipplePain", label: "Nipple pain", emoji: "⚡" },
+  { id: "lowMilkSupply", label: "Low milk supply", emoji: "🍼" },
+  { id: "lowEnergy", label: "Low energy", emoji: "🔋" },
+  { id: "sleepDeprivation", label: "Sleep deprivation", emoji: "🥱" },
+  { id: "bodyAche", label: "Body ache", emoji: "🤕" },
+];
+
 export const COMMON_CUSTOMIZABLE_SYMPTOMS: ConfigSymptom[] = [
   { id: "fatigue", label: "Fatigue", emoji: "😴", category: "physical" },
   { id: "weakness", label: "Weakness", emoji: "🥀", category: "physical" },
@@ -65,4 +75,5 @@ export const MATERNITY_PHASE_CONFIG: Record<MaternityPhaseStage, ConfigSymptom[]
   T2: T2_CORE_SYMPTOMS,
   T3: T3_CORE_SYMPTOMS,
   postpartum: POSTPARTUM_CORE_SYMPTOMS,
+  premature: PREMATURE_CORE_SYMPTOMS,
 };

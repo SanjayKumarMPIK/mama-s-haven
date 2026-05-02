@@ -85,12 +85,12 @@ export interface PrioritizedSymptomsResult {
 }
 
 export const PREMATURE_CORE_SYMPTOMS: TrimesterSymptom[] = [
-  { id: "severe_fatigue", label: "Severe Fatigue", emoji: "😫" },
-  { id: "heavy_bleeding", label: "Heavy Bleeding", emoji: "🩸" },
-  { id: "abdominal_pain", label: "Abdominal Pain", emoji: "😖" },
-  { id: "mood_swings", label: "Mood Swings", emoji: "🎭" },
-  { id: "dizziness", label: "Dizziness", emoji: "😵‍💫" },
-  { id: "breastfeeding", label: "Breastfeeding", emoji: "🤱" },
+  { id: "breastPain", label: "Breast pain", emoji: "💗" },
+  { id: "nipplePain", label: "Nipple pain", emoji: "⚡" },
+  { id: "lowMilkSupply", label: "Low milk supply", emoji: "🍼" },
+  { id: "lowEnergy", label: "Low energy", emoji: "🔋" },
+  { id: "sleepDeprivation", label: "Sleep deprivation", emoji: "🥱" },
+  { id: "bodyAche", label: "Body ache", emoji: "🤕" },
 ];
 
 export interface SymptomPriorityEngineInput {

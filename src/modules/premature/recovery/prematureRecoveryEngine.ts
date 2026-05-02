@@ -20,6 +20,7 @@
 
 import type { HealthLogs, MaternityEntry, FatigueLevel, MoodType } from "@/hooks/useHealthLog";
 import type { WeightEntry } from "@/hooks/usePrematureBabyWeight";
+import { filterLogsByPhase } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,36 +73,39 @@ function clamp(v: number, min = 0, max = 100): number {
 }
 
 /** Get the N most recent maternity log entries (premature uses maternity phase). */
-function getRecentMaternityLogs(logs: HealthLogs, count: number): MaternityEntry[] {
-  return Object.entries(logs)
-    .filter(([, e]) => e.phase === "maternity")
-    .sort(([a], [b]) => b.localeCompare(a)) // most recent first
+function getRecentMaternityLogs(logs: HealthLogs, count: number, deliveryDateISO: string): MaternityEntry[] {
+  return filterLogsByPhase(logs, "premature", deliveryDateISO)
+    .sort((a, b) => b.date.localeCompare(a.date)) // most recent first
     .slice(0, count)
-    .map(([, e]) => e as MaternityEntry);
+    .map((item) => item.entry);
 }
 
 // ─── Symptom keyword sets for inference ───────────────────────────────────────
 
 const FEEDING_RELATED_SYMPTOMS = new Set([
-  "nausea", "appetite_changes", "vomiting", "reflux",
-  "digestive_discomfort", "low_milk_supply", "engorgement",
-  "nipple_pain", "milk_supply", "constipation",
+  "nausea", "appetiteChanges", "vomiting", "reflux",
+  "digestiveDiscomfort", "lowMilkSupply", "engorgement",
+  "nipplePain", "milkSupply", "constipation", "breastPain"
 ]);
 
 const BREATHING_RELATED_SYMPTOMS = new Set([
-  "fluid_leak", "shortness_of_breath", "breathing_difficulty",
-  "respiratory_distress", "chest_pain", "dizziness",
-  "oxygen_concern", "wheezing",
+  "fluidLeak", "shortnessOfBreath", "breathingDifficulty",
+  "respiratoryDistress", "chestPain", "dizziness",
+  "oxygenConcern", "wheezing",
 ]);
 
 const TEMPERATURE_RELATED_SYMPTOMS = new Set([
-  "fever", "chills", "infection", "body_temperature",
-  "cold_sweats", "night_sweats", "hot_flashes",
+  "fever", "chills", "infection", "bodyTemperature",
+  "coldSweats", "nightSweats", "hotFlashes",
 ]);
 
 const EMERGENCY_SYMPTOMS = new Set([
-  "fluid_leak", "fever", "respiratory_distress",
-  "breathing_difficulty", "chest_pain", "severe_pain",
+  "fluidLeak", "fever", "respiratoryDistress",
+  "breathingDifficulty", "chestPain", "severePain",
+]);
+
+const GENERAL_RECOVERY_SYMPTOMS = new Set([
+  "bodyAche", "lowEnergy", "sleepDeprivation", "fatigue", "weakness"
 ]);
 
 // ─── Score Calculation: 7 Signals ─────────────────────────────────────────────
@@ -151,12 +155,14 @@ function scoreSymptomStability(entries: MaternityEntry[]): number {
       const sev = severities[id];
       if (EMERGENCY_SYMPTOMS.has(id)) {
         dayPenalty += sev === "severe" ? 40 : sev === "moderate" ? 28 : 18;
+      } else if (FEEDING_RELATED_SYMPTOMS.has(id) || BREATHING_RELATED_SYMPTOMS.has(id) || GENERAL_RECOVERY_SYMPTOMS.has(id)) {
+        dayPenalty += sev === "severe" ? 30 : sev === "moderate" ? 18 : 8;
       } else if (sev === "severe") {
-        dayPenalty += 30;
+        dayPenalty += 20;
       } else if (sev === "moderate") {
-        dayPenalty += 16;
+        dayPenalty += 10;
       } else {
-        dayPenalty += 6;
+        dayPenalty += 4;
       }
     }
 
@@ -360,9 +366,10 @@ function scoreGrowthConfidence(weightEntries: WeightEntry[]): number {
 export function calculatePrematureRecoveryScore(
   logs: HealthLogs,
   weightEntries: WeightEntry[],
+  deliveryDateISO: string,
   medicineAdherence: number = -1
 ): PrematureRecoveryScoreBreakdown {
-  const entries = getRecentMaternityLogs(logs, 7);
+  const entries = getRecentMaternityLogs(logs, 7, deliveryDateISO);
 
   const symptomStability = scoreSymptomStability(entries);
   const sleepConsistency = scoreSleepConsistency(entries);

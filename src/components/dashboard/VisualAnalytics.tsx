@@ -38,16 +38,24 @@ function moodLabel(score: number): string {
   return "Low";
 }
 
-function energyScore(entry: PubertyEntry): number {
-  // Inverse: fatigue = low energy
-  if (entry.symptoms.fatigue) return 1;
-  if (entry.symptoms.headache) return 2;
+function energyScore(entry: any): number {
+  // If it's a maternity/postpartum log with fatigueLevel
+  if (entry.fatigueLevel) {
+    if (entry.fatigueLevel === 'Low') return 3; // Low fatigue = high energy
+    if (entry.fatigueLevel === 'Medium') return 2;
+    if (entry.fatigueLevel === 'High') return 1; // High fatigue = low energy
+  }
+  
+  // Inverse: fatigue = low energy (fallback for puberty)
+  if (entry.symptoms?.fatigue) return 1;
+  if (entry.symptoms?.headache) return 2;
   return 3;
 }
 
-function symptomCount(entry: PubertyEntry): number {
+function symptomCount(entry: any): number {
   const s = entry.symptoms;
-  return [s.cramps, s.fatigue, s.moodSwings, s.headache, s.acne, s.breastTenderness].filter(Boolean).length;
+  if (!s) return 0;
+  return Object.values(s).filter(Boolean).length;
 }
 
 const SHORT_MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -104,11 +112,6 @@ export default function VisualAnalytics({ pubertyLogs }: { pubertyLogs: PubertyL
         mood: moodScore(log.entry.mood),
         energy: energyScore(log.entry),
         symptoms: symptomCount(log.entry),
-        cramps: log.entry.symptoms.cramps ? 1 : 0,
-        fatigue: log.entry.symptoms.fatigue ? 1 : 0,
-        moodSwings: log.entry.symptoms.moodSwings ? 1 : 0,
-        headache: log.entry.symptoms.headache ? 1 : 0,
-        acne: log.entry.symptoms.acne ? 1 : 0,
       }));
   }, [filteredLogs]);
 
@@ -260,10 +263,10 @@ export default function VisualAnalytics({ pubertyLogs }: { pubertyLogs: PubertyL
       ) : (
         <div className="flex flex-col items-center justify-center h-[200px] text-center">
           <p className="text-sm text-slate-400 font-medium">
-            Not enough data for the {range === "weekly" ? "7-day" : "30-day"} view.
+            No symptom data yet.
           </p>
           <p className="text-xs text-slate-300 mt-1">
-            Log at least 2 days of symptoms to see trends.
+            Log at least 2 days of symptoms to see trends for the {range === "weekly" ? "7-day" : "30-day"} view.
           </p>
         </div>
       )}

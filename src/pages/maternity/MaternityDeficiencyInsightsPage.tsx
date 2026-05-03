@@ -3,7 +3,6 @@ import { ArrowLeft } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import MaternityWellnessPlan from "./components/MaternityWellnessPlan";
-import MaternityDailyGoals from "./components/MaternityDailyGoals";
 import MaternityFunActivities from "./components/MaternityFunActivities";
 
 export default function MaternityDeficiencyInsightsPage() {
@@ -28,14 +27,6 @@ export default function MaternityDeficiencyInsightsPage() {
       <div className="container py-6 space-y-8">
         <ScrollReveal>
           <MaternityWellnessPlan />
-        </ScrollReveal>
-        
-        <ScrollReveal delay={50}>
-          <MaternityDailyGoals />
-        </ScrollReveal>
-        
-        <ScrollReveal delay={100}>
-          <MaternityFunActivities />
         </ScrollReveal>
       </div>
 

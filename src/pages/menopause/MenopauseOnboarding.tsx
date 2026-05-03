@@ -124,7 +124,7 @@ export default function MenopauseOnboarding() {
       onboardingDone: true,
     };
     saveMenopauseProfile(profile);
-    navigate("/menopause/calendar");
+    navigate("/menopause/dashboard");
   };
 
   return (

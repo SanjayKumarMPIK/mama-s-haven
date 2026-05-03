@@ -2,7 +2,7 @@ import { calculateBodyMetrics, type BiologicalSex } from "@/services/bodyMetrics
 import { calculateWaterRequirement } from "@/services/hydrationCalculator";
 
 export type FitnessActivityLevel = "sedentary" | "light" | "moderate" | "active";
-export type GoalPreference = "maintain" | "lose-weight" | "gain-muscle" | "stay-healthy";
+export type GoalPreference = "maintain" | "lose-Weight" | "gain-muscle" | "stay-healthy";
 
 export interface FitnessCalculationInput {
   age: number;

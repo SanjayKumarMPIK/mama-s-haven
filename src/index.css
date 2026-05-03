@@ -61,6 +61,17 @@
     --sidebar-accent-foreground: 220 25% 14%;
     --sidebar-border: 220 15% 90%;
     --sidebar-ring: 22 90% 52%;
+
+    /* ── Menopause phase palette ── */
+    --meno-primary: 262 45% 52%;
+    --meno-primary-light: 262 35% 94%;
+    --meno-secondary: 174 42% 46%;
+    --meno-secondary-light: 174 30% 93%;
+    --meno-warm: 30 30% 96%;
+    --meno-card: 260 20% 98%;
+    --meno-success: 160 50% 45%;
+    --meno-warning: 35 85% 55%;
+    --meno-danger: 0 65% 55%;
   }
 }
 

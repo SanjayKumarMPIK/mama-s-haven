@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -59,12 +59,16 @@ const FAMILY_PLANNING_ONLY_ROUTES = new Set([
 
 // Menopause-specific menu items
 const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/menopause/calendar", label: "Calendar", icon: Calendar },
-  { to: "/menopause/analytics", label: "Symptom Analytics", icon: BarChart3 },
-  { to: "/menopause/wellness", label: "Wellness Plan", icon: Leaf },
+  { to: "/menopause/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/menopause/symptoms", label: "Symptom Tracker", icon: Activity },
+  { to: "/menopause/bone-health", label: "Bone Health", icon: Bone },
+  { to: "/menopause/nutrition", label: "Nutrition", icon: Apple },
+  { to: "/menopause/sleep-mood", label: "Sleep & Mood", icon: Moon },
+  { to: "/menopause/weight", label: "Weight", icon: Scale },
+  { to: "/menopause/heart", label: "Heart Health", icon: Heart },
   { to: "/menopause/goals", label: "Daily Goals", icon: Target },
-  { to: "/menopause/care", label: "Care Essentials", icon: ShieldCheck },
   { to: "/menopause/fun", label: "Fun Activity", icon: Sparkles },
+  { to: "/menopause/calendar", label: "Calendar", icon: Calendar },
 ];
 
 export default function HamburgerMenu({

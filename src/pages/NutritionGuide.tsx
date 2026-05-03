@@ -63,7 +63,6 @@ const EXPLORE_LINKS: Record<string, { to: string; label: string; desc: string }[
     { to: "/maternity/nutrition/checklist", label: "Nutrition Checklist", desc: "Daily tracking" },
   ],
   "family-planning": [
-    { to: "/family-planning/nutrition/deficiency-insights", label: "Deficiency Insights", desc: "Nutrient gap analysis" },
     { to: "/family-planning/nutrition/hormonal-balance", label: "Hormonal Nutrition", desc: "Hormone-support foods" },
     { to: "/family-planning/nutrition/cycle-plan", label: "Cycle Plan", desc: "Phase-specific eating" },
     { to: "/family-planning/nutrition/lifestyle", label: "Lifestyle & Metabolism", desc: "BMI & activity" },
@@ -463,17 +462,19 @@ export default function NutritionGuide() {
 
             {/* ─── Quick Links ──────────────────────────────────── */}
             <ScrollReveal>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className={`grid grid-cols-2 ${isFP ? 'sm:grid-cols-3' : 'sm:grid-cols-4'} gap-3`}>
                 <Link to="/symptom-checker" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
                   <Activity className={`w-5 h-5 ${accent.text}`} />
                   <div className="flex-1"><p className="text-sm font-semibold">Symptoms</p><p className="text-[11px] text-muted-foreground">See patterns</p></div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                 </Link>
-                <Link to="/deficiency-insights" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
-                  <Sparkles className={`w-5 h-5 ${accent.text}`} />
-                  <div className="flex-1"><p className="text-sm font-semibold">Deficiency</p><p className="text-[11px] text-muted-foreground">Full analysis</p></div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-                </Link>
+                {!isFP && (
+                  <Link to="/deficiency-insights" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
+                    <Sparkles className={`w-5 h-5 ${accent.text}`} />
+                    <div className="flex-1"><p className="text-sm font-semibold">Deficiency</p><p className="text-[11px] text-muted-foreground">Full analysis</p></div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                )}
                 <Link to="/wellness" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
                   <ShieldCheck className={`w-5 h-5 ${accent.text}`} />
                   <div className="flex-1"><p className="text-sm font-semibold">Wellness</p><p className="text-[11px] text-muted-foreground">Full overview</p></div>

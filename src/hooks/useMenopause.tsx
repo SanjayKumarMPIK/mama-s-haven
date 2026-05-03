@@ -7,7 +7,8 @@ export type MenopauseStage = "perimenopause" | "menopause" | "postmenopause";
 
 export type SymptomId =
   | 'hot_flashes' | 'night_sweats' | 'mood_swings' | 'anxiety'
-  | 'sleep_issues' | 'fatigue' | 'brain_fog' | 'headache' | 'joint_pain' | 'vaginal_dryness';
+  | 'sleep_issues' | 'fatigue' | 'brain_fog' | 'headache' | 'joint_pain' | 'vaginal_dryness'
+  | 'muscle_stiffness' | 'weight_gain' | 'low_libido' | 'dry_skin' | 'hair_thinning' | 'palpitations';
 
 export type Severity = 'mild' | 'moderate' | 'severe';
 export type SleepQuality = 'good' | 'average' | 'poor';
@@ -23,6 +24,12 @@ export const SYMPTOM_OPTIONS: { id: SymptomId; label: string; emoji: string }[] 
   { id: 'headache', label: 'Headache', emoji: '🤕' },
   { id: 'joint_pain', label: 'Joint pain', emoji: '🦴' },
   { id: 'vaginal_dryness', label: 'Vaginal dryness', emoji: '💧' },
+  { id: 'muscle_stiffness', label: 'Muscle stiffness', emoji: '💪' },
+  { id: 'weight_gain', label: 'Weight gain', emoji: '⚖️' },
+  { id: 'low_libido', label: 'Low libido', emoji: '💜' },
+  { id: 'dry_skin', label: 'Dry skin', emoji: '🧴' },
+  { id: 'hair_thinning', label: 'Hair thinning', emoji: '💇' },
+  { id: 'palpitations', label: 'Palpitations', emoji: '💓' },
 ];
 
 export interface MenopauseSymptoms {
@@ -73,6 +80,20 @@ export interface MenopauseLogEntry {
   periodOccurred: boolean;
   goalsCompleted?: number;
   goalsTotal?: number;
+  // ── New menopause-specific tracking fields ──
+  muscleStiffness?: number;       // 0-5
+  weightGainFeeling?: number;     // 0-5
+  lowLibido?: number;             // 0-5
+  drySkin?: number;               // 0-5
+  hairThinning?: number;          // 0-5
+  palpitations?: number;          // count 0-10
+  palpitationSeverity?: 'mild' | 'moderate' | 'severe';
+  calciumMg?: number;             // daily calcium intake
+  vitaminDTaken?: boolean;        // supplement or sun exposure
+  sunExposureMin?: number;        // minutes of morning sun
+  weightKg?: number;              // weight log
+  bpSystolic?: number;            // blood pressure
+  bpDiastolic?: number;
 }
 
 export interface ReminderSettings {

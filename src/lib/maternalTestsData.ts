@@ -268,7 +268,7 @@ export const MATERNAL_TESTS: MaternalTest[] = [
     description:
       "The glucose tolerance test, also known as the oral glucose tolerance test, measures your body's response to sugar (glucose). More commonly, a modified version of the glucose tolerance test is used to diagnose gestational diabetes — a type of diabetes that develops during pregnancy.",
     weekStart: 24,
-    weekEnd: 28,
+    weekEnd: 34,
     category: "Blood Test",
     optional: false,
     trimester: 3,

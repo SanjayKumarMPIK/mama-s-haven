@@ -3,13 +3,15 @@
  *
  * Horizontal recovery timeline component for Postpartum Dashboard.
  * Displays postpartum recovery milestones in a horizontal progression layout.
+ * NOTE: This is the legacy/alternate timeline. The primary one is in recovery/PostpartumTimeline.tsx.
  */
 
 import { CheckCircle2, Circle } from "lucide-react";
-import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { postpartumMilestones, getMilestoneForWeek } from "../recovery/postpartumMilestoneConfig";
 
 export interface RecoveryTimelineWeek {
-  weekNumber: number;
+  weekStart: number;
+  weekEnd: number;
   label: string;
   description: string;
   status: "completed" | "current" | "upcoming";
@@ -19,48 +21,19 @@ interface PostpartumRecoveryTimelineProps {
   currentWeek: number;
 }
 
-// Postpartum recovery milestones based on weeks post-delivery
+// Build timeline from milestone config (single source of truth)
 function getPostpartumTimeline(currentWeek: number): RecoveryTimelineWeek[] {
-  const milestones: RecoveryTimelineWeek[] = [
-    {
-      weekNumber: 1,
-      label: "Initial Recovery",
-      description: "Focus on rest, hydration, and bonding with your baby. Your body is beginning the healing process.",
-      status: currentWeek > 1 ? "completed" : currentWeek === 1 ? "current" : "upcoming",
-    },
-    {
-      weekNumber: 2,
-      label: "Early Healing",
-      description: "Incision healing begins, energy levels may start to improve. Continue prioritizing rest and nutrition.",
-      status: currentWeek > 2 ? "completed" : currentWeek === 2 ? "current" : "upcoming",
-    },
-    {
-      weekNumber: 3,
-      label: "Body Stabilizing",
-      description: "Physical recovery continues. Bleeding decreases, and you may feel more capable of light activities.",
-      status: currentWeek > 4 ? "completed" : currentWeek >= 3 && currentWeek <= 4 ? "current" : "upcoming",
-    },
-    {
-      weekNumber: 5,
-      label: "Recovery Checkpoint",
-      description: "Important milestone for postpartum checkup. Discuss breastfeeding, emotional health, and physical recovery.",
-      status: currentWeek > 6 ? "completed" : currentWeek >= 5 && currentWeek <= 6 ? "current" : "upcoming",
-    },
-    {
-      weekNumber: 7,
-      label: "Strength Building",
-      description: "Gradually increase activity levels. Pelvic floor exercises and gentle stretching can begin.",
-      status: currentWeek > 8 ? "completed" : currentWeek >= 7 && currentWeek <= 8 ? "current" : "upcoming",
-    },
-    {
-      weekNumber: 9,
-      label: "Strong Recovery",
-      description: "Most physical recovery complete. Focus on building strength, emotional wellness, and establishing routines.",
-      status: currentWeek > 12 ? "completed" : currentWeek >= 9 ? "current" : "upcoming",
-    },
-  ];
-
-  return milestones;
+  return postpartumMilestones.map(m => ({
+    weekStart: m.weekStart,
+    weekEnd: m.weekEnd,
+    label: m.title,
+    description: m.description,
+    status: currentWeek > m.weekEnd
+      ? "completed"
+      : currentWeek >= m.weekStart && currentWeek <= m.weekEnd
+        ? "current"
+        : "upcoming",
+  }));
 }
 
 export default function PostpartumRecoveryTimeline({ currentWeek }: PostpartumRecoveryTimelineProps) {
@@ -86,14 +59,16 @@ export default function PostpartumRecoveryTimeline({ currentWeek }: PostpartumRe
 
             {/* Milestone nodes */}
             <div className="relative flex justify-between gap-2 sm:gap-4">
-              {timeline.map((milestone, index) => {
+              {timeline.map((milestone) => {
                 const isCompleted = milestone.status === "completed";
                 const isCurrent = milestone.status === "current";
-                const isUpcoming = milestone.status === "upcoming";
+                const weekLabel = milestone.weekStart === milestone.weekEnd
+                  ? `Week ${milestone.weekStart}`
+                  : `Week ${milestone.weekStart}–${milestone.weekEnd}`;
 
                 return (
                   <div 
-                    key={milestone.weekNumber} 
+                    key={milestone.weekStart} 
                     className="flex flex-col items-center flex-1 min-w-[70px] sm:min-w-[80px] group cursor-pointer"
                   >
                     {/* Node circle */}
@@ -105,9 +80,9 @@ export default function PostpartumRecoveryTimeline({ currentWeek }: PostpartumRe
                           ? "bg-rose-500 border-rose-500 shadow-md shadow-rose-500/20" 
                           : isCurrent 
                             ? "bg-pink-500 border-pink-500 shadow-lg shadow-pink-500/30 ring-4 ring-pink-100 scale-110" 
-                            : "bg-background border-border"
+                            : "bg-background border-border opacity-50"
                         }
-                        group-hover:scale-110
+                        group-hover:scale-110 group-hover:opacity-100
                       `}
                     >
                       {isCompleted && <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />}
@@ -121,10 +96,10 @@ export default function PostpartumRecoveryTimeline({ currentWeek }: PostpartumRe
                         ? "text-rose-700" 
                         : isCurrent 
                           ? "text-pink-700" 
-                          : "text-muted-foreground"
+                          : "text-muted-foreground/50"
                       }
                     `}>
-                      Week {milestone.weekNumber}
+                      {weekLabel}
                     </p>
 
                     {/* Label */}
@@ -134,7 +109,7 @@ export default function PostpartumRecoveryTimeline({ currentWeek }: PostpartumRe
                         ? "text-foreground" 
                         : isCurrent 
                           ? "text-foreground font-semibold" 
-                          : "text-muted-foreground"
+                          : "text-muted-foreground/40"
                       }
                     `}>
                       {milestone.label}
@@ -143,7 +118,7 @@ export default function PostpartumRecoveryTimeline({ currentWeek }: PostpartumRe
                     {/* Description tooltip on hover (desktop only) */}
                     <div className="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 z-20">
                       <div className="bg-card border border-border rounded-lg p-3 shadow-xl">
-                        <p className="text-xs font-semibold text-foreground mb-1">Week {milestone.weekNumber}</p>
+                        <p className="text-xs font-semibold text-foreground mb-1">{weekLabel}</p>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">{milestone.description}</p>
                       </div>
                     </div>

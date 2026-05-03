@@ -79,12 +79,12 @@ const MATERNITY_LIBRARY: PredefinedSymptom[] = [
 // ─── Postpartum Configuration ───────────────────────────────────────────────
 
 const POSTPARTUM_CORE: ActiveSymptom[] = [
-  { id: "bleeding", name: "Bleeding", isCore: true },
-  { id: "pain", name: "Pain", isCore: true },
-  { id: "mood", name: "Mood", isCore: true },
-  { id: "energy", name: "Energy", isCore: true },
-  { id: "breast_health", name: "Breast Health", isCore: true },
-  { id: "pelvic_health", name: "Pelvic Health", isCore: true },
+  { id: "breastPain", name: "Breast Pain", isCore: true },
+  { id: "nipplePain", name: "Nipple Pain", isCore: true },
+  { id: "lowMilkSupply", name: "Low Milk Supply", isCore: true },
+  { id: "lowEnergy", name: "Low Energy", isCore: true },
+  { id: "sleepDeprivation", name: "Sleep Deprivation", isCore: true },
+  { id: "bodyAche", name: "Body Ache", isCore: true },
 ];
 
 const POSTPARTUM_LIBRARY: PredefinedSymptom[] = [
@@ -122,12 +122,12 @@ const POSTPARTUM_LIBRARY: PredefinedSymptom[] = [
 // ─── Premature Configuration ─────────────────────────────────────────────────
 
 const PREMATURE_CORE: ActiveSymptom[] = [
-  { id: "contractions", name: "Contractions", isCore: true },
-  { id: "pelvic_pressure", name: "Pelvic Pressure", isCore: true },
-  { id: "spotting", name: "Spotting", isCore: true },
-  { id: "back_pain", name: "Back Pain", isCore: true },
-  { id: "mood", name: "Mood", isCore: true },
-  { id: "energy", name: "Energy", isCore: true },
+  { id: "breastPain", name: "Breast Pain", isCore: true },
+  { id: "nipplePain", name: "Nipple Pain", isCore: true },
+  { id: "lowMilkSupply", name: "Low Milk Supply", isCore: true },
+  { id: "lowEnergy", name: "Low Energy", isCore: true },
+  { id: "sleepDeprivation", name: "Sleep Deprivation", isCore: true },
+  { id: "bodyAche", name: "Body Ache", isCore: true },
 ];
 
 const PREMATURE_LIBRARY: PredefinedSymptom[] = [

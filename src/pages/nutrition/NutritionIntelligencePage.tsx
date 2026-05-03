@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
@@ -13,8 +13,9 @@ import ScrollReveal from "@/components/ScrollReveal";
 import NutrientCard from "@/components/nutrition/NutrientCard";
 import FoodRecommendationCard from "@/components/nutrition/FoodRecommendationCard";
 import DeficiencySummaryInline from "@/components/nutrition/DeficiencySummaryInline";
+import DeficiencyInsightsSection from "@/components/nutrition/DeficiencyInsightsSection";
 import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
-import { Apple, Calendar, ArrowRight, ArrowLeft, Utensils } from "lucide-react";
+import { Apple, Calendar, ArrowRight, ArrowLeft, Utensils, Lightbulb, Activity, Clock } from "lucide-react";
 
 // ─── Phase accent map ─────────────────────────────────────────────────────
 const phaseAccent: Record<string, {
@@ -57,6 +58,7 @@ export default function NutritionIntelligencePage() {
   const { phase, phaseName, phaseEmoji } = usePhase();
   const { result } = useNutritionIntelligence();
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
+  const [activeTab, setActiveTab] = useState<'tips' | 'insights' | 'checklist'>('tips');
 
   const { profile } = useProfile();
   const { trimester, mode } = usePregnancyProfile();
@@ -85,7 +87,7 @@ export default function NutritionIntelligencePage() {
 
   const dietInput: DietInput = useMemo(() => {
     return {
-      trimester: (trimester || 2) as 1 | 2 | 3,
+      trimester: (mode === "pregnancy" ? (trimester || 2) : 2) as 1 | 2 | 3,
       region: (profile?.region as "north" | "south" | "east" | "west") || "north",
       dietPreference: ((profile as any)?.dietPreference as "vegetarian" | "mixed") || "vegetarian",
       deficiencies: [],
@@ -153,82 +155,180 @@ export default function NutritionIntelligencePage() {
           </ScrollReveal>
         ) : (
           <>
-            {/* ─── Deficiency Summary ──────────────────────────── */}
-            <ScrollReveal>
-              <DeficiencySummaryInline
-                deficiencyScore={result.deficiencyScore}
-                deficiencySeverity={result.deficiencySeverity}
-                priorityNutrient={result.priorityNutrient}
-                riskCounts={result.riskCounts}
-                accentGradient={accent.gradient}
-              />
-            </ScrollReveal>
+            {phase === "maternity" ? (
+              <>
+                {/* ─── Global Nutrition Risk Summary (Always Visible) ── */}
+                <ScrollReveal>
+                  <DeficiencySummaryInline
+                    deficiencyScore={result.deficiencyScore}
+                    deficiencySeverity={result.deficiencySeverity}
+                    priorityNutrient={result.priorityNutrient}
+                    riskCounts={result.riskCounts}
+                    accentGradient={accent.gradient}
+                  />
+                </ScrollReveal>
 
-            {/* ─── Priority Nutrition Overview ─────────────────── */}
-            {maternityStage && (
-              <ScrollReveal delay={50}>
-                <PriorityNutritionOverview 
-                  stage={maternityStage} 
-                  symptomPriorityIds={symptomPriorityIds} 
-                  accentGradient={accent.gradient} 
-                />
-              </ScrollReveal>
-            )}
-
-            {/* ─── Nutritional Highlights ──────────────────────── */}
-            {phase === "maternity" && dietPlan.nutritionalHighlights.length > 0 && (
-              <ScrollReveal delay={50}>
-                <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Utensils className={`w-5 h-5 ${accent.text}`} />
-                    <h2 className="text-base font-bold">Nutritional Highlights</h2>
+                {/* ─── Segmented Tab Bar ────────────────────────────── */}
+                <ScrollReveal delay={50}>
+                  <div className="flex bg-muted/40 p-1.5 rounded-[20px] mb-8 mt-6">
+                    <button
+                      onClick={() => setActiveTab('tips')}
+                      className={`flex-1 flex justify-center items-center gap-2 py-3.5 px-4 rounded-[16px] text-sm font-semibold transition-all duration-300 ${
+                        activeTab === 'tips'
+                          ? `bg-white shadow-sm ${accent.text} border-b-2 border-current`
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-b-2 border-transparent'
+                      }`}
+                    >
+                      <Lightbulb className="w-[18px] h-[18px]" />
+                      Nutrition Tips
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('insights')}
+                      className={`flex-1 flex justify-center items-center gap-2 py-3.5 px-4 rounded-[16px] text-sm font-semibold transition-all duration-300 ${
+                        activeTab === 'insights'
+                          ? `bg-white shadow-sm ${accent.text} border-b-2 border-current`
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-b-2 border-transparent'
+                      }`}
+                    >
+                      <Activity className="w-[18px] h-[18px]" />
+                      Deficiency Insights
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('checklist')}
+                      className={`flex-1 flex justify-center items-center gap-2 py-3.5 px-4 rounded-[16px] text-sm font-semibold transition-all duration-300 ${
+                        activeTab === 'checklist'
+                          ? `bg-white shadow-sm ${accent.text} border-b-2 border-current`
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-b-2 border-transparent'
+                      }`}
+                    >
+                      <Clock className="w-[18px] h-[18px]" />
+                      Checklist
+                    </button>
                   </div>
-                  <ul className="space-y-2 text-sm text-foreground/85">
-                    {dietPlan.nutritionalHighlights.map((highlight, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <span className="text-primary mt-0.5">•</span>
-                        <span>{highlight}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </ScrollReveal>
-            )}
+                </ScrollReveal>
 
-            {/* ─── Priority Nutrients ──────────────────────────── */}
-            {detailedNutrientNeeds.filter(n => n.isPriority).length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Symptom Priority Nutrients" emoji="⚡" />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {detailedNutrientNeeds.filter(n => n.isPriority).map((nutrient) => (
-                    <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
+                {/* ─── Tab Content Area ─────────────────────────────── */}
+                <div className="min-h-[400px]">
+                  {activeTab === 'tips' && (
+                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      {maternityStage && (
+                        <PriorityNutritionOverview 
+                          stage={maternityStage} 
+                          symptomPriorityIds={symptomPriorityIds} 
+                          accentGradient={accent.gradient} 
+                        />
+                      )}
 
-            {/* ─── All Nutrient Needs ──────────────────────────── */}
-            {detailedNutrientNeeds.filter(n => !n.isPriority).length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Other Nutrient Needs" emoji="🧪" />
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {detailedNutrientNeeds.filter(n => !n.isPriority).map((nutrient) => (
-                    <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
+                      {dietPlan.nutritionalHighlights.length > 0 && (
+                        <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-6`}>
+                          <div className="flex items-center gap-2 mb-4">
+                            <Utensils className={`w-5 h-5 ${accent.text}`} />
+                            <h2 className="text-base font-bold">Nutritional Highlights</h2>
+                          </div>
+                          <ul className="space-y-2 text-sm text-foreground/85">
+                            {dietPlan.nutritionalHighlights.map((highlight, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-primary mt-0.5">•</span>
+                                <span>{highlight}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
 
-            {/* ─── Food Recommendations ────────────────────────── */}
-            {phase !== 'maternity' && result.foodRecommendations.length > 0 && (
-              <ScrollReveal>
-                <SectionHeader title="Recommended Foods" emoji="🥗" />
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                  {result.foodRecommendations.slice(0, 8).map((food) => (
-                    <FoodRecommendationCard key={food.name} food={food} />
-                  ))}
+                      {detailedNutrientNeeds.filter(n => n.isPriority).length > 0 && (
+                        <div>
+                          <SectionHeader title="Symptom Priority Nutrients" emoji="⚡" />
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {detailedNutrientNeeds.filter(n => n.isPriority).map((nutrient) => (
+                              <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {detailedNutrientNeeds.filter(n => !n.isPriority).length > 0 && (
+                        <div>
+                          <SectionHeader title="Other Nutrient Needs" emoji="🧪" />
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {detailedNutrientNeeds.filter(n => !n.isPriority).map((nutrient) => (
+                              <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTab === 'insights' && (
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <DeficiencyInsightsSection />
+                    </div>
+                  )}
+
+                  {activeTab === 'checklist' && (
+                    <div className="flex flex-col items-center justify-center text-center py-24 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center mb-5 shadow-lg opacity-40`}>
+                        <Clock className="w-8 h-8 text-white" />
+                      </div>
+                      <h3 className="text-lg font-semibold mb-2">Checklist module coming soon</h3>
+                      <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
+                        Stay tuned for a comprehensive checklist tailored to your maternal journey.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </ScrollReveal>
+              </>
+            ) : (
+              /* ─── Existing Sequential Layout for Non-Maternity ─── */
+              <>
+                <ScrollReveal>
+                  <DeficiencySummaryInline
+                    deficiencyScore={result.deficiencyScore}
+                    deficiencySeverity={result.deficiencySeverity}
+                    priorityNutrient={result.priorityNutrient}
+                    riskCounts={result.riskCounts}
+                    accentGradient={accent.gradient}
+                  />
+                </ScrollReveal>
+
+                {detailedNutrientNeeds.filter(n => n.isPriority).length > 0 && (
+                  <ScrollReveal>
+                    <SectionHeader title="Symptom Priority Nutrients" emoji="⚡" />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {detailedNutrientNeeds.filter(n => n.isPriority).map((nutrient) => (
+                        <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                      ))}
+                    </div>
+                  </ScrollReveal>
+                )}
+
+                {detailedNutrientNeeds.filter(n => !n.isPriority).length > 0 && (
+                  <ScrollReveal>
+                    <SectionHeader title="Other Nutrient Needs" emoji="🧪" />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {detailedNutrientNeeds.filter(n => !n.isPriority).map((nutrient) => (
+                        <NutrientCard key={nutrient.nutrientId} nutrient={nutrient} accentGradient={accent.gradient} />
+                      ))}
+                    </div>
+                  </ScrollReveal>
+                )}
+
+                {result.foodRecommendations.length > 0 && (
+                  <ScrollReveal>
+                    <SectionHeader title="Recommended Foods" emoji="🥗" />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                      {result.foodRecommendations.slice(0, 8).map((food) => (
+                        <FoodRecommendationCard key={food.name} food={food} />
+                      ))}
+                    </div>
+                  </ScrollReveal>
+                )}
+
+                <ScrollReveal>
+                  <DeficiencyInsightsSection />
+                </ScrollReveal>
+              </>
             )}
           </>
         )}

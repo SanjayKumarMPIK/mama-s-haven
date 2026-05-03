@@ -31,14 +31,18 @@ export function resolveMaternityLifecycle(profile: MaternityProfile): MaternityL
       const birth = new Date(birthDate + "T00:00:00");
       birth.setHours(0, 0, 0, 0);
 
-      // If birth date is today or in the past, user is in postpartum
+      // If birth date is today or in the past
       if (birth.getTime() <= today.getTime()) {
+        // Check premature FIRST (weeksAtBirth < 37) before generic postpartum
+        if (profile.delivery.weeksAtBirth && profile.delivery.weeksAtBirth < 37) {
+          return "premature";
+        }
         return "postpartum";
       }
     }
   }
 
-  // Case 2: EDD reached or passed
+  // Case 2: EDD reached or passed (no delivery recorded)
   if (profile.activeEDD) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -61,13 +65,6 @@ export function resolveMaternityLifecycle(profile: MaternityProfile): MaternityL
     // If EDD is in the future, user is in active pregnancy
     if (dueDate.getTime() > today.getTime()) {
       return "pregnancy";
-    }
-  }
-
-  // Case 4: Premature birth (if weeksAtBirth < 37)
-  if (profile.delivery?.isDelivered && profile.delivery.weeksAtBirth) {
-    if (profile.delivery.weeksAtBirth < 37) {
-      return "premature";
     }
   }
 
@@ -114,4 +111,57 @@ export function shouldNavigateToPostpartumDashboard(profile: MaternityProfile): 
 export function shouldNavigateToPrematureDashboard(profile: MaternityProfile): boolean {
   const lifecycleState = resolveMaternityLifecycle(profile);
   return lifecycleState === "premature";
+}
+
+// ─── Nutrition Lifecycle Helpers ──────────────────────────────────────────────
+// Used by deficiency/nutrition hooks to resolve lifecycle-aware phase & trimester
+
+import type { MaternityMode } from "@/hooks/usePregnancyProfile";
+
+export type NutritionLifecycleStage =
+  | "pregnancy_trimester_1"
+  | "pregnancy_trimester_2"
+  | "pregnancy_trimester_3"
+  | "premature_phase"
+  | "postpartum_phase";
+
+/**
+ * Resolves the nutrition lifecycle stage from MaternityMode + trimester.
+ * Used for stage-specific nutrient priority rendering.
+ */
+export function resolveNutritionLifecycleStage(
+  mode: MaternityMode,
+  trimester: number,
+): NutritionLifecycleStage {
+  if (mode === "postpartum") return "postpartum_phase";
+  if (mode === "premature") return "premature_phase";
+  if (trimester === 1) return "pregnancy_trimester_1";
+  if (trimester === 2) return "pregnancy_trimester_2";
+  return "pregnancy_trimester_3";
+}
+
+/**
+ * Maps the maternity mode to the correct HealthPhase for the deficiency engine.
+ *
+ * - "pregnancy" → "maternity" (uses pregnancy multipliers)
+ * - "postpartum" → "postpartum" (uses postpartum multipliers — already defined in engine)
+ * - "premature" → "postpartum" (closest match — recovery-focused multipliers)
+ */
+export function getDeficiencyPhase(mode: MaternityMode): "maternity" | "postpartum" {
+  if (mode === "postpartum" || mode === "premature") return "postpartum";
+  return "maternity";
+}
+
+/**
+ * Returns the effective trimester for the deficiency engine.
+ *
+ * - During pregnancy: returns the actual trimester (1, 2, or 3)
+ * - During postpartum/premature: returns undefined (stops trimester-specific recommendations)
+ */
+export function getEffectiveTrimester(
+  mode: MaternityMode,
+  trimester: number,
+): number | undefined {
+  if (mode === "postpartum" || mode === "premature") return undefined;
+  return trimester;
 }

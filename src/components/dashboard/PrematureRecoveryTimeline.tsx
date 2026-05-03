@@ -1,125 +1,119 @@
 /**
  * PrematureRecoveryTimeline.tsx
  *
- * Horizontal recovery timeline component for Premature Dashboard.
- * Displays recovery milestones in a horizontal progression layout.
+ * Horizontal milestone-progression timeline for Premature Dashboard.
+ * Displays 7 adaptive recovery phases as connected nodes in a left-to-right
+ * journey layout with an active-phase content panel below.
  */
 
 import { CheckCircle2, Circle } from "lucide-react";
-
-export interface RecoveryTimelineWeek {
-  weekNumber: number;
-  label: string;
-  description: string;
-  status: "completed" | "current" | "upcoming";
-}
+import type { PrematureTimelinePhase } from "@/modules/premature/recovery/usePrematureRecovery";
 
 interface PrematureRecoveryTimelineProps {
-  timeline: RecoveryTimelineWeek[];
-  currentWeek: number;
+  phases: PrematureTimelinePhase[];
+  currentPhase: PrematureTimelinePhase | null;
 }
 
-export default function PrematureRecoveryTimeline({ timeline, currentWeek }: PrematureRecoveryTimelineProps) {
+export default function PrematureRecoveryTimeline({ phases, currentPhase }: PrematureRecoveryTimelineProps) {
   return (
-    <div className="w-full">
-      {/* Horizontal scrollable container for mobile/tablet */}
-      <div className="overflow-x-auto pb-4 -mx-5 px-5 sm:mx-0 sm:px-0 sm:pb-0">
-        <div className="min-w-max sm:min-w-0">
-          {/* Progress line background */}
-          <div className="relative pt-8 pb-4">
-            {/* Horizontal line */}
-            <div className="absolute top-[26px] left-0 right-0 h-0.5 bg-border" />
-            
-            {/* Progress fill line */}
-            <div 
-              className="absolute top-[26px] left-0 h-0.5 bg-gradient-to-r from-violet-500 to-purple-400 transition-all duration-700 ease-out"
-              style={{ 
-                width: `${timeline.length > 1 ? ((timeline.findIndex(m => m.status === "current") + 1) / timeline.length) * 100 : 0}%`
-              }}
-            />
+    <div className="prem-htl-root">
+      {/* ── Horizontal scrollable track ── */}
+      <div className="prem-htl-scroll">
+        <div className="prem-htl-track">
+          {/* Background rail */}
+          <div className="prem-htl-rail" />
 
-            {/* Milestone nodes */}
-            <div className="relative flex justify-between gap-2 sm:gap-4">
-              {timeline.map((milestone, index) => {
-                const isCompleted = milestone.status === "completed";
-                const isCurrent = milestone.status === "current";
-                const isUpcoming = milestone.status === "upcoming";
+          {/* Filled progress rail */}
+          {(() => {
+            const currentIdx = phases.findIndex(p => p.status === "current");
+            const filledIdx = currentIdx >= 0 ? currentIdx : phases.filter(p => p.status === "completed").length - 1;
+            const totalSegments = phases.length - 1;
+            const fillPercent = totalSegments > 0
+              ? ((filledIdx + (currentPhase?.progress || 0) / 100) / totalSegments) * 100
+              : 0;
+            return (
+              <div
+                className="prem-htl-rail-fill"
+                style={{ width: `${Math.min(100, Math.max(0, fillPercent))}%` }}
+              />
+            );
+          })()}
 
-                return (
-                  <div 
-                    key={milestone.weekNumber} 
-                    className="flex flex-col items-center flex-1 min-w-[70px] sm:min-w-[80px] group cursor-pointer"
+          {/* Phase nodes */}
+          <div className="prem-htl-nodes">
+            {phases.map((phase) => {
+              const isCompleted = phase.status === "completed";
+              const isCurrent = phase.status === "current";
+
+              return (
+                <div key={phase.id} className="prem-htl-node-col">
+                  {/* Circle node */}
+                  <div
+                    className={`prem-htl-circle ${
+                      isCompleted ? "completed" :
+                      isCurrent ? "current" :
+                      "upcoming"
+                    }`}
                   >
-                    {/* Node circle */}
-                    <div 
-                      className={`
-                        relative z-10 w-6 h-6 sm:w-7 sm:h-7 rounded-full border-2 flex items-center justify-center
-                        transition-all duration-300 ease-out
-                        ${isCompleted 
-                          ? "bg-green-500 border-green-500 shadow-md shadow-green-500/20" 
-                          : isCurrent 
-                            ? "bg-violet-500 border-violet-500 shadow-lg shadow-violet-500/30 ring-4 ring-violet-100 scale-110" 
-                            : "bg-background border-border"
-                        }
-                        group-hover:scale-110
-                      `}
-                    >
-                      {isCompleted && <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />}
-                      {isCurrent && <Circle className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-white fill-white" />}
-                    </div>
-
-                    {/* Week number */}
-                    <p className={`
-                      text-[10px] sm:text-xs font-bold mt-2
-                      ${isCompleted 
-                        ? "text-green-700" 
-                        : isCurrent 
-                          ? "text-violet-700" 
-                          : "text-muted-foreground"
-                      }
-                    `}>
-                      Week {milestone.weekNumber}
-                    </p>
-
-                    {/* Label */}
-                    <p className={`
-                      text-[9px] sm:text-[10px] font-medium mt-0.5 text-center leading-tight max-w-[80px]
-                      ${isCompleted 
-                        ? "text-foreground" 
-                        : isCurrent 
-                          ? "text-foreground font-semibold" 
-                          : "text-muted-foreground"
-                      }
-                    `}>
-                      {milestone.label}
-                    </p>
-
-                    {/* Description tooltip on hover (desktop only) */}
-                    <div className="hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute bottom-full mb-2 left-1/2 -translate-x-1/2 w-48 z-20">
-                      <div className="bg-card border border-border rounded-lg p-3 shadow-xl">
-                        <p className="text-xs font-semibold text-foreground mb-1">Week {milestone.weekNumber}</p>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">{milestone.description}</p>
-                      </div>
-                    </div>
+                    {isCompleted && <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-white" />}
+                    {isCurrent && <Circle className="w-2 h-2 sm:w-2.5 sm:h-2.5 text-white fill-white" />}
                   </div>
-                );
-              })}
-            </div>
+
+                  {/* Phase label */}
+                  <span className={`prem-htl-phase-num ${
+                    isCompleted ? "completed" : isCurrent ? "current" : "upcoming"
+                  }`}>
+                    P{phase.phaseNumber}
+                  </span>
+                  <p className={`prem-htl-label ${
+                    isCompleted ? "completed" : isCurrent ? "current" : "upcoming"
+                  }`}>
+                    {phase.label}
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Current phase description */}
-      <div className="mt-4 p-3 rounded-xl bg-violet-50 border border-violet-200/60">
-        <p className="text-xs font-semibold text-violet-900 mb-1">
-          Week {currentWeek} post-delivery
-        </p>
-        <p className="text-[11px] text-violet-700 leading-relaxed">
-          {timeline.find(m => m.status === "current")?.description || 
-           timeline.find(m => m.status === "completed")?.description || 
-           "Your recovery journey has begun. Focus on rest and bonding with your baby."}
-        </p>
-      </div>
+      {/* ── Active phase content panel ── */}
+      {currentPhase && (
+        <div className="prem-htl-panel">
+          <div className="prem-htl-panel-header">
+            <span className="prem-htl-panel-badge">Phase {currentPhase.phaseNumber}</span>
+            <h4 className="prem-htl-panel-title">{currentPhase.label}</h4>
+            {currentPhase.progress > 0 && (
+              <span className="prem-htl-panel-progress">{currentPhase.progress}%</span>
+            )}
+          </div>
+
+          <p className="prem-htl-panel-desc">{currentPhase.detailedContent}</p>
+
+          {currentPhase.focusAreas.length > 0 && (
+            <div className="prem-htl-focus">
+              <span className="prem-htl-focus-label">Focus</span>
+              <div className="prem-htl-focus-list">
+                {currentPhase.focusAreas.map((area, i) => (
+                  <span key={i} className="prem-htl-focus-chip">{area}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Progress bar */}
+          {currentPhase.progress > 0 && (
+            <div className="prem-htl-prog-wrap">
+              <div className="prem-htl-prog-bg">
+                <div className="prem-htl-prog-fill" style={{ width: `${currentPhase.progress}%` }} />
+              </div>
+              <span className="prem-htl-prog-text">
+                Week {currentPhase.weekStart}–{currentPhase.weekEnd}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createBrowserRouter, RouterProvider, Outlet, BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -59,7 +59,6 @@ const MenoSleepMood = lazy(() => import("./pages/menopause/MenoSleepMood"));
 const MenoWeightMetabolism = lazy(() => import("./pages/menopause/MenoWeightMetabolism"));
 const MenoHeartHealth = lazy(() => import("./pages/menopause/MenoHeartHealth"));
 import BabySupportiveHelper from "./pages/BabySupportiveHelper";
-import DeficiencyInsights from "./pages/DeficiencyInsights";
 import FPToolPage from "./pages/FPToolPage";
 import FitnessHealthCalculatorPage from "./pages/maternity/FitnessHealthCalculatorPage";
 import PersonalizedDietPage from "./pages/nutrition/PersonalizedDietPage";
@@ -80,11 +79,13 @@ import FPCycleNutritionPage from "./pages/familyplanning/FPCycleNutritionPage";
 import FPLifestyleMetabolismPage from "./pages/familyplanning/FPLifestyleMetabolismPage";
 import FPFoodsToAvoidPage from "./pages/familyplanning/FPFoodsToAvoidPage";
 import CareLog from "./pages/familyplanning/CareLog";
+import MaternityDeficiencyInsightsPage from "./pages/maternity/MaternityDeficiencyInsightsPage";
 import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
 
 
 const queryClient = new QueryClient();
 
+<<<<<<< HEAD
 function AppShell() {
   return (
     <AuthGate>
@@ -181,6 +182,8 @@ const router = createBrowserRouter(
   },
 );
 
+=======
+>>>>>>> f1190df185c37d8d1848c04cb879bb8663c24cdd
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
@@ -197,55 +200,56 @@ const App = () => (
                       <CustomSymptomsProvider>
                         <Navbar />
                         <Routes>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/login" element={<Login />} />
-                        <Route path="/register" element={<Register />} />
-                        <Route path="/tools" element={<Tools />} />
-                        <Route path="/tools/fp/:toolId" element={<FPToolPage />} />
-                        <Route path="/shopping" element={<Shopping />} />
-                        <Route path="/stress-relief" element={<StressRelief />} />
-                        <Route path="/articles" element={<Articles />} />
-                        <Route path="/postpartum-guide" element={<Postpartum />} />
-                        <Route path="/assistant" element={<Assistant />} />
-                        <Route path="/dashboard" element={<WeeklyGuide />} />
-                        <Route path="/nutrition" element={<NutritionGuide />} />
-                        <Route path="/nutrition-intelligence" element={<NutritionIntelligencePage />} />
-                        <Route path="/symptom-checker" element={<SymptomChecker />} />
-                        <Route path="/emergency" element={<EmergencyGuidance />} />
-                        <Route path="/wellness" element={<WellnessDashboard />} />
-                        <Route path="/puberty" element={<Puberty />} />
-                        <Route path="/maternity" element={<Maternity />} />
-                        <Route path="/family-planning" element={<FamilyPlanning />} />
-                        <Route path="/phc-nearby" element={<PhcNearby />} />
-                        <Route path="/vaccine-tracker" element={<VaccineTracker />} />
-                        <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
-                        <Route path="/health-log" element={<HealthLog />} />
-                        <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/profile" element={<Profile />} />
-                        <Route path="/medicine-reminder" element={<MedicineReminder />} />
-                        <Route path="/baby-supportive-helper" element={<BabySupportiveHelper />} />
-                        <Route path="/deficiency-insights" element={<DeficiencyInsights />} />
-                        <Route path="/maternity/nutrition/fitness-health-calculator" element={<FitnessHealthCalculatorPage />} />
-                        <Route path="/maternity/nutrition/personalized-diet" element={<PersonalizedDietPage />} />
-                        <Route path="/maternity/nutrition/checklist" element={<NutritionChecklistPage />} />
-                        <Route path="/postpartum-dashboard" element={<PostpartumDashboard />} />
-                        {/* Puberty nutrition sub-pages */}
-                        <Route path="/puberty/nutrition/deficiency-insights" element={<PubertyDeficiencyPage />} />
-                        <Route path="/puberty/nutrition/nutrient-recommendations" element={<PubertyNutrientRecommendationsPage />} />
-                        <Route path="/puberty/nutrition/hydration" element={<PubertyHydrationPage />} />
-                        <Route path="/puberty/nutrition/food-restrictions" element={<PubertyFoodRestrictionsPage />} />
-                        <Route path="/puberty/nutrition/calories" element={<PubertyCaloriePage />} />
-                        <Route path="/puberty/nutrition/protein" element={<PubertyProteinPage />} />
-                        <Route path="/puberty/nutrition/meal-plan" element={<PubertyMealPlanPage />} />
-                        <Route path="/puberty/nutrition/insights" element={<PubertyNutritionalInsightsPage />} />
-                        {/* Family Planning nutrition sub-pages */}
-                        <Route path="/family-planning/nutrition/deficiency-insights" element={<FPDeficiencyInsightsPage />} />
-                        <Route path="/family-planning/nutrition/hormonal-balance" element={<FPHormonalNutritionPage />} />
-                        <Route path="/family-planning/nutrition/cycle-plan" element={<FPCycleNutritionPage />} />
-                        <Route path="/family-planning/nutrition/lifestyle" element={<FPLifestyleMetabolismPage />} />
-                        <Route path="/family-planning/nutrition/foods-to-avoid" element={<FPFoodsToAvoidPage />} />
-                        <Route path="/family-planning/care-log" element={<CareLog />} />
+                          <Route path="/" element={<Index />} />
+                          <Route path="/login" element={<Login />} />
+                          <Route path="/register" element={<Register />} />
+                          <Route path="/tools" element={<Tools />} />
+                          <Route path="/tools/fp/:toolId" element={<FPToolPage />} />
+                          <Route path="/shopping" element={<Shopping />} />
+                          <Route path="/stress-relief" element={<StressRelief />} />
+                          <Route path="/articles" element={<Articles />} />
+                          <Route path="/postpartum-guide" element={<Postpartum />} />
+                          <Route path="/assistant" element={<Assistant />} />
+                          <Route path="/dashboard" element={<WeeklyGuide />} />
+                          <Route path="/nutrition" element={<NutritionGuide />} />
+                          <Route path="/nutrition-intelligence" element={<NutritionIntelligencePage />} />
+                          <Route path="/symptom-checker" element={<SymptomChecker />} />
+                          <Route path="/emergency" element={<EmergencyGuidance />} />
+                          <Route path="/wellness" element={<WellnessDashboard />} />
+                          <Route path="/puberty" element={<Puberty />} />
+                          <Route path="/maternity" element={<Maternity />} />
+                          <Route path="/family-planning" element={<FamilyPlanning />} />
+                          <Route path="/phc-nearby" element={<PhcNearby />} />
+                          <Route path="/vaccine-tracker" element={<VaccineTracker />} />
+                          <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
+                          <Route path="/health-log" element={<HealthLog />} />
+                          <Route path="/calendar" element={<Calendar />} />
+                          <Route path="/profile" element={<Profile />} />
+                          <Route path="/medicine-reminder" element={<MedicineReminder />} />
+                          <Route path="/baby-supportive-helper" element={<BabySupportiveHelper />} />
+                          <Route path="/maternity/nutrition/deficiency-insights" element={<MaternityDeficiencyInsightsPage />} />
+                          <Route path="/maternity/nutrition/fitness-health-calculator" element={<FitnessHealthCalculatorPage />} />
+                          <Route path="/maternity/nutrition/personalized-diet" element={<PersonalizedDietPage />} />
+                          <Route path="/maternity/nutrition/checklist" element={<NutritionChecklistPage />} />
+                          <Route path="/postpartum-dashboard" element={<PostpartumDashboard />} />
+                          {/* Puberty nutrition sub-pages */}
+                          <Route path="/puberty/nutrition/deficiency-insights" element={<PubertyDeficiencyPage />} />
+                          <Route path="/puberty/nutrition/nutrient-recommendations" element={<PubertyNutrientRecommendationsPage />} />
+                          <Route path="/puberty/nutrition/hydration" element={<PubertyHydrationPage />} />
+                          <Route path="/puberty/nutrition/food-restrictions" element={<PubertyFoodRestrictionsPage />} />
+                          <Route path="/puberty/nutrition/calories" element={<PubertyCaloriePage />} />
+                          <Route path="/puberty/nutrition/protein" element={<PubertyProteinPage />} />
+                          <Route path="/puberty/nutrition/meal-plan" element={<PubertyMealPlanPage />} />
+                          <Route path="/puberty/nutrition/insights" element={<PubertyNutritionalInsightsPage />} />
+                          {/* Family Planning nutrition sub-pages */}
+                          <Route path="/family-planning/nutrition/deficiency-insights" element={<FPDeficiencyInsightsPage />} />
+                          <Route path="/family-planning/nutrition/hormonal-balance" element={<FPHormonalNutritionPage />} />
+                          <Route path="/family-planning/nutrition/cycle-plan" element={<FPCycleNutritionPage />} />
+                          <Route path="/family-planning/nutrition/lifestyle" element={<FPLifestyleMetabolismPage />} />
+                          <Route path="/family-planning/nutrition/foods-to-avoid" element={<FPFoodsToAvoidPage />} />
+                          <Route path="/family-planning/care-log" element={<CareLog />} />
 
+<<<<<<< HEAD
                         {/* Menopause phase routes */}
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
                         <Route path="/menopause/dashboard" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenopauseDashboard /></Suspense>} />
@@ -261,15 +265,25 @@ const App = () => (
                         <Route path="/menopause/goals" element={<DailyGoals />} />
                         <Route path="/menopause/care" element={<MenopauseCareEssentials />} />
                         <Route path="/menopause/fun" element={<FunActivity />} />
+=======
+                          {/* Menopause phase routes */}
+                          <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
+                          <Route path="/menopause/calendar" element={<MenopauseCalendar />} />
+                          <Route path="/menopause/analytics" element={<SymptomAnalytics />} />
+                          <Route path="/menopause/wellness" element={<WellnessPlan />} />
+                          <Route path="/menopause/goals" element={<DailyGoals />} />
+                          <Route path="/menopause/care" element={<MenopauseCareEssentials />} />
+                          <Route path="/menopause/fun" element={<FunActivity />} />
+>>>>>>> f1190df185c37d8d1848c04cb879bb8663c24cdd
 
-                        <Route path="/about" element={<About />} />
-                        <Route path="/contact" element={<Contact />} />
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                      <MissedLogReminder />
-                      <MedicineAlertPopup />
-                      <MaternityPhaseGatedReminders />
-                      <Footer />
+                          <Route path="/about" element={<About />} />
+                          <Route path="/contact" element={<Contact />} />
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                        <MissedLogReminder />
+                        <MedicineAlertPopup />
+                        <MaternityPhaseGatedReminders />
+                        <Footer />
                       </CustomSymptomsProvider>
                     </AuthGate>
                   </BrowserRouter>

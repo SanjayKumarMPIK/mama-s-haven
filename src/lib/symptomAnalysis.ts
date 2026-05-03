@@ -38,7 +38,13 @@ export type KeySymptomId =
   | "shortnessOfBreath"
   | "practiceContractions"
   | "sleepDifficulty"
-  | "heartburn";
+  | "heartburn"
+  | "breastPain"
+  | "nipplePain"
+  | "lowMilkSupply"
+  | "lowEnergy"
+  | "sleepDeprivation"
+  | "bodyAche";
 
 export type Trend = "Frequent" | "Occasional" | "Stable";
 export type Timing = "Before period" | "During cycle" | "Random";
@@ -119,6 +125,22 @@ export const KEY_SYMPTOMS_BY_PHASE: Record<string, SymptomDef[]> = {
     { id: "swelling", label: "Swelling" },
     // General
     { id: "moodSwings", label: "Mood Swings" },
+  ],
+  maternity_postpartum: [
+    { id: "breastPain", label: "Breast Pain" },
+    { id: "nipplePain", label: "Nipple Pain" },
+    { id: "lowMilkSupply", label: "Low Milk Supply" },
+    { id: "lowEnergy", label: "Low Energy" },
+    { id: "sleepDeprivation", label: "Sleep Deprivation" },
+    { id: "bodyAche", label: "Body Ache" },
+  ],
+  maternity_premature: [
+    { id: "breastPain", label: "Breast Pain" },
+    { id: "nipplePain", label: "Nipple Pain" },
+    { id: "lowMilkSupply", label: "Low Milk Supply" },
+    { id: "lowEnergy", label: "Low Energy" },
+    { id: "sleepDeprivation", label: "Sleep Deprivation" },
+    { id: "bodyAche", label: "Body Ache" },
   ],
   "family-planning": [
     { id: "irregularCycle", label: "Irregular cycle" },
@@ -477,6 +499,19 @@ function getSuggestionsForSymptom(symptomId: KeySymptomId): string[] {
       return ["Try gentle rest and light movement.", "Use a warm heat therapy pack if it feels soothing.", "Stay hydrated and monitor changes."];
     case "stress":
       return ["Practice quick calming techniques (deep breathing, grounding).", "Take short breaks and stay hydrated.", "Try a short evening wind-down routine."];
+    // Postpartum / Premature
+    case "breastPain":
+      return ["Apply a warm compress before breastfeeding.", "Ensure a proper latch — seek lactation support if needed."];
+    case "nipplePain":
+      return ["Check baby's latch position.", "Apply expressed breast milk or lanolin after feeds."];
+    case "lowMilkSupply":
+      return ["Increase feeding frequency — supply follows demand.", "Stay well hydrated with water, milk, and soups."];
+    case "lowEnergy":
+      return ["Rest when the baby rests.", "Eat nutrient-dense meals at regular intervals."];
+    case "sleepDeprivation":
+      return ["Sleep when the baby sleeps — even short naps help.", "Share nighttime duties with a support person."];
+    case "bodyAche":
+      return ["Gentle postnatal stretches for back and shoulders.", "Use a supportive pillow during breastfeeding."];
     default:
       return ["Keep tracking what helps.", "If symptoms feel severe or worrying, consider speaking to a healthcare worker."];
   }

@@ -16,6 +16,7 @@ import VisualAnalytics from "@/components/dashboard/VisualAnalytics";
 import { Heart, ArrowLeft, RotateCcw } from "lucide-react";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useHealthLog } from "@/hooks/useHealthLog";
+import { filterLogsByPhase, buildChartDataset } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
 
 const accent = {
   gradient: "from-rose-500 to-pink-400",
@@ -29,20 +30,13 @@ export default function PostpartumDashboard() {
   const { clearProfile, profile } = usePregnancyProfile();
   const { maternityLogs } = useHealthLog();
 
-  // Convert maternityLogs (Record<string, PubertyEntry>) → PubertyLogItem[]
-  // VisualAnalytics expects an array of { date, entry } objects
-  const maternityLogsArray = useMemo(
-    () => Object.entries(maternityLogs).map(([date, entry]) => ({ date, entry })),
-    [maternityLogs]
-  );
+  const deliveryDateISO = profile.delivery?.birthDate || new Date().toISOString().split("T")[0];
 
-  // Calculate weeks postpartum from delivery date
-  const weeksPostpartum = useMemo(() => {
-    if (!profile.delivery?.birthDate) return 1;
-    const birth = new Date(profile.delivery.birthDate + "T00:00:00");
-    const now = new Date();
-    return Math.max(1, Math.floor((now.getTime() - birth.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-  }, [profile.delivery?.birthDate]);
+  // Convert maternityLogs using the unified adapter to strictly isolate postpartum phase
+  const chartDataset = useMemo(() => {
+    const filtered = filterLogsByPhase(maternityLogs, "postpartum", deliveryDateISO);
+    return buildChartDataset(filtered);
+  }, [maternityLogs, deliveryDateISO]);
 
   return (
     <MaternityRouteGuard expectedState="postpartum">
@@ -93,7 +87,7 @@ export default function PostpartumDashboard() {
           </ScrollReveal>
 
           {/* Visual Analytics */}
-          <VisualAnalytics pubertyLogs={maternityLogsArray} />
+          <VisualAnalytics pubertyLogs={chartDataset} />
 
           {/* Recovery Insight Cards */}
           <ScrollReveal delay={40}>

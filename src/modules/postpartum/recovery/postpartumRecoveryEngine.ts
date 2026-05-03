@@ -8,88 +8,143 @@ export interface PostpartumRecoveryScoreResult {
   hasInsufficientData: boolean;
 }
 
+// ── Fallback defaults ────────────────────────────────────────────────────────
+// Per spec: if missing sleep/mood/energy → default "Good" → contributes 75 to that signal
+const FALLBACK_SIGNAL_SCORE = 75;
+const FALLBACK_TOTAL_SCORE = 75;
+
+// ── Weights (user spec) ──────────────────────────────────────────────────────
+// Symptom Recovery: 40%, Energy: 20%, Mood: 15%, Sleep: 15%, Consistency: 10%
+const WEIGHTS = {
+  symptomRecovery: 0.40,
+  energy:          0.20,
+  mood:            0.15,
+  sleep:           0.15,
+  consistency:     0.10,
+} as const;
+
+// ── Score calculator ─────────────────────────────────────────────────────────
+
+function computeRawScore(metrics: PostpartumNormalizedMetrics): number {
+  const { daysLogged, daysInWeek } = metrics;
+
+  // If absolutely no data logged, return the fallback score (75) — do NOT penalize
+  if (daysLogged === 0) {
+    return FALLBACK_TOTAL_SCORE;
+  }
+
+  // Symptom Recovery (100 = no symptoms, penalty reduces it)
+  const symptomScore = Math.max(0, 100 - (metrics.symptomSeverityPenalty || 0));
+
+  // Energy (mapped from fatigueScore inverse: Low fatigue = High energy)
+  // Fallback to "Good" (75) if not logged
+  const energyScore = metrics.avgFatigueScore !== null ? metrics.avgFatigueScore : FALLBACK_SIGNAL_SCORE;
+
+  // Mood: Fallback to "Good" (75) if not logged
+  const moodScore = metrics.avgMoodScore !== null ? metrics.avgMoodScore : FALLBACK_SIGNAL_SCORE;
+
+  // Sleep: target 8 hours. Fallback to "Good" (75) if not logged
+  const sleepScore = metrics.avgSleepHours !== null
+    ? Math.min(100, (metrics.avgSleepHours / 8) * 100)
+    : FALLBACK_SIGNAL_SCORE;
+
+  // Consistency: days logged / days available in this week
+  const consistencyScore = Math.min(100, (daysLogged / Math.max(1, daysInWeek)) * 100);
+
+  // Weighted sum
+  const raw =
+    (symptomScore   * WEIGHTS.symptomRecovery) +
+    (energyScore    * WEIGHTS.energy) +
+    (moodScore      * WEIGHTS.mood) +
+    (sleepScore     * WEIGHTS.sleep) +
+    (consistencyScore * WEIGHTS.consistency);
+
+  return Math.round(raw);
+}
+
+function scoreToStatus(score: number): PostpartumRecoveryScoreResult["statusLabel"] {
+  if (score >= 80) return "Strong Recovery";
+  if (score >= 60) return "Good Progress";
+  if (score >= 40) return "Recovering";
+  return "Needs Attention";
+}
+
+// ── Main export ──────────────────────────────────────────────────────────────
+
 export function calculatePostpartumRecoveryScore(
   currentMetrics: PostpartumNormalizedMetrics,
   previousMetrics?: PostpartumNormalizedMetrics
 ): PostpartumRecoveryScoreResult {
-  // Enforce fallback handling if no logs present
-  if (currentMetrics.daysLogged === 0) {
-    return {
-      score: 0,
-      statusLabel: "Needs Attention",
-      trendPercent: 0,
-      dynamicRecommendations: ["Start Logging to Track Recovery"],
-      hasInsufficientData: true,
-    };
+  const score = computeRawScore(currentMetrics);
+  const statusLabel = scoreToStatus(score);
+
+  // Previous week score for trend
+  let prevScore = 0;
+  if (previousMetrics) {
+    prevScore = computeRawScore(previousMetrics);
   }
 
-  // Weights for the scoring engine
-  const weights = {
-    sleep: 0.3,
-    hydration: 0.2,
-    mood: 0.3,
-    fatigue: 0.2,
-  };
+  // Trend: only show if previous week had meaningful data
+  const trendPercent =
+    previousMetrics && prevScore > 0
+      ? Math.round(((score - prevScore) / prevScore) * 100)
+      : 0;
 
-  // Sleep score (target: 8 hours)
-  const sleepScore = Math.min(100, ((currentMetrics.avgSleepHours || 0) / 8) * 100);
-  
-  // Hydration score (target: 8 glasses)
-  const hydrationScore = Math.min(100, ((currentMetrics.avgHydrationGlasses || 0) / 8) * 100);
+  // ── Dynamic recommendations engine ─────────────────────────────────────────
+  const dynamicRecommendations: string[] = [];
+  const freqs = currentMetrics.symptomFrequencies || {};
 
-  // Mood score (Good=100, Okay=50, Low=0)
-  const moodScore = currentMetrics.avgMoodScore || 0;
-
-  // Fatigue score (Low=100, Medium=50, High=0)
-  const fatigueScore = currentMetrics.avgFatigueScore || 0;
-
-  const baseScore = 
-    (sleepScore * weights.sleep) +
-    (hydrationScore * weights.hydration) +
-    (moodScore * weights.mood) +
-    (fatigueScore * weights.fatigue);
-
-  const score = Math.round(baseScore);
-
-  let statusLabel: PostpartumRecoveryScoreResult["statusLabel"] = "Needs Attention";
-  if (score >= 80) statusLabel = "Strong Recovery";
-  else if (score >= 60) statusLabel = "Good Progress";
-  else if (score >= 40) statusLabel = "Recovering";
-
-  let prevScore = 0;
-  if (previousMetrics && previousMetrics.daysLogged > 0) {
-    const pSleep = Math.min(100, ((previousMetrics.avgSleepHours || 0) / 8) * 100);
-    const pHydration = Math.min(100, ((previousMetrics.avgHydrationGlasses || 0) / 8) * 100);
-    const pMood = previousMetrics.avgMoodScore || 0;
-    const pFatigue = previousMetrics.avgFatigueScore || 0;
-    prevScore = Math.round(
-      (pSleep * weights.sleep) +
-      (pHydration * weights.hydration) +
-      (pMood * weights.mood) +
-      (pFatigue * weights.fatigue)
+  // Specific symptom-based recommendations (6 core postpartum symptoms)
+  if (freqs.lowMilkSupply && freqs.lowMilkSupply > 0) {
+    dynamicRecommendations.push(
+      "Your low milk supply is affecting feeding stability. Keep hydrating and consider consulting a lactation expert."
+    );
+  }
+  if ((freqs.breastPain && freqs.breastPain > 0) || (freqs.nipplePain && freqs.nipplePain > 0)) {
+    dynamicRecommendations.push(
+      "You are experiencing feeding discomfort. Apply warm compresses and ensure proper latching."
+    );
+  }
+  if (freqs.bodyAche && freqs.bodyAche > 0) {
+    dynamicRecommendations.push(
+      "Physical recovery strain detected. Allow your body to rest and avoid heavy lifting."
+    );
+  }
+  if (freqs.sleepDeprivation && freqs.sleepDeprivation > 0) {
+    dynamicRecommendations.push(
+      "Sleep deprivation is significantly impacting your recovery. Please ask for help to get uninterrupted rest."
+    );
+  }
+  if (freqs.lowEnergy && freqs.lowEnergy > 0) {
+    dynamicRecommendations.push(
+      "Low energy detected frequently. Focus on iron-rich foods and adequate rest between feeds."
     );
   }
 
-  // Handle case where we have score but previous score was 0 (no trend)
-  const trendPercent = prevScore > 0 ? Math.round(((score - prevScore) / prevScore) * 100) : 0;
+  // General metric-based recommendations (only when actual data exists)
+  if (currentMetrics.daysLogged > 0) {
+    const sleepScore = currentMetrics.avgSleepHours !== null
+      ? Math.min(100, (currentMetrics.avgSleepHours / 8) * 100)
+      : null;
+    const moodScore = currentMetrics.avgMoodScore;
 
-  // Dynamic recommendations engine based on specific metric thresholds
-  const dynamicRecommendations: string[] = [];
-  if (sleepScore < 60) {
-    dynamicRecommendations.push("Prioritize sleep and rest. Consider asking for help during night shifts.");
-  }
-  if (hydrationScore < 70) {
-    dynamicRecommendations.push("Your hydration is slightly low. Keep a water bottle nearby during feedings.");
-  }
-  if (moodScore <= 50) {
-    dynamicRecommendations.push("Your logs indicate tough mood days. It's okay to seek emotional support.");
-  }
-  if (fatigueScore <= 50) {
-    dynamicRecommendations.push("You are experiencing high fatigue. Please minimize physical exertion.");
+    if (sleepScore !== null && sleepScore < 60 && !freqs.sleepDeprivation) {
+      dynamicRecommendations.push(
+        "Prioritize sleep and rest. Consider asking for help during night shifts."
+      );
+    }
+    if (moodScore !== null && moodScore <= 50) {
+      dynamicRecommendations.push(
+        "Your logs indicate tough mood days. It's okay to seek emotional support."
+      );
+    }
   }
 
+  // Default positive message
   if (dynamicRecommendations.length === 0) {
-    dynamicRecommendations.push("You are doing great! Keep up with your balanced recovery routine.");
+    dynamicRecommendations.push(
+      "You are doing great! Keep up with your balanced recovery routine."
+    );
   }
 
   return {
@@ -97,6 +152,6 @@ export function calculatePostpartumRecoveryScore(
     statusLabel,
     trendPercent,
     dynamicRecommendations,
-    hasInsufficientData: false,
+    hasInsufficientData: false, // We use fallback instead of marking insufficient
   };
 }

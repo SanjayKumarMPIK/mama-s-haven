@@ -18,15 +18,8 @@ import {
 } from "@/hooks/usePregnancyProfile";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePrematureBabyWeight, type WeightEntry } from "@/hooks/usePrematureBabyWeight";
-import {
-  TEMPERATURE_CARE,
-  INFECTION_PREVENTION,
-} from "@/lib/prematureCareData";
-import {
-  getPrematureRecoveryTimeline,
-  type PrematureRecoveryTimelineWeek,
-} from "@/modules/premature/recovery/prematureRecoveryTimeline";
 import { usePrematureRecovery } from "@/modules/premature/recovery/usePrematureRecovery";
+import { filterLogsByPhase, buildChartDataset } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import HealthSummaryCards from "@/components/shared/HealthSummaryCards";
@@ -35,7 +28,7 @@ import PrematureNutritionTipsCard from "./premature/PrematureNutritionTipsCard";
 import PrematureActiveAlertsCard from "./premature/PrematureActiveAlertsCard";
 import { getMaternityDashboardMetrics } from "@/modules/maternity/dashboard/adapters/maternityDashboardMetricsAdapter";
 import {
-  Baby, Heart, Thermometer, ShieldCheck, AlertTriangle,
+  Baby, Heart, AlertTriangle,
   Scale, ClipboardCheck, Phone, Sparkles, ChevronRight,
   Plus, TrendingUp, TrendingDown, Minus, Calendar,
   ArrowLeft, RotateCcw, Activity, Droplets, Moon,
@@ -73,15 +66,7 @@ export default function PrematureCareView() {
 
   // ─── Premature Recovery Analytics (memoized) ────────────────────────────────
   const prematureRecovery = usePrematureRecovery();
-
-  const weeksPostDelivery = useMemo(() => {
-    if (!delivery.birthDate) return 0;
-    const birth = new Date(delivery.birthDate + "T00:00:00");
-    const now = new Date();
-    return Math.max(0, Math.floor((now.getTime() - birth.getTime()) / (7 * 24 * 60 * 60 * 1000)));
-  }, [delivery.birthDate]);
-
-  const recoveryTimeline = useMemo(() => getPrematureRecoveryTimeline(weeksPostDelivery), [weeksPostDelivery]);
+  const weeksPostDelivery = prematureRecovery.weeksPostDelivery;
 
   // ─── Health Summary Stats for Premature Dashboard ────────────────────────
   const healthSummaryStats = useMemo(() => {
@@ -94,17 +79,12 @@ export default function PrematureCareView() {
     };
   }, [maternityLogs]);
 
-  // Convert maternityLogs (Record<string, PubertyEntry>) → PubertyLogItem[]
-  // VisualAnalytics expects an array of { date, entry } objects
-  const maternityLogsArray = useMemo(
-    () =>
-      Object.entries(maternityLogs).map(([date, entry]) => ({ date, entry })),
-    [maternityLogs]
-  );
-
-  // Radial gauge constants
-  const circumference = 2 * Math.PI * 54;
-  const strokeDashoffset = circumference - (prematureRecovery.recoveryBreakdown.overall / 100) * circumference;
+  // Convert maternityLogs using the unified adapter to strictly isolate premature phase
+  const maternityLogsArray = useMemo(() => {
+    const deliveryDateISO = delivery.birthDate || new Date().toISOString().split("T")[0];
+    const filtered = filterLogsByPhase(maternityLogs, "premature", deliveryDateISO);
+    return buildChartDataset(filtered);
+  }, [maternityLogs, delivery.birthDate]);
 
   // Weight input state
   const [showWeightForm, setShowWeightForm] = useState(false);
@@ -194,36 +174,37 @@ export default function PrematureCareView() {
              MATERNAL RECOVERY ANALYTICS
            ═══════════════════════════════════════════════════════════════════ */}
 
-        {/* ═══ Recovery Score Hero ══════════════════════════════════════════ */}
+        {/* ═══ Recovery Score + Timeline (25/75 Layout) ══════════════════════ */}
         <ScrollReveal>
-          <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
-                <Activity className="w-4 h-4 text-violet-700" />
+          <div className="premature-recovery-layout">
+            {/* ── Left: Recovery Score (25%) ── */}
+            <div className="premature-recovery-score-panel">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
+                  <Activity className="w-4 h-4 text-violet-700" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-sm">Recovery Score</h2>
+                  <p className="text-[10px] text-muted-foreground">7-day inference</p>
+                </div>
               </div>
-              <div>
-                <h2 className="font-bold text-sm">Maternal Recovery Score</h2>
-                <p className="text-[10px] text-muted-foreground">Based on your recent 7-day health logs</p>
-              </div>
-            </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-6 py-4">
               {/* Radial Gauge */}
-              <div className="relative shrink-0">
-                <svg width="140" height="140" className="transform -rotate-90">
-                  <circle cx="70" cy="70" r="54" stroke="currentColor" strokeWidth="10" fill="none" className="text-muted-foreground/15" />
+              <div className="relative mx-auto" style={{ width: 130, height: 130 }}>
+                <svg width="130" height="130" className="transform -rotate-90">
+                  <circle cx="65" cy="65" r="50" stroke="currentColor" strokeWidth="8" fill="none" className="text-muted-foreground/15" />
                   <circle
-                    cx="70" cy="70" r="54"
-                    stroke="url(#recoveryGrad)"
-                    strokeWidth="10"
+                    cx="65" cy="65" r="50"
+                    stroke="url(#premRecGrad)"
+                    strokeWidth="8"
                     fill="none"
                     strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={strokeDashoffset}
+                    strokeDasharray={2 * Math.PI * 50}
+                    strokeDashoffset={2 * Math.PI * 50 - (prematureRecovery.recoveryBreakdown.overall / 100) * 2 * Math.PI * 50}
                     className="transition-all duration-1000 ease-out"
                   />
                   <defs>
-                    <linearGradient id="recoveryGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <linearGradient id="premRecGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                       <stop offset="0%" stopColor="#8b5cf6" />
                       <stop offset="100%" stopColor="#d946ef" />
                     </linearGradient>
@@ -231,28 +212,74 @@ export default function PrematureCareView() {
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center">
-                    <span className="text-3xl font-bold text-foreground">{prematureRecovery.recoveryBreakdown.overall}</span>
-                    <span className="text-sm text-muted-foreground font-medium">/100</span>
+                    <span className="text-2xl font-bold text-foreground">{prematureRecovery.recoveryBreakdown.overall}</span>
+                    <span className="text-xs text-muted-foreground font-medium">/100</span>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-        </ScrollReveal>
 
-        {/* ═══ Recovery Timeline ════════════════════════════════════════════ */}
-        <ScrollReveal delay={180}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
-                <Calendar className="w-4 h-4 text-indigo-700" />
+              {/* Status badge */}
+              <div className={`mt-3 text-center px-3 py-1.5 rounded-xl border text-xs font-bold ${
+                prematureRecovery.recoveryStatus.level === "critical" ? "bg-red-50 border-red-200 text-red-800" :
+                prematureRecovery.recoveryStatus.level === "earlyStabilization" ? "bg-orange-50 border-orange-200 text-orange-800" :
+                prematureRecovery.recoveryStatus.level === "improving" ? "bg-amber-50 border-amber-200 text-amber-800" :
+                prematureRecovery.recoveryStatus.level === "stable" ? "bg-green-50 border-green-200 text-green-800" :
+                "bg-emerald-50 border-emerald-200 text-emerald-800"
+              }`}>
+                {prematureRecovery.recoveryStatus.emoji} {prematureRecovery.recoveryStatus.label}
               </div>
-              <div>
-                <h2 className="font-bold text-sm">Recovery Timeline</h2>
-                <p className="text-[10px] text-muted-foreground">Week {weeksPostDelivery} post-delivery</p>
+
+              {/* Signal breakdown mini-bars */}
+              <div className="mt-4 space-y-2">
+                {prematureRecovery.signalMeta.map(signal => {
+                  const value = prematureRecovery.recoveryBreakdown[signal.key];
+                  return (
+                    <div key={signal.key} className="premature-signal-row">
+                      <div className="premature-signal-label">
+                        <span className="text-[10px]">{signal.emoji}</span>
+                        <span className="text-[10px] text-muted-foreground font-medium truncate">{signal.label}</span>
+                      </div>
+                      <div className="premature-signal-bar-bg">
+                        <div
+                          className={`premature-signal-bar-fill ${
+                            value >= 70 ? "good" : value >= 45 ? "moderate" : "low"
+                          }`}
+                          style={{ width: `${value}%` }}
+                        />
+                      </div>
+                      <span className="premature-signal-value">{value}</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-            <PrematureRecoveryTimeline timeline={recoveryTimeline} currentWeek={weeksPostDelivery} />
+
+            {/* ── Right: Recovery Timeline (75%) ── */}
+            <div className="premature-recovery-timeline-panel">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-indigo-700" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-bold text-sm">Recovery Timeline</h2>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-[10px] text-muted-foreground">
+                      Week {weeksPostDelivery} · Day {prematureRecovery.daysPostDelivery}
+                    </p>
+                    {prematureRecovery.recoveryBreakdown.overall >= 85 && (
+                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">✓ Accelerated</span>
+                    )}
+                    {prematureRecovery.recoveryBreakdown.overall < 45 && (
+                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">⚠ Monitoring</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <PrematureRecoveryTimeline
+                phases={prematureRecovery.timelinePhases}
+                currentPhase={prematureRecovery.currentPhase}
+              />
+            </div>
           </div>
         </ScrollReveal>
 
@@ -289,16 +316,16 @@ export default function PrematureCareView() {
               </div>
               <div className={`rounded-xl p-4 border text-center ${
                 prematureRecovery.recoveryStatus.level === "critical" ? "bg-red-50 border-red-200" :
-                prematureRecovery.recoveryStatus.level === "slow" ? "bg-orange-50 border-orange-200" :
-                prematureRecovery.recoveryStatus.level === "moderate" ? "bg-amber-50 border-amber-200" :
+                prematureRecovery.recoveryStatus.level === "earlyStabilization" ? "bg-orange-50 border-orange-200" :
+                prematureRecovery.recoveryStatus.level === "improving" ? "bg-amber-50 border-amber-200" :
                 prematureRecovery.recoveryStatus.level === "stable" ? "bg-green-50 border-green-200" :
                 "bg-emerald-50 border-emerald-200"
               }`}>
                 <span className="text-3xl block mb-2">{prematureRecovery.recoveryStatus.emoji}</span>
                 <p className={`text-sm font-bold ${
                   prematureRecovery.recoveryStatus.level === "critical" ? "text-red-800" :
-                  prematureRecovery.recoveryStatus.level === "slow" ? "text-orange-800" :
-                  prematureRecovery.recoveryStatus.level === "moderate" ? "text-amber-800" :
+                  prematureRecovery.recoveryStatus.level === "earlyStabilization" ? "text-orange-800" :
+                  prematureRecovery.recoveryStatus.level === "improving" ? "text-amber-800" :
                   prematureRecovery.recoveryStatus.level === "stable" ? "text-green-800" :
                   "text-emerald-800"
                 }`}>{prematureRecovery.recoveryStatus.label}</p>
@@ -306,6 +333,7 @@ export default function PrematureCareView() {
                   Score: {prematureRecovery.recoveryBreakdown.overall} / 100
                 </p>
               </div>
+
             </div>
           </ScrollReveal>
 
@@ -506,56 +534,6 @@ export default function PrematureCareView() {
                 No weight entries yet. Add your baby's weight to track progress.
               </p>
             )}
-          </div>
-        </ScrollReveal>
-
-        {/* ═══ Section 6: Temperature Care ═════════════════════════════════ */}
-        <ScrollReveal delay={300}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-orange-100 flex items-center justify-center">
-                <Thermometer className="w-4 h-4 text-orange-700" />
-              </div>
-              <h2 className="font-bold text-sm">Temperature Care</h2>
-            </div>
-            <div className="space-y-2 mb-4">
-              {TEMPERATURE_CARE.tips.map((tip, i) => (
-                <div key={i} className="flex items-start gap-2 p-2">
-                  <span className="text-base shrink-0">{tip.emoji}</span>
-                  <p className="text-sm text-foreground/90 leading-relaxed">{tip.text}</p>
-                </div>
-              ))}
-            </div>
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
-              <p className="text-xs font-bold text-amber-800 mb-2">⚠️ Temperature Warning Signs</p>
-              <ul className="space-y-1">
-                {TEMPERATURE_CARE.warningSigns.map((sign, i) => (
-                  <li key={i} className="text-[11px] text-amber-700 flex items-start gap-2">
-                    <span className="text-amber-400 mt-0.5">•</span> {sign}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </ScrollReveal>
-
-        {/* ═══ Section 7: Infection Prevention ═════════════════════════════ */}
-        <ScrollReveal delay={360}>
-          <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              </div>
-              <h2 className="font-bold text-sm">Infection Prevention</h2>
-            </div>
-            <div className="space-y-2">
-              {INFECTION_PREVENTION.tips.map((tip, i) => (
-                <div key={i} className="flex items-start gap-2 rounded-xl border border-border/40 bg-background p-3">
-                  <span className="text-base shrink-0">{tip.emoji}</span>
-                  <p className="text-sm text-foreground/90 leading-relaxed">{tip.text}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </ScrollReveal>
 

@@ -1,12 +1,16 @@
 import type { HealthLogs, MaternityEntry } from "@/hooks/useHealthLog";
+import { filterLogsByPhase } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
 
 export interface PostpartumNormalizedMetrics {
   week: number;
   daysLogged: number;
+  daysInWeek: number; // total days available in this week (7, or fewer if partial current week)
   avgSleepHours: number | null;
   avgHydrationGlasses: number | null;
   avgMoodScore: number | null; // 0-100
   avgFatigueScore: number | null; // 0-100
+  symptomSeverityPenalty: number;
+  symptomFrequencies: Record<string, number>;
 }
 
 export function getPostpartumNormalizedMetricsForWeek(
@@ -19,6 +23,17 @@ export function getPostpartumNormalizedMetricsForWeek(
     return createEmptyMetrics(targetWeek);
   }
 
+  // Calculate how many days exist in the target week (7 for completed weeks, fewer for current partial week)
+  const weekStartDate = new Date(deliveryDate.getTime() + (targetWeek - 1) * 7 * 24 * 60 * 60 * 1000);
+  const weekEndDate = new Date(weekStartDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  let daysInWeek = 7;
+  if (now < weekEndDate) {
+    // Current (partial) week
+    const elapsed = Math.max(1, Math.ceil((now.getTime() - weekStartDate.getTime()) / (1000 * 60 * 60 * 24)));
+    daysInWeek = Math.min(7, elapsed);
+  }
+
   let totalSleep = 0;
   let sleepCount = 0;
   let totalHydration = 0;
@@ -28,16 +43,15 @@ export function getPostpartumNormalizedMetricsForWeek(
   let totalFatigue = 0;
   let fatigueCount = 0;
 
+  let totalSymptomPenalty = 0;
+  const symptomFrequencies: Record<string, number> = {};
+
   let daysLogged = 0;
 
-  for (const [dateISO, entry] of Object.entries(logs)) {
-    // Postpartum-only isolation rule: ignore non-maternity logs
-    if (entry.phase !== "maternity") continue;
+  const filteredLogs = filterLogsByPhase(logs, "postpartum", deliveryDateISO);
 
+  for (const { date: dateISO, entry } of filteredLogs) {
     const logDate = new Date(dateISO + "T12:00:00");
-    // Only process logs that occur on or after delivery date (postpartum logs)
-    // Pregnancy data must NOT influence postpartum recovery score.
-    if (logDate < deliveryDate) continue;
 
     // Calculate week postpartum
     const daysSinceDelivery = Math.floor((logDate.getTime() - deliveryDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -71,15 +85,36 @@ export function getPostpartumNormalizedMetricsForWeek(
       else if (e.fatigueLevel === "High") totalFatigue += 0;
       fatigueCount++;
     }
+
+    if (!e.noSymptomsToday && e.symptoms) {
+      let dayPenalty = 0;
+      const severities = e.symptomSeverities || {};
+
+      Object.entries(e.symptoms).forEach(([symptomId, isActive]) => {
+        if (!isActive) return;
+
+        symptomFrequencies[symptomId] = (symptomFrequencies[symptomId] || 0) + 1;
+
+        const sev = severities[symptomId];
+        if (sev === "severe") dayPenalty += 15;
+        else if (sev === "moderate") dayPenalty += 8;
+        else dayPenalty += 3; // mild or undefined
+      });
+
+      totalSymptomPenalty += dayPenalty;
+    }
   }
 
   return {
     week: targetWeek,
     daysLogged,
+    daysInWeek,
     avgSleepHours: sleepCount > 0 ? totalSleep / sleepCount : null,
     avgHydrationGlasses: hydrationCount > 0 ? totalHydration / hydrationCount : null,
     avgMoodScore: moodCount > 0 ? totalMood / moodCount : null,
     avgFatigueScore: fatigueCount > 0 ? totalFatigue / fatigueCount : null,
+    symptomSeverityPenalty: daysLogged > 0 ? totalSymptomPenalty / daysLogged : 0,
+    symptomFrequencies,
   };
 }
 
@@ -87,9 +122,12 @@ function createEmptyMetrics(week: number): PostpartumNormalizedMetrics {
   return {
     week,
     daysLogged: 0,
+    daysInWeek: 7,
     avgSleepHours: null,
     avgHydrationGlasses: null,
     avgMoodScore: null,
     avgFatigueScore: null,
+    symptomSeverityPenalty: 0,
+    symptomFrequencies: {},
   };
 }

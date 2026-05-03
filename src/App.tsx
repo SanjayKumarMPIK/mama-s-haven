@@ -70,6 +70,7 @@ import FPCycleNutritionPage from "./pages/familyplanning/FPCycleNutritionPage";
 import FPLifestyleMetabolismPage from "./pages/familyplanning/FPLifestyleMetabolismPage";
 import FPFoodsToAvoidPage from "./pages/familyplanning/FPFoodsToAvoidPage";
 import CareLog from "./pages/familyplanning/CareLog";
+import MaternityDeficiencyInsightsPage from "./pages/maternity/MaternityDeficiencyInsightsPage";
 import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
 
 
@@ -118,6 +119,7 @@ const App = () => (
                           <Route path="/profile" element={<Profile />} />
                           <Route path="/medicine-reminder" element={<MedicineReminder />} />
                           <Route path="/baby-supportive-helper" element={<BabySupportiveHelper />} />
+                          <Route path="/maternity/nutrition/deficiency-insights" element={<MaternityDeficiencyInsightsPage />} />
                           <Route path="/maternity/nutrition/fitness-health-calculator" element={<FitnessHealthCalculatorPage />} />
                           <Route path="/maternity/nutrition/personalized-diet" element={<PersonalizedDietPage />} />
                           <Route path="/maternity/nutrition/checklist" element={<NutritionChecklistPage />} />

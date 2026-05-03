@@ -686,6 +686,25 @@ export default function Puberty() {
 
           
           
+          {/* Nutrition Guide link */}
+          <ScrollReveal delay={180}>
+            <Link
+              to="/puberty/nutrition-guide"
+              className="flex items-center gap-4 rounded-2xl border border-pink-200/60 bg-gradient-to-br from-pink-50 to-rose-50 p-5 hover:shadow-md hover:border-pink-300 transition-all duration-200 group"
+            >
+              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-pink-400 to-rose-500 flex items-center justify-center shrink-0 shadow-md shadow-pink-200/40">
+                <Utensils className="w-5 h-5 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-pink-900 mb-0.5">Nutrition Guide</h3>
+                <p className="text-sm text-pink-700/80 leading-relaxed">
+                  Personalized diet plans, fitness calculators, and symptom-driven nutrient tracking.
+                </p>
+              </div>
+              <ArrowLeft className="w-5 h-5 text-pink-500 rotate-180 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </ScrollReveal>
+
           {/* Wellness Dashboard link */}
           <ScrollReveal delay={200}>
             <Link

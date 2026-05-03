@@ -15,6 +15,7 @@ import FoodRecommendationCard from "@/components/nutrition/FoodRecommendationCar
 import DeficiencySummaryInline from "@/components/nutrition/DeficiencySummaryInline";
 import DeficiencyInsightsSection from "@/components/nutrition/DeficiencyInsightsSection";
 import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
+import NutritionChecklistSection from "@/components/nutrition/NutritionChecklistSection";
 import { Apple, Calendar, ArrowRight, ArrowLeft, Utensils, Lightbulb, Activity, Clock } from "lucide-react";
 
 // ─── Phase accent map ─────────────────────────────────────────────────────
@@ -267,14 +268,10 @@ export default function NutritionIntelligencePage() {
                   )}
 
                   {activeTab === 'checklist' && (
-                    <div className="flex flex-col items-center justify-center text-center py-24 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                      <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center mb-5 shadow-lg opacity-40`}>
-                        <Clock className="w-8 h-8 text-white" />
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                        <NutritionChecklistSection hideTodaysFocus={true} />
                       </div>
-                      <h3 className="text-lg font-semibold mb-2">Checklist module coming soon</h3>
-                      <p className="text-sm text-muted-foreground max-w-xs leading-relaxed">
-                        Stay tuned for a comprehensive checklist tailored to your maternal journey.
-                      </p>
                     </div>
                   )}
                 </div>

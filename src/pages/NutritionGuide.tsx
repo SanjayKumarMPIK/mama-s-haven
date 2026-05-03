@@ -139,11 +139,11 @@ export default function NutritionGuide() {
                 
                 <div className="grid md:grid-cols-2 gap-4">
                   <FeatureCard 
-                    to="/nutrition-intelligence"
+                    to="/maternity/nutrition/deficiency-insights"
                     icon={<div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center shrink-0"><ClipboardList className="w-8 h-8 text-purple-600" /></div>}
-                    title="Deficiency Insights"
+                    title="Activities"
                     titleColor="text-purple-700"
-                    desc="Analyze your symptoms and discover potential nutrient deficiencies with personalized recommendations."
+                    desc="Explore your daily wellness plan, set pregnancy goals, and enjoy fun activities."
                   />
                   <FeatureCard 
                     to="/maternity/nutrition/fitness-health-calculator"

@@ -85,105 +85,7 @@ import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
 
 const queryClient = new QueryClient();
 
-<<<<<<< HEAD
-function AppShell() {
-  return (
-    <AuthGate>
-      <CustomSymptomsProvider>
-        <Navbar />
-        <Outlet />
-        <MissedLogReminder />
-      </CustomSymptomsProvider>
-    </AuthGate>
-  );
-}
 
-const router = createBrowserRouter(
-  [
-    {
-      path: "/",
-      element: <AppShell />,
-      children: [
-        { index: true, element: <Index /> },
-        { path: "login", element: <Login /> },
-        { path: "register", element: <Register /> },
-        { path: "tools", element: <Tools /> },
-        { path: "tools/fp/:toolId", element: <FPToolPage /> },
-        { path: "shopping", element: <Shopping /> },
-        { path: "stress-relief", element: <StressRelief /> },
-        { path: "articles", element: <Articles /> },
-        { path: "postpartum-guide", element: <Postpartum /> },
-        { path: "assistant", element: <Assistant /> },
-        { path: "dashboard", element: <WeeklyGuide /> },
-        { path: "nutrition", element: <NutritionGuide /> },
-        { path: "nutrition-intelligence", element: <NutritionIntelligencePage /> },
-        { path: "symptom-checker", element: <SymptomChecker /> },
-        { path: "emergency", element: <EmergencyGuidance /> },
-        { path: "wellness", element: <WellnessDashboard /> },
-        { path: "puberty", element: <Puberty /> },
-                { path: "maternity", element: <Maternity /> },
-        { path: "family-planning", element: <FamilyPlanning /> },
-        { path: "phc-nearby", element: <PhcNearby /> },
-        { path: "vaccine-tracker", element: <VaccineTracker /> },
-        { path: "pregnancy-dashboard", element: <PregnancyDashboard /> },
-        { path: "health-log", element: <HealthLog /> },
-        { path: "calendar", element: <Calendar /> },
-        { path: "profile", element: <Profile /> },
-        { path: "medicine-reminder", element: <MedicineReminder /> },
-        { path: "deficiency-insights", element: <DeficiencyInsights /> },
-        { path: "maternity/nutrition/fitness-health-calculator", element: <FitnessHealthCalculatorPage /> },
-        { path: "maternity/nutrition/personalized-diet", element: <PersonalizedDietPage /> },
-        { path: "maternity/nutrition/checklist", element: <NutritionChecklistPage /> },
-        { path: "postpartum-dashboard", element: <PostpartumDashboard /> },
-        // Puberty nutrition sub-pages
-        { path: "puberty/nutrition/deficiency-insights", element: <PubertyDeficiencyPage /> },
-        { path: "puberty/nutrition/nutrient-recommendations", element: <PubertyNutrientRecommendationsPage /> },
-        { path: "puberty/nutrition/hydration", element: <PubertyHydrationPage /> },
-        { path: "puberty/nutrition/food-restrictions", element: <PubertyFoodRestrictionsPage /> },
-        { path: "puberty/nutrition/calories", element: <PubertyCaloriePage /> },
-        { path: "puberty/nutrition/protein", element: <PubertyProteinPage /> },
-        { path: "puberty/nutrition/meal-plan", element: <PubertyMealPlanPage /> },
-        { path: "puberty/nutrition/insights", element: <PubertyNutritionalInsightsPage /> },
-
-        // Family Planning nutrition sub-pages
-        { path: "family-planning/nutrition/deficiency-insights", element: <FPDeficiencyInsightsPage /> },
-        { path: "family-planning/nutrition/hormonal-balance", element: <FPHormonalNutritionPage /> },
-        { path: "family-planning/nutrition/cycle-plan", element: <FPCycleNutritionPage /> },
-        { path: "family-planning/nutrition/lifestyle", element: <FPLifestyleMetabolismPage /> },
-        { path: "family-planning/nutrition/foods-to-avoid", element: <FPFoodsToAvoidPage /> },
-        { path: "family-planning/care-log", element: <CareLog /> },
-
-        // Menopause phase routes
-        { path: "menopause/onboarding", element: <MenopauseOnboarding /> },
-        { path: "menopause/dashboard", element: <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenopauseDashboard /></Suspense> },
-        { path: "menopause/symptoms", element: <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoSymptomTracker /></Suspense> },
-        { path: "menopause/bone-health", element: <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoBoneHealth /></Suspense> },
-        { path: "menopause/nutrition", element: <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoNutritionGuide /></Suspense> },
-        { path: "menopause/sleep-mood", element: <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoSleepMood /></Suspense> },
-        { path: "menopause/weight", element: <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoWeightMetabolism /></Suspense> },
-        { path: "menopause/heart", element: <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoHeartHealth /></Suspense> },
-        { path: "menopause/calendar", element: <MenopauseCalendar /> },
-        { path: "menopause/analytics", element: <SymptomAnalytics /> },
-        { path: "menopause/wellness", element: <WellnessPlan /> },
-        { path: "menopause/goals", element: <DailyGoals /> },
-        { path: "menopause/care", element: <MenopauseCareEssentials /> },
-        { path: "menopause/fun", element: <FunActivity /> },
-
-        { path: "about", element: <About /> },
-        { path: "contact", element: <Contact /> },
-        { path: "*", element: <NotFound /> },
-      ],
-    },
-  ],
-  {
-    future: {
-      v7_relativeSplatPath: true,
-    },
-  },
-);
-
-=======
->>>>>>> f1190df185c37d8d1848c04cb879bb8663c24cdd
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <LanguageProvider>
@@ -249,7 +151,6 @@ const App = () => (
                           <Route path="/family-planning/nutrition/foods-to-avoid" element={<FPFoodsToAvoidPage />} />
                           <Route path="/family-planning/care-log" element={<CareLog />} />
 
-<<<<<<< HEAD
                         {/* Menopause phase routes */}
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
                         <Route path="/menopause/dashboard" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenopauseDashboard /></Suspense>} />
@@ -265,16 +166,6 @@ const App = () => (
                         <Route path="/menopause/goals" element={<DailyGoals />} />
                         <Route path="/menopause/care" element={<MenopauseCareEssentials />} />
                         <Route path="/menopause/fun" element={<FunActivity />} />
-=======
-                          {/* Menopause phase routes */}
-                          <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
-                          <Route path="/menopause/calendar" element={<MenopauseCalendar />} />
-                          <Route path="/menopause/analytics" element={<SymptomAnalytics />} />
-                          <Route path="/menopause/wellness" element={<WellnessPlan />} />
-                          <Route path="/menopause/goals" element={<DailyGoals />} />
-                          <Route path="/menopause/care" element={<MenopauseCareEssentials />} />
-                          <Route path="/menopause/fun" element={<FunActivity />} />
->>>>>>> f1190df185c37d8d1848c04cb879bb8663c24cdd
 
                           <Route path="/about" element={<About />} />
                           <Route path="/contact" element={<Contact />} />

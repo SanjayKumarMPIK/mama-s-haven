@@ -468,21 +468,13 @@ export default function NutritionGuide() {
                   <div className="flex-1"><p className="text-sm font-semibold">Symptoms</p><p className="text-[11px] text-muted-foreground">See patterns</p></div>
                   <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                 </Link>
-<<<<<<< HEAD
                 {!isFP && (
-                  <Link to="/deficiency-insights" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
+                  <Link to="/nutrition-intelligence" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
                     <Sparkles className={`w-5 h-5 ${accent.text}`} />
                     <div className="flex-1"><p className="text-sm font-semibold">Deficiency</p><p className="text-[11px] text-muted-foreground">Full analysis</p></div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
                   </Link>
                 )}
-=======
-                <Link to="/nutrition-intelligence" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
-                  <Sparkles className={`w-5 h-5 ${accent.text}`} />
-                  <div className="flex-1"><p className="text-sm font-semibold">Deficiency</p><p className="text-[11px] text-muted-foreground">Full analysis</p></div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-                </Link>
->>>>>>> f1190df185c37d8d1848c04cb879bb8663c24cdd
                 <Link to="/wellness" className={`flex items-center gap-3 rounded-xl border ${accent.border} ${accent.bg} p-4 hover:shadow-md transition-all active:scale-[0.98] group`}>
                   <ShieldCheck className={`w-5 h-5 ${accent.text}`} />
                   <div className="flex-1"><p className="text-sm font-semibold">Wellness</p><p className="text-[11px] text-muted-foreground">Full overview</p></div>

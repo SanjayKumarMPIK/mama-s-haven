@@ -13,7 +13,7 @@ import FitnessCalculatorInline from "@/components/nutrition/FitnessCalculatorInl
 import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
 import AffirmationBanner from "@/components/nutrition/AffirmationBanner";
 import AccordionSection from "@/components/nutrition/AccordionSection";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import {
   Apple, Calendar, ChevronRight, ArrowRight, Activity,
   Sparkles, ShieldCheck, Search, ClipboardList, Scale, Salad
@@ -103,6 +103,12 @@ export default function NutritionGuide() {
   }, [analyzeSymptom]);
 
   const exploreLinks = EXPLORE_LINKS[phase] ?? [];
+
+  // Redirect puberty phase to the isolated puberty nutrition guide
+  // We do this after all hooks to prevent Rules of Hooks violations
+  if (phase === "puberty") {
+    return <Navigate to="/puberty/nutrition-guide" replace />;
+  }
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>

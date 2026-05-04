@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Apple, Dumbbell, Moon, Leaf } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ExerciseTab from "@/components/maternity/activities/ExerciseTab";
 
 // ─── Breathing Animation Component ──────────────────────────────────────────
 
@@ -94,68 +95,10 @@ function BreathingExercise() {
   );
 }
 
-// ─── Exercise Day Card ───────────────────────────────────────────────────────
-
-type ExerciseDay = { day: string; activity: string; duration: string; intensity: "low" | "moderate" | "high"; goal: string; emoji: string };
-type SleepTip = { title: string; description: string; priority: "high" | "medium" };
-
-// ─── Exercise Day Card ───────────────────────────────────────────────────────
-
-function ExerciseDayCard({ exercise, isToday }: { exercise: ExerciseDay; isToday: boolean }) {
-  return (
-    <div className={cn(
-      "flex items-center gap-3 p-3 rounded-xl border transition-all",
-      isToday ? "border-purple-300 bg-purple-50 shadow-sm" : "border-slate-200 bg-white"
-    )}>
-      <span className="text-2xl">{exercise.emoji}</span>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-semibold text-slate-800">{exercise.day}</p>
-          {isToday && <span className="text-[10px] px-2 py-0.5 bg-purple-200 text-purple-800 rounded-full font-bold">TODAY</span>}
-        </div>
-        <p className="text-xs text-slate-600">{exercise.activity} · {exercise.duration}</p>
-        <p className="text-[11px] text-slate-500">Intensity: {exercise.intensity} · Goal: {exercise.goal}</p>
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function MaternityWellnessPlan() {
   const [activeTab, setActiveTab] = useState<"food" | "exercise" | "sleep">("food");
-
-  const exerciseData = useMemo(() => {
-    const plan: ExerciseDay[] = [
-      { day: "Monday", activity: "Prenatal Yoga", duration: "25 min", intensity: "low", goal: "Flexibility & Breath", emoji: "🧘" },
-      { day: "Tuesday", activity: "Brisk Walk", duration: "30 min", intensity: "moderate", goal: "Cardio & Circulation", emoji: "🚶" },
-      { day: "Wednesday", activity: "Pelvic Floor Exercises", duration: "15 min", intensity: "low", goal: "Strength", emoji: "💪" },
-      { day: "Thursday", activity: "Swimming / Walk", duration: "30 min", intensity: "moderate", goal: "Low-impact Cardio", emoji: "🏊" },
-      { day: "Friday", activity: "Prenatal Stretching", duration: "20 min", intensity: "low", goal: "Relieve back pain", emoji: "🤸" },
-      { day: "Saturday", activity: "Nature Walk", duration: "40 min", intensity: "moderate", goal: "Mood & Stamina", emoji: "🌳" },
-      { day: "Sunday", activity: "Rest & Meditation", duration: "20 min", intensity: "low", goal: "Recovery", emoji: "🧘" },
-    ];
-    const notes: string[] = [
-      "Always listen to your body and rest if you feel fatigued.",
-      "Stay hydrated before, during, and after exercise.",
-      "Avoid exercises that require lying flat on your back after the first trimester.",
-      "Stop immediately if you feel dizzy or experience any pain."
-    ];
-    return { plan, notes, banner: null };
-  }, []);
-
-  const sleepData = useMemo(() => {
-    const tips: SleepTip[] = [
-      { title: "Sleep on your side", description: "The left side is best for blood flow to the baby and your kidneys.", priority: "high" },
-      { title: "Use pregnancy pillows", description: "Place one between your knees and under your belly for support.", priority: "high" },
-      { title: "Hydrate early", description: "Drink most of your water earlier in the day to reduce midnight bathroom trips.", priority: "medium" },
-      { title: "Cool bedroom", description: "Pregnancy increases body temperature; keep the room cool and well-ventilated.", priority: "medium" },
-      { title: "Avoid heartburn triggers", description: "Eat dinner 2-3 hours before bed and avoid spicy/acidic foods late at night.", priority: "medium" },
-    ];
-    return { tips, banner: null };
-  }, []);
-
-  const todayDay = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date().getDay()];
 
   const tabs = [
     { id: "food" as const, label: "Food Chart", icon: Apple, emoji: "🥗" },
@@ -211,13 +154,7 @@ export default function MaternityWellnessPlan() {
       {/* ───── Exercise Tab ───── */}
       {activeTab === "exercise" && (
         <div className="animate-fadeIn space-y-5">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center flex flex-col items-center justify-center min-h-[300px]">
-            <div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center mb-4">
-              <Dumbbell className="w-8 h-8 text-purple-400" />
-            </div>
-            <h2 className="text-lg font-bold text-slate-700 mb-2">Exercise Guidance</h2>
-            <p className="text-sm text-slate-500">Exercise recommendations will appear here soon.</p>
-          </div>
+          <ExerciseTab />
         </div>
       )}
 

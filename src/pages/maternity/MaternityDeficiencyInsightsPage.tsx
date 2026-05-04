@@ -3,7 +3,6 @@ import { ArrowLeft } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import MaternityWellnessPlan from "./components/MaternityWellnessPlan";
-import MaternityFunActivities from "./components/MaternityFunActivities";
 
 export default function MaternityDeficiencyInsightsPage() {
   return (

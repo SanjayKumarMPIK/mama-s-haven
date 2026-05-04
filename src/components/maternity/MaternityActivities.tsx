@@ -9,6 +9,10 @@ export interface ActivityItem {
   duration: string;
   stages: string[];
   themes: string[];
+  /** Optional — defaults supplied in scheduler utils when missing */
+  safetyTip?: string;
+  description?: string;
+  icon?: string;
 }
 
 export const maternityActivitiesData: ActivityItem[] = [
@@ -568,5 +572,189 @@ export const maternityActivitiesData: ActivityItem[] = [
     duration: '15 min',
     stages: ['Postpartum'],
     themes: ['Pelvic Health Week']
+  },
+
+  // Posture Improvement — fills theme rotation gaps
+  {
+    id: 'seated-posture-reset-t1',
+    activity: 'Seated Posture Reset',
+    category: 'Stretching & Mobility',
+    intensity: 'Very Low',
+    benefit: 'Stacks ears over shoulders for lighter neck load',
+    targetArea: 'Neck, Upper Back',
+    caloriesBurned: '10–20 kcal',
+    duration: '8 min',
+    stages: ['Trimester 1'],
+    themes: ['Posture Improvement']
+  },
+  {
+    id: 'wall-angels-gentle-t1',
+    activity: 'Wall Angels (Gentle)',
+    category: 'Stretching & Mobility',
+    intensity: 'Low',
+    benefit: 'Opens chest without aggressive extension',
+    targetArea: 'Shoulders, Thoracic Spine',
+    caloriesBurned: '20–35 kcal',
+    duration: '10 min',
+    stages: ['Trimester 1'],
+    themes: ['Posture Improvement']
+  },
+  {
+    id: 'pregnancy-posture-stack-t2',
+    activity: 'Pregnancy Posture Stack',
+    category: 'Stretching & Mobility',
+    intensity: 'Low',
+    benefit: 'Practices neutral ribs over pelvis while standing',
+    targetArea: 'Core, Pelvis',
+    caloriesBurned: '25–40 kcal',
+    duration: '12 min',
+    stages: ['Trimester 2'],
+    themes: ['Posture Improvement']
+  },
+  {
+    id: 'wall-hip-hinge-t2',
+    activity: 'Wall Hip Hinge Drill',
+    category: 'Strength & Stability',
+    intensity: 'Low',
+    benefit: 'Trains hinge pattern with support for daily bending',
+    targetArea: 'Hips, Hamstrings',
+    caloriesBurned: '30–50 kcal',
+    duration: '12 min',
+    stages: ['Trimester 2'],
+    themes: ['Posture Improvement']
+  },
+  {
+    id: 'side-lying-alignment-t3',
+    activity: 'Side-Lying Alignment Reset',
+    category: 'Stretching & Mobility',
+    intensity: 'Low',
+    benefit: 'Unloads the lower back in a supported position',
+    targetArea: 'Spine, Hips',
+    caloriesBurned: '20–35 kcal',
+    duration: '12 min',
+    stages: ['Trimester 3'],
+    themes: ['Posture Improvement']
+  },
+  {
+    id: 'supported-thoracic-lift-t3',
+    activity: 'Supported Thoracic Extension',
+    category: 'Stretching & Mobility',
+    intensity: 'Low',
+    benefit: 'Eases upper-back stiffness from forward posture',
+    targetArea: 'Upper Back, Chest',
+    caloriesBurned: '25–40 kcal',
+    duration: '10 min',
+    stages: ['Trimester 3'],
+    themes: ['Posture Improvement']
+  },
+  {
+    id: 'in-bed-shoulder-slide-prem',
+    activity: 'In-Bed Shoulder Blade Slides',
+    category: 'Recovery Activities',
+    intensity: 'Very Low',
+    benefit: 'Maintains scapular glide with minimal exertion',
+    targetArea: 'Shoulders, Upper Back',
+    caloriesBurned: '8–15 kcal',
+    duration: '6 min',
+    stages: ['Premature Stage'],
+    themes: ['Posture Improvement']
+  },
+  {
+    id: 'nursing-neutral-spine-pp',
+    activity: 'Nursing-Neutral Spine Reset',
+    category: 'Stretching & Mobility',
+    intensity: 'Low',
+    benefit: 'Supports feeding posture without slumped shoulders',
+    targetArea: 'Neck, Upper Back',
+    caloriesBurned: '15–28 kcal',
+    duration: '10 min',
+    stages: ['Postpartum'],
+    themes: ['Posture Improvement']
+  },
+
+  // Energy Boost Week
+  {
+    id: 'gentle-vitality-walk-t1',
+    activity: 'Gentle Vitality Walk',
+    category: 'Walking & Cardio',
+    intensity: 'Low',
+    benefit: 'Brightens energy without pushing pace',
+    targetArea: 'Legs, Heart',
+    caloriesBurned: '70–100 kcal',
+    duration: '18 min',
+    stages: ['Trimester 1'],
+    themes: ['Energy Boost Week']
+  },
+  {
+    id: 'mood-lifting-march-t2',
+    activity: 'Mood-Lifting March in Place',
+    category: 'Walking & Cardio',
+    intensity: 'Moderate',
+    benefit: 'Short bursts to lift mood and circulation',
+    targetArea: 'Legs, Core',
+    caloriesBurned: '60–95 kcal',
+    duration: '12 min',
+    stages: ['Trimester 2'],
+    themes: ['Energy Boost Week']
+  },
+  {
+    id: 'light-side-steps-t2',
+    activity: 'Light Side Steps',
+    category: 'Walking & Cardio',
+    intensity: 'Low',
+    benefit: 'Adds variety with lateral stability practice',
+    targetArea: 'Hips, Legs',
+    caloriesBurned: '40–65 kcal',
+    duration: '12 min',
+    stages: ['Trimester 2'],
+    themes: ['Energy Boost Week']
+  },
+  {
+    id: 'short-stamina-walk-t3',
+    activity: 'Short Stamina Stride Walk',
+    category: 'Walking & Cardio',
+    intensity: 'Moderate',
+    benefit: 'Builds sustainable stamina for late pregnancy',
+    targetArea: 'Legs, Heart',
+    caloriesBurned: '90–130 kcal',
+    duration: '22 min',
+    stages: ['Trimester 3'],
+    themes: ['Energy Boost Week']
+  },
+  {
+    id: 'standing-hip-circles-energy-t3',
+    activity: 'Standing Hip Circles',
+    category: 'Stretching & Mobility',
+    intensity: 'Low',
+    benefit: 'Loosens hips for a quick energy reset',
+    targetArea: 'Hips, Pelvis',
+    caloriesBurned: '25–40 kcal',
+    duration: '10 min',
+    stages: ['Trimester 3'],
+    themes: ['Energy Boost Week']
+  },
+  {
+    id: 'fresh-air-recovery-stride-pp',
+    activity: 'Fresh Air Recovery Stride',
+    category: 'Walking & Cardio',
+    intensity: 'Low',
+    benefit: 'Gentle outdoor pacing when cleared by your clinician',
+    targetArea: 'Legs, Mood',
+    caloriesBurned: '75–115 kcal',
+    duration: '18 min',
+    stages: ['Postpartum'],
+    themes: ['Energy Boost Week']
+  },
+  {
+    id: 'micro-energy-walk-prem',
+    activity: 'Micro-Energy Indoor Walk',
+    category: 'Walking & Cardio',
+    intensity: 'Very Low',
+    benefit: 'Short steps to lift alertness during recovery',
+    targetArea: 'Legs, Circulation',
+    caloriesBurned: '25–45 kcal',
+    duration: '8 min',
+    stages: ['Premature Stage'],
+    themes: ['Energy Boost Week']
   }
 ];

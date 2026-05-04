@@ -7,8 +7,8 @@ import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import {
   resolveMaternityLifecycle,
   getMaternityDashboardRoute,
-  type MaternityProfile,
 } from "@/lib/maternityLifecycleResolver";
+import { toMaternityLifecycleProfile } from "@/lib/maternalPhaseResolver";
 
 interface MaternityRouteGuardProps {
   expectedState: "pregnancy" | "postpartum" | "premature";
@@ -23,23 +23,11 @@ export default function MaternityRouteGuard({
   expectedState,
   children,
 }: MaternityRouteGuardProps) {
-  const { profile, activeEDD, mode } = usePregnancyProfile();
+  const { profile, activeEDD } = usePregnancyProfile();
 
-  // Build profile object for resolver from hook data
-  const maternityProfile: MaternityProfile = {
-    activeEDD: activeEDD || profile?.calculatedEDD || profile?.userEDD,
-    lmp: profile?.lmp,
-    delivery: profile?.delivery
-      ? {
-          isDelivered: profile.delivery.isDelivered,
-          birthDate: profile.delivery.birthDate,
-          weeksAtBirth: profile.delivery.weeksAtBirth,
-        }
-      : undefined,
-    pregnancyActive: mode === "pregnancy" && !profile?.delivery?.isDelivered,
-  };
+  const maternityProfile = toMaternityLifecycleProfile(profile, activeEDD);
 
-  // Resolve current lifecycle state
+  // Resolve current lifecycle state (must not depend on `mode` from the hook — circular)
   const lifecycleState = resolveMaternityLifecycle(maternityProfile);
 
   // If user is not in the expected state, redirect to correct dashboard

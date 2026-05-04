@@ -1,5 +1,10 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getCurrentWeek, getDaysRemaining, getTrimester, getProgressPercentage } from "@/lib/pregnancyData";
+import { resolveMaternityLifecycle } from "@/lib/maternityLifecycleResolver";
+import {
+  toMaternityLifecycleProfile,
+  getCompletedWeeksSince,
+} from "@/lib/maternalPhaseResolver";
 import type { Region } from "@/lib/nutritionData";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -204,6 +209,10 @@ interface PregnancyProfileContextType {
   /** The effective EDD used for all calculations. */
   activeEDD: string;
   currentWeek: number;
+  /** Gestational week 1–40 from EDD (for reminders, tests, pregnancy UI). */
+  gestationalWeek: number;
+  /** Weeks since birth, or since due date if post-dates without delivery logged; null during pregnancy. */
+  postpartumWeek: number | null;
   daysLeft: number;
   trimester: number;
   progress: number;
@@ -234,6 +243,8 @@ const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
   clearProfile: () => {},
   activeEDD: "",
   currentWeek: 1,
+  gestationalWeek: 1,
+  postpartumWeek: null,
   daysLeft: 280,
   trimester: 1,
   progress: 0,
@@ -340,18 +351,46 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     setProfile({ ...EMPTY });
   }, []);
 
-  // Derived pregnancy metrics — all from activeEDD
-  const currentWeek = activeEDD ? getCurrentWeek(activeEDD) : 1;
-  const daysLeft = activeEDD ? getDaysRemaining(activeEDD) : 280;
-  const trimester = getTrimester(currentWeek);
-  const progress = getProgressPercentage(currentWeek);
+  const lifecycleProfile = useMemo(
+    () => toMaternityLifecycleProfile(profile, activeEDD),
+    [profile, activeEDD],
+  );
 
-  // Derived mode
+  const lifecycleState = useMemo(
+    () => resolveMaternityLifecycle(lifecycleProfile),
+    [lifecycleProfile],
+  );
+
+  // Derived mode — aligned with dashboard / route guard (EDD passed ⇒ postpartum even if delivery not logged)
   const mode: MaternityMode = useMemo(() => {
-    if (!profile.delivery.isDelivered) return "pregnancy";
-    if (profile.delivery.weeksAtBirth > 0 && profile.delivery.weeksAtBirth < 37) return "premature";
-    return "postpartum";
-  }, [profile.delivery]);
+    if (lifecycleState === "premature") return "premature";
+    if (lifecycleState === "postpartum") return "postpartum";
+    return "pregnancy";
+  }, [lifecycleState]);
+
+  const gestationalWeek = activeEDD ? getCurrentWeek(activeEDD) : 1;
+
+  const postpartumWeek = useMemo(() => {
+    if (lifecycleState !== "postpartum" && lifecycleState !== "premature") return null;
+    if (profile.delivery?.isDelivered && profile.delivery.birthDate) {
+      return getCompletedWeeksSince(profile.delivery.birthDate);
+    }
+    if (activeEDD) return getCompletedWeeksSince(activeEDD);
+    return null;
+  }, [lifecycleState, profile.delivery, activeEDD]);
+
+  const currentWeek = gestationalWeek;
+
+  const daysLeft = useMemo(() => {
+    if (lifecycleState !== "pregnancy" || !activeEDD) {
+      return activeEDD ? 0 : 280;
+    }
+    return getDaysRemaining(activeEDD);
+  }, [lifecycleState, activeEDD]);
+
+  const trimester = getTrimester(gestationalWeek);
+  const progress =
+    lifecycleState === "pregnancy" ? getProgressPercentage(gestationalWeek) : 100;
 
   const value: PregnancyProfileContextType = {
     profile,
@@ -364,6 +403,8 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     clearProfile,
     activeEDD,
     currentWeek,
+    gestationalWeek,
+    postpartumWeek,
     daysLeft,
     trimester,
     progress,

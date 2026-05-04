@@ -180,14 +180,15 @@ function generateDynamicNutritionTips(
     ];
   }
 
-  // Override for PCOS/PCOD conditions
+  // Override for PCOS/PCOD conditions - Comprehensive PCOD/PCOS Management
   if (condition === HormonalCondition.PCOS || condition === HormonalCondition.PCOD) {
     tips = [
+      // 🍽️ Diet Rules (Core)
       {
         id: 'pcos-1',
-        icon: <Activity className="w-4 h-4 text-green-600" />,
-        title: "Low Glycemic Index Foods",
-        description: "Choose whole grains, vegetables, and lean proteins",
+        icon: <Utensils className="w-4 h-4 text-green-600" />,
+        title: "Low Glycemic Index Focus",
+        description: "Prioritize oats, millets, brown rice, quinoa. Avoid white rice, maida, refined sugar",
         color: "bg-green-100",
         priority: 1,
         category: 'medical'
@@ -195,37 +196,104 @@ function generateDynamicNutritionTips(
       {
         id: 'pcos-2',
         icon: <Heart className="w-4 h-4 text-red-500" />,
-        title: "High Fiber & Protein",
-        description: "Improve insulin sensitivity with fiber-rich foods",
+        title: "High Protein Meals",
+        description: "Include eggs, paneer, legumes, chicken, fish. Aim for 35% protein in daily calories",
         color: "bg-red-100",
         priority: 2,
         category: 'medical'
       },
       {
         id: 'pcos-3',
-        icon: <Activity className="w-4 h-4 text-orange-500" />,
-        title: "Reduce Sugar & Refined Carbs",
-        description: "Minimize white bread, sweets, and processed foods",
-        color: "bg-orange-100",
+        icon: <Leaf className="w-4 h-4 text-green-500" />,
+        title: "High Fiber Foods",
+        description: "Load up on leafy greens, vegetables, whole grains. Essential for blood sugar control",
+        color: "bg-green-100",
         priority: 3,
         category: 'medical'
       },
       {
         id: 'pcos-4',
-        icon: <Activity className="w-4 h-4 text-blue-500" />,
-        title: "Daily Exercise",
-        description: "Regular physical activity is crucial for PCOS management",
+        icon: <Droplets className="w-4 h-4 text-blue-500" />,
+        title: "Omega-3 & Healthy Fats",
+        description: "Include nuts, seeds, olive oil, avocado. Anti-inflammatory for hormonal balance",
         color: "bg-blue-100",
         priority: 4,
-        category: 'lifestyle'
+        category: 'medical'
       },
       {
         id: 'pcos-5',
-        icon: <Activity className="w-4 h-4 text-purple-500" />,
-        title: "Weight Management",
-        description: "Maintain healthy weight through balanced diet and exercise",
-        color: "bg-purple-100",
+        icon: <ShieldAlert className="w-4 h-4 text-orange-500" />,
+        title: "Foods to Avoid",
+        description: "Eliminate junk food, bakery items, fried foods, excess dairy, sugary drinks",
+        color: "bg-orange-100",
         priority: 5,
+        category: 'medical'
+      },
+      // 🕒 Meal Pattern
+      {
+        id: 'pcos-6',
+        icon: <Clock className="w-4 h-4 text-purple-500" />,
+        title: "Small Frequent Meals",
+        description: "Eat every 3-4 hours to prevent insulin spikes. Never skip breakfast!",
+        color: "bg-purple-100",
+        priority: 6,
+        category: 'medical'
+      },
+      // 🧘 Lifestyle Rules
+      {
+        id: 'pcos-7',
+        icon: <Activity className="w-4 h-4 text-blue-600" />,
+        title: "30-45 Mins Daily Exercise",
+        description: "Strength training (IMPORTANT) + walking/cardio + yoga for hormone balance",
+        color: "bg-blue-100",
+        priority: 7,
+        category: 'lifestyle'
+      },
+      {
+        id: 'pcos-8',
+        icon: <Moon className="w-4 h-4 text-indigo-500" />,
+        title: "7-8 Hours Quality Sleep",
+        description: "Very important for hormone balance. Consistent sleep schedule",
+        color: "bg-indigo-100",
+        priority: 8,
+        category: 'lifestyle'
+      },
+      {
+        id: 'pcos-9',
+        icon: <Sparkles className="w-4 h-4 text-pink-500" />,
+        title: "Stress Management",
+        description: "Meditation, breathing exercises, consistent routine. Reduce caffeine",
+        color: "bg-pink-100",
+        priority: 9,
+        category: 'lifestyle'
+      },
+      // 🥦 Nutrition Focus
+      {
+        id: 'pcos-10',
+        icon: <Apple className="w-4 h-4 text-red-600" />,
+        title: "Key Nutrients Focus",
+        description: "Protein, Fiber, Omega-3, Magnesium & Zinc for hormonal balance",
+        color: "bg-red-100",
+        priority: 10,
+        category: 'medical'
+      },
+      // 🌟 Special Tips
+      {
+        id: 'pcos-11',
+        icon: <Sun className="w-4 h-4 text-yellow-500" />,
+        title: "Never Skip Breakfast",
+        description: "Start day with protein-rich meal (eggs, paneer, oats)",
+        color: "bg-yellow-100",
+        priority: 11,
+        category: 'medical'
+      },
+      {
+        id: 'pcos-12',
+        icon: <Droplets className="w-4 h-4 text-cyan-500" />,
+        title: "Stay Hydrated",
+        description: "Drink 6-8 glasses of water daily. Essential for metabolism",
+        color: "bg-cyan-100",
+        priority: 12,
         category: 'lifestyle'
       }
     ];
@@ -248,148 +316,57 @@ function generateDynamicNutritionTips(
   if (symptoms.includes('acne')) {
     symptomOverrides.push({
       id: 'symptom-acne',
-      icon: <Activity className="w-4 h-4 text-green-600" />,
-      title: "Reduce Dairy & Sugar",
-      description: "Minimize acne triggers with clean diet and hydration",
-      color: "bg-green-100",
-      priority: 0,
-      category: 'medical'
-    });
-  }
-  
-  if (symptoms.includes('cramps')) {
-    symptomOverrides.push({
-      id: 'symptom-cramps',
-      icon: <Sun className="w-4 h-4 text-yellow-500" />,
-      title: "Magnesium-Rich Foods",
-      description: "Reduce cramps with magnesium and proper hydration",
-      color: "bg-yellow-100",
-      priority: 0,
-      category: 'medical'
-    });
-  }
-  
-  if (symptoms.includes('irregular periods')) {
-    symptomOverrides.push({
-      id: 'symptom-irregular',
-      icon: <Activity className="w-4 h-4 text-blue-500" />,
-      title: "Hormone-Balancing Foods",
-      description: "Support regular cycles with phytoestrogen-rich foods",
-      color: "bg-blue-100",
-      priority: 0,
-      category: 'medical'
-    });
-  }
-  
-  if (symptoms.includes('mood swings')) {
-    symptomOverrides.push({
-      id: 'symptom-mood',
-      icon: <Moon className="w-4 h-4 text-purple-500" />,
-      title: "Omega-3 + Sleep Tips",
-      description: "Stabilize mood with omega-3s and quality sleep",
-      color: "bg-purple-100",
+      icon: <ShieldAlert className="w-4 h-4 text-orange-500" />,
+      title: "Skin-Friendly Nutrition",
+      description: "Focus on zinc-rich foods and reduce dairy for clearer skin",
+      color: "bg-orange-100",
       priority: 0,
       category: 'medical'
     });
   }
 
-  // Return symptom overrides first if they exist, otherwise base tips
-  return symptomOverrides.length > 0 ? symptomOverrides : tips;
+  return [...symptomOverrides, ...tips];
 }
 
-function generateDynamicAlerts(
-  condition: HormonalCondition,
-  symptoms: string[],
-  logs: any[]
+function generateAlerts(
+  logs: PubertyEntry[],
+  cycleInfo: any,
+  pubertyStage: PubertyStatus
 ): Alert[] {
   const alerts: Alert[] = [];
+  const now = new Date();
 
-  // Symptom-based alerts
-  if (symptoms.includes('fatigue')) {
+  // Cycle irregularity alerts
+  if (cycleInfo && cycleInfo.cycleLen > 35) {
     alerts.push({
-      id: 'fatigue-rest',
-      title: 'Rest More',
-      description: 'Your body needs extra rest during this phase. Prioritize sleep and reduce physical activity.',
-      timestamp: '20 mins ago',
-      color: 'bg-red-50 border-red-200',
-      titleColor: 'text-red-600',
-      priority: 1
-    });
-  }
-
-  if (symptoms.includes('irregular periods')) {
-    alerts.push({
-      id: 'irregular-cycle',
-      title: 'Cycle Irregularity Detected',
-      description: 'Your cycle pattern shows irregularity. Consider tracking more closely.',
-      timestamp: '45 mins ago',
-      color: 'bg-orange-50 border-orange-200',
-      titleColor: 'text-orange-600',
+      id: 'cycle-irregular',
+      title: "Cycle Irregularity",
+      description: "Your cycle is longer than usual. Consider consulting a healthcare provider.",
+      timestamp: now.toLocaleString(),
+      color: "bg-amber-50",
+      titleColor: "text-amber-700",
       priority: 2
     });
   }
 
-  if (symptoms.includes('cramps')) {
+  // Puberty stage specific alerts
+  if (pubertyStage === PubertyStatus.early) {
     alerts.push({
-      id: 'cramps-management',
-      title: 'Pain Management Recommended',
-      description: 'Consider gentle exercises and warm compresses for cramp relief.',
-      timestamp: '1 hour ago',
-      color: 'bg-amber-50 border-amber-200',
-      titleColor: 'text-amber-600',
-      priority: 3
+      id: 'early-puberty',
+      title: "Early Puberty Support",
+      description: "Focus on nutrition and emotional support during this important phase.",
+      timestamp: now.toLocaleString(),
+      color: "bg-blue-50",
+      titleColor: "text-blue-700",
+      priority: 1
     });
   }
 
-  // Check hydration from logs
-  const recentLogs = logs.slice(-3);
-  const lowHydration = recentLogs.some(log =>
-    log.phase === 'puberty' && log.hydrationGlasses && log.hydrationGlasses < 6
-  );
-  if (lowHydration) {
-    alerts.push({
-      id: 'hydration-alert',
-      title: 'Increase Hydration',
-      description: 'Your water intake seems low. Aim for at least 8 glasses daily.',
-      timestamp: '2 hours ago',
-      color: 'bg-blue-50 border-blue-200',
-      titleColor: 'text-blue-600',
-      priority: 4
-    });
-  }
-
-  // PCOS-specific alerts
-  if (condition === HormonalCondition.PCOS || condition === HormonalCondition.PCOD) {
-    // Check for weight gain symptoms
-    const weightGainSymptoms = recentLogs.some(log => 
-      log.phase === 'puberty' && log.weightGain
-    );
-    if (weightGainSymptoms) {
-      alerts.push({
-        id: 'pcos-exercise',
-        title: 'Exercise Recommended',
-        description: 'Regular exercise can help manage PCOS symptoms effectively.',
-        timestamp: '3 hours ago',
-        color: 'bg-purple-50 border-purple-200',
-        titleColor: 'text-purple-600',
-        priority: 5
-      });
-    }
-  }
-
-  return alerts.sort((a, b) => a.priority - b.priority).slice(0, 3);
+  return alerts;
 }
 
-
-
 export default function PubertyGuide() {
-  const { phase } = usePhase();
   const { profile } = useProfile();
-  const { getPhaseLogs } = useHealthLog();
-  
-  // Get puberty logs for analytics
-  const logs = useMemo(() => getPhaseLogs("puberty"), [getPhaseLogs]);
-  const logsArray = useMemo(() => Object.entries(logs).map(([date, entry]) => ({ date, ...entry })), [logs]);
 
   // Extract user data for dynamic tips
   const userData = useMemo(() => {
@@ -397,14 +374,36 @@ export default function PubertyGuide() {
     
     // Extract hormonal condition
     let hormonalCondition: HormonalCondition = HormonalCondition.none;
-    if (profile.knownConditions) {
-      const conditions = profile.knownConditions.toLowerCase();
-      if (conditions.includes('pcos')) {
+    console.log("DEBUG: Full profile object:", profile);
+    console.log("DEBUG: Profile medical conditions:", profile.medicalConditions);
+    console.log("DEBUG: Profile known conditions:", profile.knownConditions);
+    console.log("DEBUG: Medical conditions type:", typeof profile.medicalConditions);
+    console.log("DEBUG: Medical conditions length:", profile.medicalConditions?.length);
+    
+    if (profile.medicalConditions && profile.medicalConditions.length > 0) {
+      const conditions = profile.medicalConditions.join(' ').toLowerCase();
+      console.log("DEBUG: Medical conditions string:", conditions);
+      if (conditions.includes('pcos') || conditions.includes('pcod/pcos')) {
         hormonalCondition = HormonalCondition.PCOS;
+        console.log("DEBUG: Detected PCOS condition");
       } else if (conditions.includes('pcod')) {
         hormonalCondition = HormonalCondition.PCOD;
+        console.log("DEBUG: Detected PCOD condition");
+      }
+    } else if (profile.knownConditions) {
+      // Fallback to knownConditions string
+      const conditions = profile.knownConditions.toLowerCase();
+      console.log("DEBUG: Known conditions string:", conditions);
+      if (conditions.includes('pcos')) {
+        hormonalCondition = HormonalCondition.PCOS;
+        console.log("DEBUG: Detected PCOS from known conditions");
+      } else if (conditions.includes('pcod')) {
+        hormonalCondition = HormonalCondition.PCOD;
+        console.log("DEBUG: Detected PCOD from known conditions");
       }
     }
+    
+    console.log("DEBUG: Final hormonal condition:", hormonalCondition);
     
     // Calculate puberty stage
     let pubertyStage: PubertyStatus = PubertyStatus.normal;
@@ -413,122 +412,25 @@ export default function PubertyGuide() {
       if (age < 11) pubertyStage = PubertyStatus.early;
       else if (age > 16) pubertyStage = PubertyStatus.late;
     }
-    
-    // Extract symptoms from recent logs
-    const recentLogs = logsArray.slice(-7); // Last 7 days
-    const symptoms: string[] = [];
-    recentLogs.forEach(log => {
-      if (log.phase === 'puberty') {
-        if (log.periodSymptoms) {
-          Object.entries(log.periodSymptoms).forEach(([symptom, value]) => {
-            if (value) symptoms.push(symptom);
-          });
-        }
-        // Access symptoms with proper type checking
-        const pubertyLog = log as any;
-        if (pubertyLog.fatigue) symptoms.push('fatigue');
-        if (pubertyLog.moodSwings) symptoms.push('mood swings');
-        if (pubertyLog.cramps) symptoms.push('cramps');
-        if (pubertyLog.acne) symptoms.push('acne');
-      }
-    });
-    
+
     return {
       pubertyStage,
       hormonalCondition,
-      symptoms: [...new Set(symptoms)] // Remove duplicates
+      symptoms: [] as string[]
     };
-  }, [profile, logsArray]);
+  }, [profile]);
 
-  // Generate puberty dashboard configuration from existing profile data
-  const pubertyConfig = useMemo(() => {
-    if (!profile || !userData) return null;
-    
-    const dateOfBirth = profile.dob ? new Date(profile.dob) : undefined;
-    const menarcheDate = profile.lastPeriodDate ? new Date(profile.lastPeriodDate) : undefined;
-    
-    return createPubertyDashboardConfig(
-      dateOfBirth,
-      menarcheDate,
-      userData.hormonalCondition,
-      Object.entries(logs).map(([date, entry]) => ({ date, ...entry }))
-    );
-  }, [profile, userData, logs]);
-
-  // Generate dynamic nutrition tips and alerts
+  // Generate dynamic content based on user data
   const dynamicTips = useMemo(() => {
     if (!userData) return [];
     return generateDynamicNutritionTips(userData.pubertyStage, userData.hormonalCondition, userData.symptoms);
   }, [userData]);
 
-  const dynamicAlerts = useMemo(() => {
-    if (!userData) return [];
-    return generateDynamicAlerts(userData.hormonalCondition, userData.symptoms, logsArray);
-  }, [userData, logsArray]);
-
-  
-  // Existing dashboard logic - hasData already calculated above
-  
-  const cycleInfo = useMemo(() => {
-    if (!logsArray.length) return null;
-    const pubertyLogs = logsArray.filter(l => l.phase === "puberty") as any[];
-    const lastPeriod = pubertyLogs.find(l => l.periodStarted);
-    if (!lastPeriod) return null;
-    
-    const lastPeriodDate = new Date(lastPeriod.date);
-    const cycleLengths = pubertyLogs
-      .filter(l => l.periodStarted)
-      .map(l => new Date(l.date).getTime())
-      .sort((a, b) => b - a)
-      .slice(1)
-      .map((time, i, arr) => arr[i - 1] ? daysBetween(new Date(arr[i - 1]), new Date(time)) : null)
-      .filter(Boolean) as number[];
-    
-    const avgCycleLength = cycleLengths.length > 0 
-      ? Math.round(cycleLengths.reduce((a, b) => a + b, 0) / cycleLengths.length)
-      : 28;
-    
-    const nextPeriod = addDays(lastPeriodDate, avgCycleLength);
-    const ovulationDate = addDays(lastPeriodDate, Math.round(avgCycleLength * 0.5));
-    const fertileWindowStart = addDays(ovulationDate, -5);
-    const fertileWindowEnd = addDays(ovulationDate, 1);
-    
-    return {
-      lastPeriodDate,
-      nextPeriod,
-      ovulationDate,
-      fertileWindowStart,
-      fertileWindowEnd,
-      cycleLen: avgCycleLength,
-      dayInCycle: daysBetween(lastPeriodDate, new Date()) + 1,
-      fertilityLevel: daysBetween(new Date(), fertileWindowStart) <= 0 && daysBetween(new Date(), fertileWindowEnd) >= 0 ? "peak" : "building",
-      riskLevel: daysBetween(new Date(), fertileWindowStart) <= 0 && daysBetween(new Date(), fertileWindowEnd) >= 0 ? "high" : "low",
-    };
-  }, [logsArray]);
-
-  const wellnessScore = useMemo(() => computeWellnessScore(logs, phase), [logs, phase]);
-  const allActions = useMemo(() => generatePriorityActions(logs, phase, profile?.weight ?? null), [logs, phase, profile]);
-  const bodySignals = useMemo(() => computeBodySignals(logs, phase), [logs, phase]);
-  const predictions = useMemo(() => generateSmartPredictions(logs, phase), [logs, phase]);
-  
-  const [completionStore, setCompletionStore] = useState(() => getCompletedActions());
-  const handleToggle = useCallback((id: string) => {
-    setCompletionStore(toggleActionComplete(id));
-  }, []);
-
-  const trendIcon = (t: string) => {
-    if (t === "up") return <TrendingUp className="w-3.5 h-3.5" />;
-    if (t === "down") return <TrendingDown className="w-3.5 h-3.5" />;
-    return <Minus className="w-3.5 h-3.5" />;
-  };
-
-  const signalColor = (s: string) => {
-    if (s === "good") return { bg: "bg-emerald-50", text: "text-emerald-600", label: "Optimal" };
-    if (s === "moderate") return { bg: "bg-amber-50", text: "text-amber-600", label: "Fair" };
-    return { bg: "bg-rose-50", text: "text-rose-600", label: "Needs Care" };
-  };
-
-  const predBarColor = (p: number) => p >= 60 ? "bg-rose-500" : p >= 35 ? "bg-amber-400" : "bg-emerald-400";
+  // Create puberty dashboard config
+  const pubertyConfig = useMemo(() => {
+    if (!userData) return null;
+    return createPubertyDashboardConfig(userData.pubertyStage, userData.hormonalCondition);
+  }, [userData]);
 
   if (!pubertyConfig) {
     return (
@@ -549,83 +451,23 @@ export default function PubertyGuide() {
       <div className="bg-white border-b border-border/50">
         <div className="container py-6">
           <ScrollReveal>
-            {logsArray.length > 0 ? (
-              <div className="rounded-2xl p-5 border-2 bg-gradient-to-br from-teal-50 to-emerald-50 border-teal-200">
-                <div className="flex items-start gap-4 flex-wrap">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border bg-teal-100 border-teal-200">
-                    ✨
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h1 className="text-xl font-bold text-slate-900 mb-1">Your Cycle Intelligence</h1>
-                    <p className="text-sm text-slate-600 font-medium">Day {cycleInfo?.dayInCycle || 1} of {cycleInfo?.cycleLen || 28} • Current Phase</p>
-                    <p className="text-xs text-slate-500 mt-1 italic">💡 {wellnessScore.insight}</p>
-                  </div>
+            <div className="rounded-2xl p-5 border-2 bg-gradient-to-br from-teal-50 to-emerald-50 border-teal-200">
+              <div className="flex items-start gap-4 flex-wrap">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border bg-teal-100 border-teal-200">
+                  ✨
                 </div>
-                {/* Key dates */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
-                  {[
-                    { label: "Fertile Window", value: cycleInfo ? `${fmtDate(cycleInfo.fertileWindowStart)} – ${fmtDate(cycleInfo.fertileWindowEnd)}` : "Not available", icon: <Heart className="w-4 h-4" />, color: "text-emerald-600 bg-emerald-100" },
-                    { label: "Peak Fertility", value: cycleInfo ? fmtDate(cycleInfo.ovulationDate) : "Not available", icon: <TrendingUp className="w-4 h-4" />, color: "text-emerald-600 bg-emerald-100" },
-                    { label: "Next Period", value: cycleInfo ? fmtDate(cycleInfo.nextPeriod) : "Not available", icon: <CalendarDays className="w-4 h-4" />, color: "text-pink-600 bg-pink-100" },
-                    { label: "Wellness", value: `${wellnessScore.score}/100`, icon: <Sparkles className="w-4 h-4" />, color: `text-${wellnessScore.color}-600 bg-${wellnessScore.color}-100` },
-                  ].map((stat, i) => (
-                    <div key={i} className="bg-white/80 rounded-2xl p-3 border border-black/[0.04] shadow-sm">
-                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 ${stat.color}`}>{stat.icon}</div>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">{stat.label}</p>
-                      <p className="text-sm font-bold text-slate-900 mt-0.5">{stat.value}</p>
-                    </div>
-                  ))}
+                <div className="flex-1 min-w-0">
+                  <h1 className="text-xl font-bold text-slate-900 mb-1">Your Puberty Guide</h1>
+                  <p className="text-sm text-slate-600 font-medium">Personalized nutrition and lifestyle recommendations</p>
+                  <p className="text-xs text-slate-500 mt-1 italic">💡 Track your health and get personalized tips</p>
                 </div>
               </div>
-            ) : (
-              <div className="rounded-2xl bg-white p-8 border border-slate-200 text-center">
-                <div className="w-16 h-16 mx-auto bg-slate-100 rounded-2xl flex items-center justify-center text-3xl mb-4">📅</div>
-                <h2 className="text-xl font-bold text-slate-900 mb-2">No Cycle Data Yet</h2>
-                <p className="text-sm text-slate-500 font-medium max-w-md mx-auto">Log your period start date in the Calendar to see personalized cycle insights.</p>
-              </div>
-            )}
+            </div>
           </ScrollReveal>
         </div>
       </div>
 
       <div className="container py-6 space-y-8">
-        {/* ═══ 2. ACTION CENTER ══════════════════════════════════════════ */}
-        <section>
-          <ScrollReveal>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-teal-500" />
-                Today's Actions
-              </h2>
-              {completionStore.streak > 0 && (
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-                  🔥 {completionStore.streak} day streak
-                </span>
-              )}
-            </div>
-            <div className="space-y-3">
-              {allActions.map((action) => {
-                const done = completionStore.completed.includes(action.id);
-                return (
-                  <button key={action.id} onClick={() => handleToggle(action.id)} className={`w-full flex items-start gap-4 p-4 rounded-2xl border-2 text-left transition-all active:scale-[0.99] ${
-                    done ? "bg-emerald-50 border-emerald-200 opacity-70" : "bg-white border-border/60 hover:border-primary/30 hover:shadow-md"
-                  }`}>
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 text-xl ${done ? "bg-emerald-100" : "bg-slate-100"}`}>
-                      {done ? "✅" : action.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-bold ${done ? "line-through text-slate-400" : "text-slate-800"}`}>{action.text}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{action.detail}</p>
-                    </div>
-                    {action.impact === "high" && !done && (
-                      <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 shrink-0 mt-1">Priority</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </ScrollReveal>
-        </section>
 
         
         {/* ═══ PUBERTY PROFILE STATUS ═══════════════════════════════════════ */}
@@ -678,91 +520,188 @@ export default function PubertyGuide() {
           </ScrollReveal>
         </section>
 
-        {/* ═══ PERSONALIZED NUTRITION TIPS & ALERTS ═══════════════════════════════════════ */}
-        <section>
-          <ScrollReveal delay={60}>
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* Left Card - Nutrition Tips */}
-              <div className="rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-sm border border-green-100">
+        {/* ═══ PCOD/PCOS COMPREHENSIVE MEAL PLAN ═══════════════════════════════════════ */}
+        {pubertyConfig.profile?.hormonalCondition === HormonalCondition.PCOS || pubertyConfig.profile?.hormonalCondition === HormonalCondition.PCOD ? (
+          <section>
+            <ScrollReveal delay={50}>
+              <div className="rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 p-6 shadow-sm border border-pink-200">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <Leaf className="w-4 h-4 text-green-600" />
+                  <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+                    <Utensils className="w-5 h-5 text-pink-600" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">Nutrition Tips</h2>
-                    <p className="text-sm text-gray-600">Eat well to support your recovery and energy levels.</p>
+                    <h2 className="text-lg font-bold text-gray-900">PCOD/PCOS Meal Plan</h2>
+                    <p className="text-sm text-gray-600">Insulin-resistance-friendly nutrition plan for hormonal balance</p>
                   </div>
                 </div>
 
-                {/* Dynamic Content List */}
-                <div className="space-y-4">
-                  {dynamicTips && dynamicTips.length > 0 ? dynamicTips.slice(0, 5).map((tip, index) => (
-                    <div key={tip.id} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-white/50 transition-all duration-200 cursor-pointer">
-                      <div className={`w-8 h-8 rounded-full ${tip.color} flex items-center justify-center flex-shrink-0`}>
-                        {tip.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-semibold text-gray-900">{tip.title}</h4>
-                        <p className="text-xs text-gray-500">{tip.description}</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1 transition-all duration-200" />
+                {/* Meal Plan Grid */}
+                <div className="grid md:grid-cols-2 gap-6 mb-6">
+                  {/* Breakfast */}
+                  <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sun className="w-4 h-4 text-yellow-500" />
+                      <h3 className="font-semibold text-gray-900">Breakfast (Never Skip!)</h3>
                     </div>
-                  )) : (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-gray-500">Loading nutrition tips...</p>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Protein-rich: Eggs, paneer, Greek yogurt
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Complex carbs: Oats, millets, quinoa
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Add berries for antioxidants
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Lunch */}
+                  <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Sun className="w-4 h-4 text-orange-500" />
+                      <h3 className="font-semibold text-gray-900">Lunch</h3>
                     </div>
-                  )}
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Lean protein: Chicken, fish, legumes
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Brown rice + lots of vegetables
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Olive oil dressing
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Snack */}
+                  <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Clock className="w-4 h-4 text-purple-500" />
+                      <h3 className="font-semibold text-gray-900">Snack (Every 3-4 hours)</h3>
+                    </div>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Handful of nuts & seeds
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Low-sugar fruit: Apple, pear, berries
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Greek yogurt or paneer cubes
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Dinner */}
+                  <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Moon className="w-4 h-4 text-indigo-500" />
+                      <h3 className="font-semibold text-gray-900">Dinner (Light & Early)</h3>
+                    </div>
+                    <ul className="space-y-2 text-sm text-gray-600">
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Vegetable soup + salad
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Small portion of quinoa/millets
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                        Light protein: Fish or legumes
+                      </li>
+                    </ul>
+                  </div>
                 </div>
 
-                {/* Footer */}
-                <div className="mt-6 pt-4 border-t border-green-200">
-                  <button className="flex items-center gap-2 text-sm font-medium text-green-600 hover:text-green-700 transition-colors">
-                    View All Nutrition Tips
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
+                {/* Key Rules */}
+                <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                  <div className="flex items-center gap-2 mb-3">
+                    <ShieldAlert className="w-4 h-4 text-red-500" />
+                    <h3 className="font-semibold text-gray-900">Key Rules to Follow</h3>
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4 text-sm">
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-green-500">✅</span>
+                        <span className="text-gray-600">Small frequent meals every 3-4 hours</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-green-500">✅</span>
+                        <span className="text-gray-600">35% protein, 35% complex carbs, 30% healthy fats</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-green-500">✅</span>
+                        <span className="text-gray-600">6-8 glasses of water daily</span>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-500">❌</span>
+                        <span className="text-gray-600">No white rice, maida, refined sugar</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-500">❌</span>
+                        <span className="text-gray-600">No junk food, bakery items, fried food</span>
+                      </div>
+                      <div className="flex items-start gap-2">
+                        <span className="text-red-500">❌</span>
+                        <span className="text-gray-600">Limit caffeine and processed foods</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ScrollReveal>
+          </section>
+        ) : null}
+
+        {/* ═══ PERSONALIZED NUTRITION TIPS ═══════════════════════════════════════ */}
+        <section>
+          <ScrollReveal delay={60}>
+            <div className="rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-sm border border-green-100">
+              {/* Header */}
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                  <Leaf className="w-4 h-4 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900">Nutrition Tips</h2>
+                  <p className="text-sm text-gray-600">Personalized recommendations for your health journey.</p>
                 </div>
               </div>
 
-              {/* Right Card - Active Alerts & Recommendations */}
-              <div className="rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 p-6 shadow-sm border border-pink-100">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="relative">
-                    <div className="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center">
-                      <Bell className="w-4 h-4 text-pink-600" />
+              {/* Dynamic Content List */}
+              <div className="space-y-4">
+                {dynamicTips && dynamicTips.length > 0 ? dynamicTips.slice(0, 5).map((tip, index) => (
+                  <div key={tip.id} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-white/50 transition-all duration-200 cursor-pointer">
+                    <div className={`w-8 h-8 rounded-full ${tip.color} flex items-center justify-center flex-shrink-0`}>
+                      {tip.icon}
                     </div>
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                      <span className="text-[10px] font-bold text-white">2</span>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-semibold text-gray-900">{tip.title}</h4>
+                      <p className="text-xs text-gray-500">{tip.description}</p>
                     </div>
+                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1 transition-all duration-200" />
                   </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">Active Alerts & Recommendations</h2>
+                )) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">Loading nutrition tips...</p>
                   </div>
-                </div>
-
-                {/* Dynamic Alert Cards */}
-                <div className="space-y-4">
-                  {dynamicAlerts && dynamicAlerts.length > 0 ? dynamicAlerts.map((alert, index) => (
-                    <div key={alert.id} className={`p-4 rounded-xl border ${alert.color} hover:shadow-sm transition-all duration-200 cursor-pointer`}>
-                      <h4 className={`text-sm font-semibold ${alert.titleColor} mb-2`}>{alert.title}</h4>
-                      <p className="text-xs text-gray-600 mb-2">{alert.description}</p>
-                      <p className="text-[10px] text-gray-400">{alert.timestamp}</p>
-                    </div>
-                  )) : (
-                    <div className="text-center py-4">
-                      <p className="text-sm text-gray-500">No active alerts at this time.</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer */}
-                <div className="mt-6 pt-4 border-t border-pink-200">
-                  <button className="flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700 transition-colors">
-                    View All Alerts & Recommendations
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
+                )}
               </div>
             </div>
           </ScrollReveal>

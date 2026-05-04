@@ -230,16 +230,22 @@ export default function ProfilePage() {
 
   const isSetup = searchParams.get("setup") === "true";
   const [editingPersonal, setEditingPersonal] = useState(false);
+  const [showMenarcheDate, setShowMenarcheDate] = useState(() => {
+    // Default to showing menarche date only if user is in puberty phase
+    return phase === "puberty";
+  });
   const [draftDob, setDraftDob] = useState(profile.dob || "");
   const [draftBloodGroup, setDraftBloodGroup] = useState(profile.bloodGroup || "");
+  const [draftMenarcheDate, setDraftMenarcheDate] = useState<string | null>(profile.menarcheDate || null);
   const [draftMedicalConditions, setDraftMedicalConditions] = useState<string[]>(profile.medicalConditions || []);
   const [draftRegion, setDraftRegion] = useState<"north" | "south" | "east" | "west">(profile.region || "north");
   useEffect(() => {
     setDraftDob(profile.dob || "");
     setDraftBloodGroup(profile.bloodGroup || "");
+    setDraftMenarcheDate(profile.menarcheDate || null);
     setDraftMedicalConditions(profile.medicalConditions || []);
     setDraftRegion(profile.region || "north");
-  }, [profile.dob, profile.bloodGroup, profile.medicalConditions, profile.region]);
+  }, [profile.dob, profile.bloodGroup, profile.menarcheDate, profile.medicalConditions, profile.region]);
   
   const handleFinishSetup = () => {
     if (profile.weight === null || profile.height === null) {
@@ -292,6 +298,7 @@ export default function ProfilePage() {
     updatePersonalInfo({
       dob: draftDob,
       bloodGroup: draftBloodGroup,
+      menarcheDate: draftMenarcheDate,
       medicalConditions: draftMedicalConditions,
       region: draftRegion,
     });
@@ -678,6 +685,53 @@ export default function ProfilePage() {
           </div>
           <div className="px-5 py-2 divide-y divide-border/40">
             <InfoRow
+              icon={Calendar}
+              label="Date of Birth"
+              value={profile.dob ? new Date(profile.dob).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "Not recorded"}
+              iconBg="bg-blue-50"
+              iconColor="text-blue-600"
+            />
+            {profile.menarcheDate && phase === "puberty" && (
+              <div className="px-5 py-2 divide-y divide-border/40">
+                <div className="flex items-center justify-between py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-pink-50 flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-pink-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Menarche Date</p>
+                      <p className="text-xs text-muted-foreground">First period date</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowMenarcheDate(!showMenarcheDate)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border bg-muted/40 hover:bg-muted/60 transition-colors"
+                  >
+                    <span className="text-xs text-muted-foreground">
+                      {showMenarcheDate ? "Hide" : "Show"}
+                    </span>
+                    <div className={`w-10 h-6 rounded-full transition-colors ${
+                      showMenarcheDate ? "bg-pink-500" : "bg-muted"
+                    }`}>
+                      <div className={`w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
+                        showMenarcheDate ? "translate-x-5" : "translate-x-0.5"
+                      }`} />
+                    </div>
+                  </button>
+                </div>
+                {showMenarcheDate && (
+                  <InfoRow
+                    icon={Calendar}
+                    label=""
+                    value={new Date(profile.menarcheDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    iconBg="bg-transparent"
+                    iconColor="text-transparent"
+                  />
+                )}
+              </div>
+            )}
+            <InfoRow
               icon={Activity}
               label="Haemoglobin"
               value={profile.haemoglobin ? `${profile.haemoglobin} g/dL` : "Not recorded"}
@@ -715,6 +769,19 @@ export default function ProfilePage() {
                       <option key={bg || "none"} value={bg}>{bg || "Select"}</option>
                     ))}
                   </select>
+                </div>
+              </div>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Menarche Date (First Period)</label>
+                  <input
+                    type="date"
+                    value={draftMenarcheDate || ""}
+                    onChange={(e) => setDraftMenarcheDate(e.target.value || null)}
+                    className="h-10 w-full rounded-lg border border-border px-3 text-sm"
+                    placeholder="Optional - for puberty phase users"
+                  />
+                  <p className="text-xs text-muted-foreground">Helps provide personalized puberty nutrition guidance</p>
                 </div>
               </div>
               <div>

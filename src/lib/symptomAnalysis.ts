@@ -15,16 +15,20 @@ export type KeySymptomId =
   | "headache"
   | "acne"
   | "breastTenderness"
+  | "bloating"
+  | "backPain"
+  | "foodCravings"
+  | "irritability"
+  | "sleepIssues"
+  | "anxiety"
   | "nausea"
   | "dizziness"
-  | "backPain"
   | "swelling"
   | "sleepDisturbance"
   | "irregularCycle"
   | "ovulationPain"
   | "moodChanges"
   | "stress"
-  | "sleepIssues"
   | "hotFlashes"
   | "nightSweats"
   | "jointPain"
@@ -72,12 +76,18 @@ type SymptomDef = { id: KeySymptomId; label: string };
 
 export const KEY_SYMPTOMS_BY_PHASE: Record<string, SymptomDef[]> = {
   puberty: [
-    { id: "cramps", label: "Cramps" },
-    { id: "fatigue", label: "Fatigue" },
-    { id: "moodSwings", label: "Mood swings" },
-    { id: "headache", label: "Headache" },
     { id: "acne", label: "Acne" },
-    { id: "breastTenderness", label: "Breast tenderness" },
+    { id: "moodSwings", label: "Mood Swings" },
+    { id: "cramps", label: "Cramps" },
+    { id: "headache", label: "Headache" },
+    { id: "fatigue", label: "Fatigue" },
+    { id: "bloating", label: "Bloating" },
+    { id: "breastTenderness", label: "Breast Tenderness" },
+    { id: "backPain", label: "Back Pain" },
+    { id: "foodCravings", label: "Food Cravings" },
+    { id: "irritability", label: "Irritability" },
+    { id: "sleepIssues", label: "Sleep Issues" },
+    { id: "anxiety", label: "Anxiety" },
   ],
   maternity_T1: [
     { id: "nausea", label: "Nausea / Vomiting" },
@@ -324,6 +334,18 @@ function isSymptomTrueForEntry(phase: Phase, entry: any, symptomId: KeySymptomId
         return !!e.symptoms.acne;
       case "breastTenderness":
         return !!e.symptoms.breastTenderness;
+      case "bloating":
+        return !!e.symptoms.bloating;
+      case "backPain":
+        return !!e.symptoms.backPain;
+      case "foodCravings":
+        return !!e.symptoms.foodCravings;
+      case "irritability":
+        return !!e.symptoms.irritability;
+      case "sleepIssues":
+        return !!e.symptoms.sleepIssues;
+      case "anxiety":
+        return !!e.symptoms.anxiety;
       default:
         return false;
     }
@@ -474,6 +496,14 @@ function getSuggestionsForSymptom(symptomId: KeySymptomId): string[] {
       return ["Rest in a quiet, dim room.", "Stay hydrated and take screen breaks.", "Consider a cool or warm compress (as comfortable)."];
     case "acne":
       return ["Use a gentle cleanser and avoid harsh scrubbing.", "Avoid picking or squeezing spots.", "Stick to a simple routine for a few weeks."];
+    case "bloating":
+      return ["Reduce salt intake and eat smaller, more frequent meals.", "Stay hydrated and try gentle movement like walking."];
+    case "foodCravings":
+      return ["Choose healthier alternatives when cravings hit.", "Eat regular meals to keep blood sugar stable."];
+    case "irritability":
+      return ["Step away from stressful situations briefly.", "Practice deep breathing or count to 10 before reacting."];
+    case "anxiety":
+      return ["Try slow breathing: inhale 4 counts, hold 2, exhale 6.", "Talk to someone you trust about how you feel."];
     case "breastTenderness":
       return ["Wear a supportive bra for comfort.", "Use a warm or cool compress if it feels soothing.", "Track changes and note what helps."];
     case "nausea":

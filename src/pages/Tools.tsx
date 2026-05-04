@@ -4,7 +4,7 @@ import { Calculator, Activity, Timer, Heart, ArrowLeft, Wrench, BarChart3, Spark
 import ScrollReveal from "@/components/ScrollReveal";
 import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
-import { CycleTracker } from "@/pages/Puberty";
+
 import { TrimesterSelector, type Trimester } from "@/pages/Maternity";
 import { useFamilyPlanningTools } from "@/hooks/useFamilyPlanningTools";
 import { useFamilyPlanningProfile } from "@/hooks/useFamilyPlanningProfile";
@@ -408,11 +408,7 @@ export default function Tools() {
         </ScrollReveal>
 
         <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {phase === "puberty" && (
-            <ScrollReveal>
-              <CycleTracker onResultChange={() => {}} />
-            </ScrollReveal>
-          )}
+
           {phase === "family-planning" && (
             <FamilyPlanningToolsGrid />
           )}

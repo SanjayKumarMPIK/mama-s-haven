@@ -65,14 +65,11 @@ import PersonalizedDietPage from "./pages/nutrition/PersonalizedDietPage";
 import NutritionChecklistPage from "./pages/nutrition/NutritionChecklistPage";
 import NutritionIntelligencePage from "./pages/nutrition/NutritionIntelligencePage";
 import PostpartumDashboard from "./modules/postpartum/pages/PostpartumDashboard";
-import PubertyDeficiencyPage from "./pages/puberty/PubertyDeficiencyPage";
-import PubertyNutrientRecommendationsPage from "./pages/puberty/PubertyNutrientRecommendationsPage";
-import PubertyHydrationPage from "./pages/puberty/PubertyHydrationPage";
-import PubertyFoodRestrictionsPage from "./pages/puberty/PubertyFoodRestrictionsPage";
-import PubertyCaloriePage from "./pages/puberty/PubertyCaloriePage";
-import PubertyProteinPage from "./pages/puberty/PubertyProteinPage";
-import PubertyMealPlanPage from "./pages/puberty/PubertyMealPlanPage";
-import PubertyNutritionalInsightsPage from "./pages/puberty/PubertyNutritionalInsightsPage";
+import PubertyNutritionGuide from "./modules/puberty/nutrition-guide/pages/PubertyNutritionGuide";
+import PubertyActivitiesPage from "./modules/puberty/nutrition-guide/pages/PubertyActivitiesPage";
+import PubertyFitnessHealthCalculatorPage from "./modules/puberty/nutrition-guide/pages/PubertyFitnessHealthCalculatorPage";
+import PubertyPersonalizedDietPage from "./modules/puberty/nutrition-guide/pages/PubertyPersonalizedDietPage";
+import PubertyNutritionIntelligencePage from "./modules/puberty/nutrition-guide/pages/PubertyNutritionIntelligencePage";
 import FPDeficiencyInsightsPage from "./pages/familyplanning/FPDeficiencyInsightsPage";
 import FPHormonalNutritionPage from "./pages/familyplanning/FPHormonalNutritionPage";
 import FPCycleNutritionPage from "./pages/familyplanning/FPCycleNutritionPage";
@@ -135,14 +132,11 @@ const App = () => (
                           <Route path="/maternity/nutrition/checklist" element={<NutritionChecklistPage />} />
                           <Route path="/postpartum-dashboard" element={<PostpartumDashboard />} />
                           {/* Puberty nutrition sub-pages */}
-                          <Route path="/puberty/nutrition/deficiency-insights" element={<PubertyDeficiencyPage />} />
-                          <Route path="/puberty/nutrition/nutrient-recommendations" element={<PubertyNutrientRecommendationsPage />} />
-                          <Route path="/puberty/nutrition/hydration" element={<PubertyHydrationPage />} />
-                          <Route path="/puberty/nutrition/food-restrictions" element={<PubertyFoodRestrictionsPage />} />
-                          <Route path="/puberty/nutrition/calories" element={<PubertyCaloriePage />} />
-                          <Route path="/puberty/nutrition/protein" element={<PubertyProteinPage />} />
-                          <Route path="/puberty/nutrition/meal-plan" element={<PubertyMealPlanPage />} />
-                          <Route path="/puberty/nutrition/insights" element={<PubertyNutritionalInsightsPage />} />
+                          <Route path="/puberty/nutrition-guide" element={<PubertyNutritionGuide />} />
+                          <Route path="/puberty/nutrition-guide/activities" element={<PubertyActivitiesPage />} />
+                          <Route path="/puberty/nutrition-guide/fitness-health-calculator" element={<PubertyFitnessHealthCalculatorPage />} />
+                          <Route path="/puberty/nutrition-guide/personalized-diet" element={<PubertyPersonalizedDietPage />} />
+                          <Route path="/puberty/nutrition-guide/intelligence" element={<PubertyNutritionIntelligencePage />} />
                           {/* Family Planning nutrition sub-pages */}
                           <Route path="/family-planning/nutrition/deficiency-insights" element={<FPDeficiencyInsightsPage />} />
                           <Route path="/family-planning/nutrition/hormonal-balance" element={<FPHormonalNutritionPage />} />

@@ -122,23 +122,23 @@ function ExerciseDayCard({ exercise, isToday }: { exercise: ExerciseDay; isToday
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function MaternityWellnessPlan() {
+export default function PubertyWellnessPlan() {
   const [activeTab, setActiveTab] = useState<"food" | "exercise" | "sleep">("food");
 
   const exerciseData = useMemo(() => {
     const plan: ExerciseDay[] = [
-      { day: "Monday", activity: "Prenatal Yoga", duration: "25 min", intensity: "low", goal: "Flexibility & Breath", emoji: "🧘" },
+      { day: "Monday", activity: "Yoga", duration: "25 min", intensity: "low", goal: "Flexibility & Breath", emoji: "🧘" },
       { day: "Tuesday", activity: "Brisk Walk", duration: "30 min", intensity: "moderate", goal: "Cardio & Circulation", emoji: "🚶" },
-      { day: "Wednesday", activity: "Pelvic Floor Exercises", duration: "15 min", intensity: "low", goal: "Strength", emoji: "💪" },
+      { day: "Wednesday", activity: "Core Exercises", duration: "15 min", intensity: "low", goal: "Strength", emoji: "💪" },
       { day: "Thursday", activity: "Swimming / Walk", duration: "30 min", intensity: "moderate", goal: "Low-impact Cardio", emoji: "🏊" },
-      { day: "Friday", activity: "Prenatal Stretching", duration: "20 min", intensity: "low", goal: "Relieve back pain", emoji: "🤸" },
+      { day: "Friday", activity: "Stretching", duration: "20 min", intensity: "low", goal: "Relieve tension", emoji: "🤸" },
       { day: "Saturday", activity: "Nature Walk", duration: "40 min", intensity: "moderate", goal: "Mood & Stamina", emoji: "🌳" },
       { day: "Sunday", activity: "Rest & Meditation", duration: "20 min", intensity: "low", goal: "Recovery", emoji: "🧘" },
     ];
     const notes: string[] = [
       "Always listen to your body and rest if you feel fatigued.",
       "Stay hydrated before, during, and after exercise.",
-      "Avoid exercises that require lying flat on your back after the first trimester.",
+      "Avoid overexertion and stay hydrated.",
       "Stop immediately if you feel dizzy or experience any pain."
     ];
     return { plan, notes, banner: null };
@@ -146,11 +146,11 @@ export default function MaternityWellnessPlan() {
 
   const sleepData = useMemo(() => {
     const tips: SleepTip[] = [
-      { title: "Sleep on your side", description: "The left side is best for blood flow to the baby and your kidneys.", priority: "high" },
-      { title: "Use pregnancy pillows", description: "Place one between your knees and under your belly for support.", priority: "high" },
-      { title: "Hydrate early", description: "Drink most of your water earlier in the day to reduce midnight bathroom trips.", priority: "medium" },
-      { title: "Cool bedroom", description: "Pregnancy increases body temperature; keep the room cool and well-ventilated.", priority: "medium" },
-      { title: "Avoid heartburn triggers", description: "Eat dinner 2-3 hours before bed and avoid spicy/acidic foods late at night.", priority: "medium" },
+      { title: "Healthy Sleep Routine", description: "Maintain a regular sleep schedule for optimal rest.", priority: "high" },
+      { title: "Comfortable pillows", description: "Use pillows to support your posture.", priority: "high" },
+      { title: "Hydrate early", description: "Drink most of your water earlier in the day.", priority: "medium" },
+      { title: "Cool bedroom", description: "Keep the room cool and well-ventilated for better sleep.", priority: "medium" },
+      { title: "Avoid heavy meals late", description: "Eat dinner 2-3 hours before bed.", priority: "medium" },
     ];
     return { tips, banner: null };
   }, []);
@@ -172,7 +172,7 @@ export default function MaternityWellnessPlan() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-slate-800">Your Wellness Plan</h1>
-          <p className="text-xs text-slate-500">Maternity-safe health guidance</p>
+          <p className="text-xs text-slate-500">Puberty wellness guidance</p>
         </div>
       </div>
 

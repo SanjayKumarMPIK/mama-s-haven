@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { Sparkles, Music, Send, Trophy, RefreshCw, ExternalLink, Heart } from "lucide-react";
+import { Sparkles, Send, Trophy, RefreshCw, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMenopause } from "@/hooks/useMenopause";
 import { AFFIRMATIONS, WEEKLY_CHALLENGES, HEALTH_FACTS, UPLIFTING_QUOTES } from "@/lib/menopauseWellnessEngine";
@@ -157,37 +157,6 @@ export default function FunActivity() {
     }
   };
 
-  // Playlist data
-  const playlists = [
-    {
-      mood: "Calm",
-      emoji: "🧘",
-      color: "bg-blue-50 border-blue-200",
-      links: [
-        { label: "Calm Piano Mix", url: "https://www.youtube.com/results?search_query=calm+piano+music+relaxation", platform: "YouTube" },
-        { label: "Meditation Playlist", url: "https://open.spotify.com/search/meditation%20music", platform: "Spotify" },
-      ],
-    },
-    {
-      mood: "Energising",
-      emoji: "⚡",
-      color: "bg-orange-50 border-orange-200",
-      links: [
-        { label: "Morning Energy Boost", url: "https://www.youtube.com/results?search_query=morning+energy+workout+music", platform: "YouTube" },
-        { label: "Feel Good Playlist", url: "https://open.spotify.com/search/feel%20good%20hits", platform: "Spotify" },
-      ],
-    },
-    {
-      mood: "Cheerful",
-      emoji: "🌈",
-      color: "bg-green-50 border-green-200",
-      links: [
-        { label: "Happy Bollywood Hits", url: "https://www.youtube.com/results?search_query=happy+bollywood+songs", platform: "YouTube" },
-        { label: "Sunshine Vibes", url: "https://open.spotify.com/search/sunshine%20happy%20songs", platform: "Spotify" },
-      ],
-    },
-  ];
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50/80 via-white to-orange-50/60">
       <div className="max-w-2xl mx-auto px-4 py-6 md:py-10">
@@ -282,35 +251,6 @@ export default function FunActivity() {
 
           {/* Guided Breathing */}
           <CompactBreathing />
-
-          {/* Playlist Mood Board */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
-            <h2 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
-              <Music className="w-4 h-4 text-purple-500" /> Playlist Mood Board
-            </h2>
-            <div className="grid sm:grid-cols-3 gap-3">
-              {playlists.map((pl) => (
-                <div key={pl.mood} className={cn("rounded-xl border p-4 text-center", pl.color)}>
-                  <span className="text-3xl mb-2 block">{pl.emoji}</span>
-                  <p className="text-sm font-bold text-slate-800 mb-2">{pl.mood}</p>
-                  <div className="space-y-1.5">
-                    {pl.links.map((link) => (
-                      <a
-                        key={link.label}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-1 text-[11px] text-slate-600 hover:text-amber-600 transition-colors"
-                      >
-                        <ExternalLink className="w-3 h-3" />
-                        <span>{link.platform}</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
 
           {/* Community Win Board */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">

@@ -25,6 +25,7 @@ import {
   type RiskLevel,
 } from "@/lib/phcSimulation";
 import { cn } from "@/lib/utils";
+import MapView from "@/components/MapView";
 
 const MOCK_PHCS = [
   { name: "Urban Primary Health Centre — Sector 12", area: "Near bus stand", mapUrl: "https://www.openstreetmap.org/search?query=primary%20health%20centre%20india" },
@@ -346,6 +347,9 @@ export default function PhcNearby() {
               </div>
             </ScrollReveal>
           ))}
+        </div>
+        <div className="mt-6">
+          <MapView />
         </div>
 
         <p className="mt-10 text-center text-xs text-muted-foreground">

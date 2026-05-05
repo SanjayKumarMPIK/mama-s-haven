@@ -75,6 +75,7 @@ export default function Register() {
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [otpCooldownSeconds, setOtpCooldownSeconds] = useState(0);
 
   const form = useForm<RegistrationData>({
     resolver: zodResolver(registerSchema),
@@ -100,6 +101,14 @@ export default function Register() {
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) computedAge--;
     form.setValue("basic.age", computedAge > 0 ? String(computedAge) : "", { shouldValidate: true });
   }, [dob, form]);
+
+  useEffect(() => {
+    if (otpCooldownSeconds <= 0) return;
+    const timer = setTimeout(() => {
+      setOtpCooldownSeconds((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [otpCooldownSeconds]);
 
   const handleNext = async () => {
     let isValid = false;
@@ -165,6 +174,10 @@ export default function Register() {
   const sendOtp = async () => {
     const valid = await form.trigger("basic.contact");
     if (!valid) return;
+    if (otpCooldownSeconds > 0) {
+      toast.error(`Please wait ${otpCooldownSeconds}s before requesting OTP again.`);
+      return;
+    }
 
     setIsOtpSending(true);
     try {
@@ -174,9 +187,24 @@ export default function Register() {
       if (error) throw error;
       setOtpSent(true);
       setOtpVerified(false);
+      setOtpCooldownSeconds(60);
       toast.success("OTP sent to your email.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to send OTP.");
+      const supabaseError = error as { context?: Response; message?: string };
+      if (supabaseError?.context) {
+        try {
+          const payload = await supabaseError.context.json();
+          if (supabaseError.context.status === 429) {
+            const wait = Number(payload?.retryAfterSeconds ?? 60);
+            setOtpCooldownSeconds(Number.isFinite(wait) ? wait : 60);
+          }
+          toast.error(payload?.error || supabaseError.message || "Failed to send OTP.");
+        } catch {
+          toast.error(supabaseError.message || "Failed to send OTP.");
+        }
+      } else {
+        toast.error(error instanceof Error ? error.message : "Failed to send OTP.");
+      }
     } finally {
       setIsOtpSending(false);
     }
@@ -307,8 +335,8 @@ export default function Register() {
                         <Label htmlFor="basic.contact" className="text-slate-700 font-medium">Email <span className="text-red-500">*</span></Label>
                         <div className="flex gap-2">
                           <Input id="basic.contact" placeholder="email@example.com" className="h-12 bg-slate-50 border-slate-200" {...form.register("basic.contact")} />
-                          <Button type="button" variant="outline" className="h-12" onClick={sendOtp} disabled={isOtpSending}>
-                            {isOtpSending ? "Sending..." : "Send OTP"}
+                          <Button type="button" variant="outline" className="h-12" onClick={sendOtp} disabled={isOtpSending || otpCooldownSeconds > 0}>
+                            {isOtpSending ? "Sending..." : otpCooldownSeconds > 0 ? `Resend in ${otpCooldownSeconds}s` : "Send OTP"}
                           </Button>
                         </div>
                         {getErrorFields('basic')?.contact && <p className="text-red-500 text-sm">{getErrorFields('basic').contact.message}</p>}

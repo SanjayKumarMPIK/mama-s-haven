@@ -7,6 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const OTP_COOLDOWN_SECONDS = 60;
+const OTP_MAX_PER_HOUR = 5;
+
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
@@ -49,6 +52,58 @@ serve(async (req) => {
     }
 
     const admin = createClient(supabaseUrl, serviceRoleKey);
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { data: recentRows, error: recentRowsError } = await admin
+      .from("email_otps")
+      .select("created_at")
+      .eq("email", normalizedEmail)
+      .gte("created_at", oneHourAgo)
+      .order("created_at", { ascending: false });
+
+    if (recentRowsError) {
+      throw new Error("Unable to check OTP limits");
+    }
+
+    const recent = recentRows ?? [];
+    if (recent.length >= OTP_MAX_PER_HOUR) {
+      return new Response(
+        JSON.stringify({
+          error: `Too many OTP requests. Please try again in 1 hour.`,
+          retryAfterSeconds: 3600,
+        }),
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/json",
+            "Retry-After": "3600",
+          },
+        },
+      );
+    }
+
+    if (recent.length > 0) {
+      const lastCreatedAtMs = new Date(String(recent[0].created_at)).getTime();
+      const secondsSinceLast = Math.floor((Date.now() - lastCreatedAtMs) / 1000);
+      if (secondsSinceLast < OTP_COOLDOWN_SECONDS) {
+        const waitSeconds = OTP_COOLDOWN_SECONDS - secondsSinceLast;
+        return new Response(
+          JSON.stringify({
+            error: `Please wait ${waitSeconds}s before requesting another OTP.`,
+            retryAfterSeconds: waitSeconds,
+          }),
+          {
+            status: 429,
+            headers: {
+              ...corsHeaders,
+              "Content-Type": "application/json",
+              "Retry-After": String(waitSeconds),
+            },
+          },
+        );
+      }
+    }
+
     const otp = createOtpCode();
     const otpHash = await sha256(`${normalizedEmail}:${otp}`);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();

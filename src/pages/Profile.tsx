@@ -224,7 +224,7 @@ function InfoRow({
 export default function ProfilePage() {
   const { profile, updateWeight, updateHeight, updateCycleConfig, updatePersonalInfo, updateLifestyle } = useProfile();
   const { phase, phaseName, phaseEmoji, phaseColor } = usePhase();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -304,6 +304,11 @@ export default function ProfilePage() {
     });
     setEditingPersonal(false);
     toast.success("Profile health details updated.");
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
   };
 
   if (!user || !profile.isProfileAvailable) {
@@ -826,6 +831,57 @@ export default function ProfilePage() {
           )}
         </section>
 
+        {/* ── Dashboard Synced Data ────────────────────────────── */}
+        <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-border/60 bg-muted/20">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <Activity className="w-4 h-4 text-indigo-600" />
+              Dashboard Data (Supabase)
+            </h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              These values are loaded from your synced profile data.
+            </p>
+          </div>
+          <div className="px-5 py-2 divide-y divide-border/40">
+            <InfoRow
+              icon={Heart}
+              label="Health Cycle Status"
+              value={profile.lifeStage || "Not set"}
+              iconBg="bg-rose-50"
+              iconColor="text-rose-600"
+            />
+            <InfoRow
+              icon={Activity}
+              label="Diet Type"
+              value={profile.dietType || "Not set"}
+              iconBg="bg-emerald-50"
+              iconColor="text-emerald-600"
+            />
+            <InfoRow
+              icon={Calendar}
+              label="Cycle Length"
+              value={profile.cycleLength ? `${profile.cycleLength} days` : "Not recorded"}
+              iconBg="bg-purple-50"
+              iconColor="text-purple-600"
+            />
+            <InfoRow
+              icon={Droplets}
+              label="Last Period Date"
+              value={
+                profile.lastPeriodDate
+                  ? new Date(profile.lastPeriodDate).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                    })
+                  : "Not recorded"
+              }
+              iconBg="bg-pink-50"
+              iconColor="text-pink-600"
+            />
+          </div>
+        </section>
+
         {/* ── Location ─────────────────────────────────────────── */}
         <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-border/60 bg-muted/20">
@@ -885,7 +941,7 @@ export default function ProfilePage() {
         <div className="rounded-2xl border border-border bg-muted/30 p-4 flex items-center gap-3">
           <Shield className="w-5 h-5 text-muted-foreground shrink-0" />
           <p className="text-[11px] text-muted-foreground leading-relaxed">
-            All your profile data is stored locally on your device. Nothing is sent to any server.
+            Your profile data is synced with Supabase securely and also cached locally for faster loading.
             You can update DOB, blood group, and medical conditions from this profile page.
           </p>
         </div>
@@ -901,6 +957,16 @@ export default function ProfilePage() {
             </button>
           </div>
         )}
+
+        <div className="pb-8 flex justify-center">
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="w-full max-w-sm rounded-xl py-3 border border-red-200 bg-red-50 text-red-700 font-semibold hover:bg-red-100 transition-colors"
+          >
+            Logout
+          </button>
+        </div>
       </div>
     </main>
   );

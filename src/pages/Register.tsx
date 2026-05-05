@@ -14,16 +14,22 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
-import { toast } from "sonner";
 import { useLanguage } from "@/hooks/useLanguage";
-import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const registerSchema = z.object({
   basic: z.object({
     fullName: z.string().min(2, "Full name is required"),
-    age: z.string().min(1, "Age is required"),
+    age: z
+      .string()
+      .min(1, "Age is required")
+      .refine((value) => {
+        const age = Number(value);
+        return Number.isInteger(age) && age >= 1 && age <= 120;
+      }, "Enter a valid age between 1 and 120"),
     dob: z.string().min(1, "Date of birth is required"),
-    contact: z.string().min(5, "Email or phone is required"),
+    contact: z.string().email("Valid email is required"),
     bloodGroup: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], { message: "Blood group is required" }),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string(),
@@ -64,9 +70,11 @@ export default function Register() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [contactVerified, setContactVerified] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
-  const [verificationSent, setVerificationSent] = useState(false);
+  const [isOtpSending, setIsOtpSending] = useState(false);
+  const [isOtpVerifying, setIsOtpVerifying] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
 
   const form = useForm<RegistrationData>({
     resolver: zodResolver(registerSchema),
@@ -99,8 +107,8 @@ export default function Register() {
     if (currentStep === 2) isValid = await trigger("location");
     if (currentStep === 3) isValid = await trigger("health");
 
-    if (isValid && currentStep === 1 && !contactVerified) {
-      toast.error("Please verify your email/phone before continuing.");
+    if (isValid && currentStep === 1 && !otpVerified) {
+      toast.error("Please verify your email with OTP before continuing.");
       return;
     }
 
@@ -123,17 +131,19 @@ export default function Register() {
     } catch {}
 
     const contact = data.basic.contact.trim();
-    const isPhone = /^[0-9]{10}$/.test(contact);
+    const numericAge = Number(data.basic.age);
+    const lifeStage = numericAge > 20 ? "maternity" : numericAge > 10 ? "puberty" : "pre-puberty";
+
     const mappedData = {
       ...data,
       basic: {
         ...data.basic,
-        mobile: isPhone ? contact : "",
-        email: isPhone ? "" : contact.toLowerCase(),
+        mobile: "",
+        email: contact.toLowerCase(),
       },
       health: {
         ...data.health,
-        lifeStage: "",
+        lifeStage,
       },
     };
     const success = await register(mappedData);
@@ -148,24 +158,49 @@ export default function Register() {
   // Helper for error casting
   const getErrorFields = (stepName: keyof typeof errors) => errors[stepName] as Record<string, any>;
 
-  const contactValue = form.watch("basic.contact");
-  const sendVerification = () => {
-    if (!contactValue || contactValue.length < 5) {
-      toast.error("Enter a valid email or 10-digit phone first.");
-      return;
+  const ageValue = Number(form.watch("basic.age") || "0");
+  const computedHealthCycleStatus = ageValue > 20 ? "maternity" : ageValue > 10 ? "puberty" : "pre-puberty";
+  const emailValue = form.watch("basic.contact");
+
+  const sendOtp = async () => {
+    const valid = await form.trigger("basic.contact");
+    if (!valid) return;
+
+    setIsOtpSending(true);
+    try {
+      const { error } = await supabase.functions.invoke("send-email-otp", {
+        body: { email: emailValue.trim().toLowerCase() },
+      });
+      if (error) throw error;
+      setOtpSent(true);
+      setOtpVerified(false);
+      toast.success("OTP sent to your email.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to send OTP.");
+    } finally {
+      setIsOtpSending(false);
     }
-    setVerificationSent(true);
-    setContactVerified(false);
-    toast.success("Verification sent. Use 123456 for demo verification.");
   };
 
-  const verifyContact = () => {
-    if (verificationCode.trim() !== "123456") {
-      toast.error("Invalid verification code.");
+  const verifyOtp = async () => {
+    if (!otpCode.trim()) {
+      toast.error("Please enter OTP.");
       return;
     }
-    setContactVerified(true);
-    toast.success("Contact verified successfully.");
+    setIsOtpVerifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("verify-email-otp", {
+        body: { email: emailValue.trim().toLowerCase(), otp: otpCode.trim() },
+      });
+      if (error) throw error;
+      if (!data?.success) throw new Error("OTP verification failed.");
+      setOtpVerified(true);
+      toast.success("Email verified successfully.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Invalid OTP.");
+    } finally {
+      setIsOtpVerifying(false);
+    }
   };
 
   return (
@@ -269,20 +304,25 @@ export default function Register() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div className="space-y-2">
-                        <Label htmlFor="basic.contact" className="text-slate-700 font-medium">Email / Phone <span className="text-red-500">*</span></Label>
+                        <Label htmlFor="basic.contact" className="text-slate-700 font-medium">Email <span className="text-red-500">*</span></Label>
                         <div className="flex gap-2">
-                          <Input id="basic.contact" placeholder="email@example.com or 9876543210" className="h-12 bg-slate-50 border-slate-200" {...form.register("basic.contact")} />
-                          <Button type="button" variant="outline" className="h-12" onClick={sendVerification}>Verify</Button>
+                          <Input id="basic.contact" placeholder="email@example.com" className="h-12 bg-slate-50 border-slate-200" {...form.register("basic.contact")} />
+                          <Button type="button" variant="outline" className="h-12" onClick={sendOtp} disabled={isOtpSending}>
+                            {isOtpSending ? "Sending..." : "Send OTP"}
+                          </Button>
                         </div>
                         {getErrorFields('basic')?.contact && <p className="text-red-500 text-sm">{getErrorFields('basic').contact.message}</p>}
-                        {verificationSent && (
+                        <p className="text-xs text-slate-500">This email will be used for secure login and verification.</p>
+                        {otpSent && (
                           <div className="flex gap-2">
-                            <Input value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} placeholder="Enter code" className="h-10 bg-slate-50 border-slate-200" />
-                            <Button type="button" variant="outline" className="h-10" onClick={verifyContact}>Confirm</Button>
+                            <Input value={otpCode} onChange={(e) => setOtpCode(e.target.value)} placeholder="Enter 6-digit OTP" className="h-10 bg-slate-50 border-slate-200" />
+                            <Button type="button" variant="outline" className="h-10" onClick={verifyOtp} disabled={isOtpVerifying}>
+                              {isOtpVerifying ? "Verifying..." : "Verify OTP"}
+                            </Button>
                           </div>
                         )}
-                        <p className={cn("text-xs", contactVerified ? "text-emerald-600" : "text-slate-500")}>
-                          {contactVerified ? "Verified" : "Verification required before next step"}
+                        <p className={`text-xs ${otpVerified ? "text-emerald-600" : "text-slate-500"}`}>
+                          {otpVerified ? "Email verified" : "Email verification required before next step"}
                         </p>
                       </div>
                     </div>
@@ -312,6 +352,14 @@ export default function Register() {
                         <Input id="basic.confirmPassword" type="password" placeholder="••••••••" className="h-12 bg-slate-50 border-slate-200" {...form.register("basic.confirmPassword")} />
                         {getErrorFields('basic')?.confirmPassword && <p className="text-red-500 text-sm">{getErrorFields('basic').confirmPassword.message}</p>}
                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-slate-700 font-medium">Current Health Cycle Status</Label>
+                      <Input value={computedHealthCycleStatus} readOnly className="h-12 bg-slate-100 border-slate-200 text-slate-700 font-semibold capitalize" />
+                      <p className="text-xs text-slate-500">
+                        Auto-mapped from age: above 10 = puberty, above 20 = maternity.
+                      </p>
                     </div>
                   </div>
                 )}

@@ -23,8 +23,6 @@ export default function CalendarNavButton() {
         return "/calendar";
       case "puberty":
         return "/calendar";
-      case "menopause":
-        return "/menopause/calendar";
       case "family-planning":
         return "/calendar";
       default:
@@ -33,8 +31,7 @@ export default function CalendarNavButton() {
   })();
 
   // Detect if current route is calendar
-  const isCalendarActive = location.pathname.startsWith("/calendar") || 
-                           location.pathname.startsWith("/menopause/calendar");
+  const isCalendarActive = location.pathname.startsWith("/calendar");
 
   // Handle click - navigate only if not already on calendar
   const handleClick = () => {

@@ -21,55 +21,68 @@ interface HamburgerMenuProps {
 
 type SecondaryKey = "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools" | "articles";
 
-const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; icon: LucideIcon }[] = [
-  { to: "/", labelKey: "home" as const, icon: Home },
+type MenuItem = {
+  id: string;
+  to: string;
+  labelKey?: SecondaryKey;
+  label?: string;
+  icon: LucideIcon;
+  phases?: string[];
+};
 
-  { to: "/assistant", labelKey: "aiAssistant" as const, icon: Bot },
-  { to: "/calendar", label: "Calendar", icon: Calendar },
-  { to: "/nutrition", labelKey: "nutritionGuide" as const, icon: Apple },
-  { to: "/symptom-checker", labelKey: "symptomChecker" as const, icon: Search },
-  { to: "/wellness", labelKey: "wellness" as const, icon: Trophy },
-  { to: "/tools", label: "Tools", icon: Wrench },
-  { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
-  { to: "/dashboard", label: "Dashboard", icon: Calendar },
-  { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
-  { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
-  { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
-  { to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList },
+const SECONDARY_ITEMS: MenuItem[] = [
+  { id: "home", to: "/", labelKey: "home" as const, icon: Home },
+  { id: "ai-assistant", to: "/assistant", labelKey: "aiAssistant" as const, icon: Bot },
+  { id: "calendar", to: "/calendar", label: "Calendar", icon: Calendar },
+  { id: "nutrition", to: "/nutrition", labelKey: "nutritionGuide" as const, icon: Apple },
+  { id: "symptom-checker", to: "/symptom-checker", labelKey: "symptomChecker" as const, icon: Search },
+  { id: "wellness", to: "/wellness", labelKey: "wellness" as const, icon: Trophy },
+  { id: "tools", to: "/tools", label: "Tools", icon: Wrench },
+  { id: "shopping", to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
+  { id: "dashboard", to: "/dashboard", label: "Dashboard", icon: Calendar },
+  { id: "articles", to: "/articles", labelKey: "articles" as const, icon: BookOpen },
+  { id: "pregnancy-dashboard", to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby, phases: ["maternity"] },
+  { id: "medicine-reminder", to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill, phases: ["maternity"] },
+  { id: "family-planning-care-log", to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList, phases: ["family-planning"] },
 ];
 
-// Routes to hide when phase is menopause (menopause has its own dedicated pages)
-const MENOPAUSE_HIDDEN_ROUTES = new Set([
-  "/calendar", "/nutrition", "/symptom-checker", "/wellness",
-  "/tools", "/shopping", "/dashboard", "/pregnancy-dashboard",
-  "/medicine-reminder",
-]);
+// Phase-based menu configuration
+const phaseMenuMap: Record<string, string[]> = {
+  // No phase restrictions
+};
 
-const MATERNITY_ONLY_ROUTES = new Set([
-  "/medicine-reminder",
-  "/pregnancy-dashboard",
-]);
+// Additional phase-specific menu items
+const PHASE_SPECIFIC_ITEMS: Record<string, MenuItem[]> = {
+  // No phase-specific items for menopause - uses standard menu items only
+};
 
-// Routes to show only in family planning phase
-const FAMILY_PLANNING_ONLY_ROUTES = new Set([
-  "/family-planning/care-log",
-]);
+// Filter menu items based on phase
+function getMenuItemsForPhase(phase: string | null | undefined): MenuItem[] {
+  const allowedIds = phase ? phaseMenuMap[phase] : null;
+  
+  return SECONDARY_ITEMS.filter(item => {
+    // If specific phase restriction exists, check it
+    if (item.phases && phase) {
+      return item.phases.includes(phase);
+    }
+    
+    // If phase has allowed IDs list, filter by ID
+    if (allowedIds) {
+      return allowedIds.includes(item.id);
+    }
+    
+    // Default: show if no restrictions
+    if (phase === "maternity" && item.id === "wellness") return false;
+    
+    return true;
+  });
+}
 
-
-
-// Menopause-specific menu items
-const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/menopause/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/menopause/symptoms", label: "Symptom Tracker", icon: Activity },
-  { to: "/menopause/bone-health", label: "Bone Health", icon: Bone },
-  { to: "/menopause/nutrition", label: "Nutrition", icon: Apple },
-  { to: "/menopause/sleep-mood", label: "Sleep & Mood", icon: Moon },
-  { to: "/menopause/weight", label: "Weight", icon: Scale },
-  { to: "/menopause/heart", label: "Heart Health", icon: Heart },
-  { to: "/menopause/goals", label: "Daily Goals", icon: Target },
-  { to: "/menopause/fun", label: "Fun Activity", icon: Sparkles },
-  { to: "/menopause/calendar", label: "Calendar", icon: Calendar },
-];
+// Get phase-specific additional items
+function getPhaseSpecificItems(phase: string | null | undefined): MenuItem[] {
+  if (!phase) return [];
+  return PHASE_SPECIFIC_ITEMS[phase] || [];
+}
 
 export default function HamburgerMenu({
   open,
@@ -208,19 +221,9 @@ export default function HamburgerMenu({
 
             {/* Navigation items */}
             <nav className="space-y-2" aria-label="Secondary navigation">
-              {SECONDARY_ITEMS.filter(item => {
-                if (item.to === "/pregnancy-dashboard" && phase !== "maternity") return false;
-                if (item.to === "/wellness" && phase === "maternity") return false;
-                // Show maternity-only routes only in maternity phase
-                if (MATERNITY_ONLY_ROUTES.has(item.to) && phase !== "maternity") return false;
-                // Show family-planning-only routes only in family-planning phase
-                if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
-                // Hide general phase items when in menopause
-                if (phase === "menopause" && MENOPAUSE_HIDDEN_ROUTES.has(item.to)) return false;
-                return true;
-              }).map((item) => (
+              {getMenuItemsForPhase(phase).map((item) => (
                 <NavItem
-                  key={item.to}
+                  key={item.id}
                   to={item.to}
                   label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
                   icon={item.icon}
@@ -229,16 +232,14 @@ export default function HamburgerMenu({
                 />
               ))}
 
-              
-              
-              {/* Menopause-specific menu items */}
-              {phase === "menopause" && (
+              {/* Phase-specific additional items */}
+              {getPhaseSpecificItems(phase).length > 0 && (
                 <>
                   <div className="my-2 border-t border-border/60" />
                   <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 px-3 mb-1">Menopause</p>
-                  {MENOPAUSE_ITEMS.map((item) => (
+                  {getPhaseSpecificItems(phase).map((item) => (
                     <NavItem
-                      key={item.to}
+                      key={item.id}
                       to={item.to}
                       label={item.label}
                       icon={item.icon}

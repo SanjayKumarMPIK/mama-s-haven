@@ -329,20 +329,6 @@ export default function OnboardingFlow() {
       return;
     }
 
-    if (selectedPhase === "menopause") {
-      // Navigate to menopause onboarding page
-      navigate("/menopause/onboarding");
-      const cfg: Partial<OnboardingConfig> = {
-        phase: selectedPhase,
-        goals: Array.from(selectedGoals),
-        age: userAge,
-        onboardingCompleted: true,
-      };
-      saveConfig(cfg);
-      setShowOnboarding(false);
-      return;
-    }
-
     const cfg: Partial<OnboardingConfig> = {
       phase: selectedPhase,
       goals: Array.from(selectedGoals),

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -38,12 +38,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList },
 ];
 
-// Routes to hide when phase is menopause (menopause has its own dedicated pages)
-const MENOPAUSE_HIDDEN_ROUTES = new Set([
-  "/calendar", "/nutrition", "/symptom-checker", "/wellness",
-  "/tools", "/shopping", "/dashboard", "/pregnancy-dashboard",
-  "/medicine-reminder",
-]);
+
 
 const MATERNITY_ONLY_ROUTES = new Set([
   "/medicine-reminder",
@@ -59,16 +54,16 @@ const FAMILY_PLANNING_ONLY_ROUTES = new Set([
 
 // Menopause-specific menu items
 const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/menopause/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/menopause/symptoms", label: "Symptom Tracker", icon: Activity },
-  { to: "/menopause/bone-health", label: "Bone Health", icon: Bone },
-  { to: "/menopause/nutrition", label: "Nutrition", icon: Apple },
-  { to: "/menopause/sleep-mood", label: "Sleep & Mood", icon: Moon },
-  { to: "/menopause/weight", label: "Weight", icon: Scale },
-  { to: "/menopause/heart", label: "Heart Health", icon: Heart },
-  { to: "/menopause/goals", label: "Daily Goals", icon: Target },
-  { to: "/menopause/fun", label: "Fun Activity", icon: Sparkles },
+  { to: "/menopause", label: "Home", icon: Home },
+  { to: "/menopause/ai-assistant", label: "AI Assistant", icon: Bot },
   { to: "/menopause/calendar", label: "Calendar", icon: Calendar },
+  { to: "/menopause/nutrition", label: "Nutrition Guide", icon: Apple },
+  { to: "/menopause/symptoms", label: "Symptoms", icon: Search },
+  { to: "/menopause/wellness", label: "Wellness Tracker", icon: Trophy },
+  { to: "/menopause/tools", label: "Tools", icon: Wrench },
+  { to: "/menopause/care-essentials", label: "Care Essentials", icon: Package },
+  { to: "/menopause/dashboard", label: "Dashboard", icon: Calendar },
+  { to: "/menopause/articles", label: "Articles", icon: BookOpen },
 ];
 
 export default function HamburgerMenu({
@@ -208,45 +203,36 @@ export default function HamburgerMenu({
 
             {/* Navigation items */}
             <nav className="space-y-2" aria-label="Secondary navigation">
-              {SECONDARY_ITEMS.filter(item => {
-                if (item.to === "/pregnancy-dashboard" && phase !== "maternity") return false;
-                if (item.to === "/wellness" && phase === "maternity") return false;
-                // Show maternity-only routes only in maternity phase
-                if (MATERNITY_ONLY_ROUTES.has(item.to) && phase !== "maternity") return false;
-                // Show family-planning-only routes only in family-planning phase
-                if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
-                // Hide general phase items when in menopause
-                if (phase === "menopause" && MENOPAUSE_HIDDEN_ROUTES.has(item.to)) return false;
-                return true;
-              }).map((item) => (
-                <NavItem
-                  key={item.to}
-                  to={item.to}
-                  label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
-                  icon={item.icon}
-                  active={location.pathname === item.to}
-                  onClick={onClose}
-                />
-              ))}
-
-              
-              
-              {/* Menopause-specific menu items */}
-              {phase === "menopause" && (
-                <>
-                  <div className="my-2 border-t border-border/60" />
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 px-3 mb-1">Menopause</p>
-                  {MENOPAUSE_ITEMS.map((item) => (
-                    <NavItem
-                      key={item.to}
-                      to={item.to}
-                      label={item.label}
-                      icon={item.icon}
-                      active={location.pathname === item.to}
-                      onClick={onClose}
-                    />
-                  ))}
-                </>
+              {phase === "menopause" ? (
+                MENOPAUSE_ITEMS.map((item) => (
+                  <NavItem
+                    key={item.to}
+                    to={item.to}
+                    label={item.label}
+                    icon={item.icon}
+                    active={location.pathname === item.to}
+                    onClick={onClose}
+                  />
+                ))
+              ) : (
+                SECONDARY_ITEMS.filter(item => {
+                  if (item.to === "/pregnancy-dashboard" && phase !== "maternity") return false;
+                  if (item.to === "/wellness" && phase === "maternity") return false;
+                  // Show maternity-only routes only in maternity phase
+                  if (MATERNITY_ONLY_ROUTES.has(item.to) && phase !== "maternity") return false;
+                  // Show family-planning-only routes only in family-planning phase
+                  if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
+                  return true;
+                }).map((item) => (
+                  <NavItem
+                    key={item.to}
+                    to={item.to}
+                    label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
+                    icon={item.icon}
+                    active={location.pathname === item.to}
+                    onClick={onClose}
+                  />
+                ))
               )}
             </nav>
           </div>

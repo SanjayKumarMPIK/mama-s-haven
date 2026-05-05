@@ -52,12 +52,11 @@ import FunActivity from "./pages/menopause/FunActivity";
 import { lazy, Suspense } from "react";
 
 const MenopauseDashboard = lazy(() => import("./pages/menopause/MenopauseDashboard"));
-const MenoSymptomTracker = lazy(() => import("./pages/menopause/MenoSymptomTracker"));
 const MenoBoneHealth = lazy(() => import("./pages/menopause/MenoBoneHealth"));
-const MenoNutritionGuide = lazy(() => import("./pages/menopause/MenoNutritionGuide"));
 const MenoSleepMood = lazy(() => import("./pages/menopause/MenoSleepMood"));
 const MenoWeightMetabolism = lazy(() => import("./pages/menopause/MenoWeightMetabolism"));
 const MenoHeartHealth = lazy(() => import("./pages/menopause/MenoHeartHealth"));
+const MenoPHCSupport = lazy(() => import("./pages/menopause/MenoPHCSupport"));
 import BabySupportiveHelper from "./pages/BabySupportiveHelper";
 import FPToolPage from "./pages/FPToolPage";
 import FitnessHealthCalculatorPage from "./pages/maternity/FitnessHealthCalculatorPage";
@@ -146,19 +145,24 @@ const App = () => (
                           <Route path="/family-planning/care-log" element={<CareLog />} />
 
                         {/* Menopause phase routes */}
+                        <Route path="/menopause" element={<Index />} />
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
                         <Route path="/menopause/dashboard" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenopauseDashboard /></Suspense>} />
-                        <Route path="/menopause/symptoms" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoSymptomTracker /></Suspense>} />
+                        <Route path="/menopause/symptoms" element={<SymptomChecker />} />
                         <Route path="/menopause/bone-health" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoBoneHealth /></Suspense>} />
-                        <Route path="/menopause/nutrition" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoNutritionGuide /></Suspense>} />
+                        <Route path="/menopause/nutrition" element={<NutritionGuide />} />
                         <Route path="/menopause/sleep-mood" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoSleepMood /></Suspense>} />
-                        <Route path="/menopause/weight" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoWeightMetabolism /></Suspense>} />
-                        <Route path="/menopause/heart" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoHeartHealth /></Suspense>} />
+                        <Route path="/menopause/weight-metabolism" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoWeightMetabolism /></Suspense>} />
+                        <Route path="/menopause/heart-health" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoHeartHealth /></Suspense>} />
+                        <Route path="/menopause/ai-assistant" element={<Assistant />} />
+                        <Route path="/menopause/phc-support" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoPHCSupport /></Suspense>} />
                         <Route path="/menopause/calendar" element={<MenopauseCalendar />} />
                         <Route path="/menopause/analytics" element={<SymptomAnalytics />} />
-                        <Route path="/menopause/wellness" element={<WellnessPlan />} />
+                        <Route path="/menopause/wellness" element={<WellnessDashboard />} />
+                        <Route path="/menopause/tools" element={<Tools />} />
+                        <Route path="/menopause/articles" element={<Articles />} />
                         <Route path="/menopause/goals" element={<DailyGoals />} />
-                        <Route path="/menopause/care" element={<MenopauseCareEssentials />} />
+                        <Route path="/menopause/care-essentials" element={<MenopauseCareEssentials />} />
                         <Route path="/menopause/fun" element={<FunActivity />} />
 
                           <Route path="/about" element={<About />} />

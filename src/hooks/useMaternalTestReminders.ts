@@ -183,7 +183,7 @@ function shouldShowRecommendation(
 
 export function useMaternalTestReminders() {
   const { phase } = usePhase();
-  const { profile, currentWeek, activeEDD } = usePregnancyProfile();
+  const { profile, gestationalWeek, activeEDD, mode } = usePregnancyProfile();
   const [state, setState] = useState<MaternalTestReminderState>(loadState);
 
   // Persist state
@@ -196,7 +196,7 @@ export function useMaternalTestReminders() {
 
   // ─── Active recommendation (first eligible test to show popup for) ─────
   const activeRecommendation = useMemo<MaternalTest | null>(() => {
-    if (phase !== "maternity" || !profile.isSetup || !lmp) return null;
+    if (phase !== "maternity" || !profile.isSetup || !lmp || mode !== "pregnancy") return null;
 
     // Sort by priority (high priority first, then by weekStart)
     const sorted = [...MATERNAL_TESTS].sort((a, b) => {
@@ -207,12 +207,12 @@ export function useMaternalTestReminders() {
     });
 
     for (const test of sorted) {
-      if (shouldShowRecommendation(currentWeek, test, state, today)) {
+      if (shouldShowRecommendation(gestationalWeek, test, state, today)) {
         return test;
       }
     }
     return null;
-  }, [phase, profile.isSetup, lmp, currentWeek, state, today]);
+  }, [phase, profile.isSetup, lmp, mode, gestationalWeek, state, today]);
 
   // ─── Scheduled reminder that's due today ───────────────────────────────
   const dueReminder = useMemo<MaternalTestReminder | null>(() => {
@@ -337,13 +337,14 @@ export function useMaternalTestReminders() {
 
   /** Mark ALL currently eligible tests as shown today — prevents cascading popups */
   const markAllEligibleShown = useCallback(() => {
+    if (mode !== "pregnancy") return;
     const now = todayISO();
     setState((prev) => {
       const updatedHistory = { ...prev.popupHistory };
       for (const test of MATERNAL_TESTS) {
         if (
-          currentWeek >= test.weekStart &&
-          currentWeek <= test.weekEnd + 2 &&
+          gestationalWeek >= test.weekStart &&
+          gestationalWeek <= test.weekEnd + 2 &&
           !prev.ignoredTests.includes(test.id) &&
           !prev.completedTests.includes(test.id) &&
           !prev.dismissedRecommendations.includes(test.id)
@@ -353,7 +354,7 @@ export function useMaternalTestReminders() {
       }
       return { ...prev, popupHistory: updatedHistory };
     });
-  }, [currentWeek]);
+  }, [gestationalWeek, mode]);
 
   // ─── Status for each test ──────────────────────────────────────────────
 
@@ -369,11 +370,13 @@ export function useMaternalTestReminders() {
         return "reminder-set";
       }
 
-      if (currentWeek >= test.weekStart && currentWeek <= test.weekEnd) return "recommended";
-      if (currentWeek > test.weekEnd) return "past";
+      if (mode !== "pregnancy") return "past";
+
+      if (gestationalWeek >= test.weekStart && gestationalWeek <= test.weekEnd) return "recommended";
+      if (gestationalWeek > test.weekEnd) return "past";
       return "upcoming";
     },
-    [state, today, currentWeek]
+    [state, today, gestationalWeek, mode],
   );
 
   // ─── Get reminder for a specific test ──────────────────────────────────
@@ -423,8 +426,8 @@ export function useMaternalTestReminders() {
     getTestStatus,
     getReminderForTest,
 
-    // Context
-    currentWeek,
+    // Context (gestational week for antenatal test windows)
+    currentWeek: gestationalWeek,
     lmp,
     today,
     isMaternity: phase === "maternity" && profile.isSetup,

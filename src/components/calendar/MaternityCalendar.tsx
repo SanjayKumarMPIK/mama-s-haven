@@ -58,7 +58,14 @@ function getWeeklyInsight(week: number): string {
 
 export default function MaternityCalendar() {
   const { maternityLogs, clearAllLogs } = useHealthLog();
-  const { currentWeek, trimester, daysLeft, profile, mode: pregnancyMode } = usePregnancyProfile();
+  const {
+    currentWeek: gestationalWeek,
+    postpartumWeek,
+    trimester,
+    daysLeft,
+    profile,
+    mode: pregnancyMode,
+  } = usePregnancyProfile();
   const { calendarReminders, testsWithStatus } = useMaternalTestReminders();
   const { appointments } = useAppointments();
 
@@ -114,6 +121,13 @@ export default function MaternityCalendar() {
   }, [profile.dueDate]);
 
   const isPostDelivery = pregnancyMode === "postpartum" || pregnancyMode === "premature";
+
+  const displayWeek =
+    isPostDelivery && postpartumWeek != null ? postpartumWeek : gestationalWeek;
+
+  const weeklyInsight = isPostDelivery
+    ? "Recovery window: prioritize rest, hydration, gentle movement as cleared by your clinician, and watch for fever, heavy bleeding, or severe pain."
+    : getWeeklyInsight(gestationalWeek);
 
   const trimesterLabel = isPostDelivery
     ? (pregnancyMode === "premature" ? "Premature" : "Postpartum")
@@ -401,7 +415,9 @@ export default function MaternityCalendar() {
                     Current
                   </p>
                   <p className="text-sm font-bold text-blue-900">
-                    Week {currentWeek}{weekDay ? `, Day ${weekDay}` : ""}
+                    {isPostDelivery
+                      ? `Week ${displayWeek} postpartum`
+                      : `Week ${displayWeek}${weekDay ? `, Day ${weekDay}` : ""}`}
                   </p>
                 </div>
               </div>
@@ -438,7 +454,7 @@ export default function MaternityCalendar() {
                   💡 This Week
                 </p>
                 <p className="text-xs font-medium text-indigo-800 leading-relaxed">
-                  {getWeeklyInsight(currentWeek)}
+                  {weeklyInsight}
                 </p>
               </div>
             </div>

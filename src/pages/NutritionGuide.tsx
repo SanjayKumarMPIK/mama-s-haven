@@ -4,6 +4,7 @@ import { usePhase } from "@/hooks/usePhase";
 import { useNutritionIntelligence } from "@/hooks/useNutritionIntelligence";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
+import MaternityWellnessPlan from "@/pages/maternity/components/MaternityWellnessPlan";
 import SymptomSearchBar from "@/components/nutrition/SymptomSearchBar";
 import SymptomAnalysisCard from "@/components/nutrition/SymptomAnalysisCard";
 import NutrientCard from "@/components/nutrition/NutrientCard";
@@ -13,7 +14,7 @@ import FitnessCalculatorInline from "@/components/nutrition/FitnessCalculatorInl
 import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
 import AffirmationBanner from "@/components/nutrition/AffirmationBanner";
 import AccordionSection from "@/components/nutrition/AccordionSection";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import {
   Apple, Calendar, ChevronRight, ArrowRight, Activity,
   Sparkles, ShieldCheck, Search, ClipboardList, Scale, Salad
@@ -104,6 +105,12 @@ export default function NutritionGuide() {
 
   const exploreLinks = EXPLORE_LINKS[phase] ?? [];
 
+  // Redirect puberty phase to the isolated puberty nutrition guide
+  // We do this after all hooks to prevent Rules of Hooks violations
+  if (phase === "puberty") {
+    return <Navigate to="/puberty/nutrition-guide" replace />;
+  }
+
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
       {phase === "maternity" ? (
@@ -142,7 +149,7 @@ export default function NutritionGuide() {
                     icon={<div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center shrink-0"><ClipboardList className="w-8 h-8 text-purple-600" /></div>}
                     title="Activities"
                     titleColor="text-purple-700"
-                    desc="Explore your daily wellness plan, set pregnancy goals, and enjoy fun activities."
+                    desc="Weekly exercise planner powered by the maternity-safe activity library (same data as your wellness plan below)."
                   />
                   <FeatureCard 
                     to="/maternity/nutrition/fitness-health-calculator"
@@ -167,6 +174,28 @@ export default function NutritionGuide() {
                   />
                 </div>
               </div>
+            </ScrollReveal>
+
+            <ScrollReveal delay={80}>
+              <section
+                className="rounded-2xl border border-purple-200/70 bg-gradient-to-b from-white to-purple-50/30 p-4 shadow-sm sm:p-6"
+                aria-labelledby="maternity-wellness-plan-heading"
+              >
+                <h2
+                  id="maternity-wellness-plan-heading"
+                  className="text-xl font-bold tracking-tight text-slate-800"
+                >
+                  Your wellness plan
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Food and sleep tabs are placeholders for now. Open <strong>Exercise</strong> for your weekly planner: it
+                  reads your pregnancy stage and only suggests movements from the same maternity activity library used
+                  across nutrition tools, with safe scheduling and swaps.
+                </p>
+                <div className="mt-6">
+                  <MaternityWellnessPlan />
+                </div>
+              </section>
             </ScrollReveal>
           </div>
         </>

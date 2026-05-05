@@ -219,7 +219,14 @@ function MessageBubble({ msg, onSpeak }: { msg: Msg; onSpeak?: (text: string) =>
 export default function Assistant() {
   const { t, language, simpleMode } = useLanguage();
   const { phase, phaseName } = usePhase();
-  const { currentWeek, trimester, profile: maternityProfile, activeEDD } = usePregnancyProfile();
+  const {
+    gestationalWeek,
+    postpartumWeek,
+    trimester,
+    profile: maternityProfile,
+    activeEDD,
+    mode: maternityMode,
+  } = usePregnancyProfile();
   const voice = useVoice(language);
   const { logs } = useHealthLog();
   const { profile: userProfile } = useProfile();
@@ -302,7 +309,13 @@ export default function Assistant() {
     // Phase-specific context — only send relevant data
     let phaseContext = "";
     if (isMaternity && maternityProfile.isSetup) {
-      phaseContext = `Pregnancy: week ${currentWeek}, trimester ${trimester}, due date ${activeEDD}, region ${maternityProfile.region}.`;
+      if (maternityMode === "pregnancy") {
+        phaseContext = `Pregnancy: week ${gestationalWeek}, trimester ${trimester}, due date ${activeEDD}, region ${maternityProfile.region}.`;
+      } else if (maternityMode === "premature") {
+        phaseContext = `Premature recovery: about week ${postpartumWeek ?? 1} after birth, reference due date ${activeEDD}, region ${maternityProfile.region}.`;
+      } else {
+        phaseContext = `Postpartum: about week ${postpartumWeek ?? 1} after birth or since due date, region ${maternityProfile.region}.`;
+      }
     } else if (phase === "puberty") {
       const parts: string[] = [];
       if (userProfile.age) parts.push(`Age: ${userProfile.age}`);
@@ -380,7 +393,16 @@ export default function Assistant() {
                   {isMaternity && maternityProfile.isSetup && (
                     <>
                       {" "}
-                      · {t("yourWeek")} {currentWeek}/40 · {t("trimester")} {trimester}
+                      {maternityMode === "pregnancy" ? (
+                        <>
+                          · {t("yourWeek")} {gestationalWeek}/40 · {t("trimester")} {trimester}
+                        </>
+                      ) : (
+                        <>
+                          · {maternityMode === "premature" ? "Recovery week" : "Postpartum week"}{" "}
+                          {postpartumWeek ?? 1}
+                        </>
+                      )}
                     </>
                   )}
                   {userProfile.name && ` · 👋 ${userProfile.name}`}

@@ -14,9 +14,10 @@ const STORAGE_KEY = "mama_haven_nutrition_checklist";
 
 interface NutritionChecklistSectionProps {
   className?: string;
+  hideTodaysFocus?: boolean;
 }
 
-export default function NutritionChecklistSection({ className = "" }: NutritionChecklistSectionProps) {
+export default function NutritionChecklistSection({ className = "", hideTodaysFocus = false }: NutritionChecklistSectionProps) {
   const { trimester, currentWeek } = usePregnancyProfile();
   const { logs } = useHealthLog();
 
@@ -130,59 +131,63 @@ export default function NutritionChecklistSection({ className = "" }: NutritionC
         <DailyHealthChecklist currentWeek={currentWeek} />
       </ScrollReveal>
 
-      <ScrollReveal delay={200}>
-        <div className="flex items-center justify-between mb-4 mt-6">
-          <div className="flex items-center gap-2">
-            <Lightbulb className="w-5 h-5 text-purple-600" />
-            <h3 className="text-sm font-bold">Today's Focus</h3>
-          </div>
-          <button
-            onClick={openAddModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Task
-          </button>
-        </div>
-
-        <div className="space-y-3">
-          {incompleteItems.length === 0 ? (
-            <div className="text-center py-10 bg-card rounded-xl border border-dashed">
-              <Apple className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">All caught up! Add a custom task or check back later.</p>
+      {!hideTodaysFocus && (
+        <>
+          <ScrollReveal delay={200}>
+            <div className="flex items-center justify-between mb-4 mt-6">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-5 h-5 text-purple-600" />
+                <h3 className="text-sm font-bold">Today's Focus</h3>
+              </div>
+              <button
+                onClick={openAddModal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-primary-foreground rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add Task
+              </button>
             </div>
-          ) : (
-            incompleteItems.map(item => (
-              <ChecklistItem
-                key={item.id}
-                item={item}
-                onToggle={handleToggle}
-                onEdit={openEditModal}
-                onDelete={handleDelete}
-              />
-            ))
-          )}
-        </div>
-      </ScrollReveal>
 
-      {completedItems.length > 0 && (
-        <ScrollReveal delay={300}>
-          <h3 className="text-sm font-bold mb-4 mt-6 flex items-center gap-2 text-muted-foreground">
-            <CheckSquare className="w-4 h-4" />
-            Completed Summary
-          </h3>
-          <div className="space-y-3">
-            {completedItems.map(item => (
-              <ChecklistItem
-                key={item.id}
-                item={item}
-                onToggle={handleToggle}
-                onEdit={openEditModal}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
-        </ScrollReveal>
+            <div className="space-y-3">
+              {incompleteItems.length === 0 ? (
+                <div className="text-center py-10 bg-card rounded-xl border border-dashed">
+                  <Apple className="w-10 h-10 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-muted-foreground text-sm">All caught up! Add a custom task or check back later.</p>
+                </div>
+              ) : (
+                incompleteItems.map(item => (
+                  <ChecklistItem
+                    key={item.id}
+                    item={item}
+                    onToggle={handleToggle}
+                    onEdit={openEditModal}
+                    onDelete={handleDelete}
+                  />
+                ))
+              )}
+            </div>
+          </ScrollReveal>
+
+          {completedItems.length > 0 && (
+            <ScrollReveal delay={300}>
+              <h3 className="text-sm font-bold mb-4 mt-6 flex items-center gap-2 text-muted-foreground">
+                <CheckSquare className="w-4 h-4" />
+                Completed Summary
+              </h3>
+              <div className="space-y-3">
+                {completedItems.map(item => (
+                  <ChecklistItem
+                    key={item.id}
+                    item={item}
+                    onToggle={handleToggle}
+                    onEdit={openEditModal}
+                    onDelete={handleDelete}
+                  />
+                ))}
+              </div>
+            </ScrollReveal>
+          )}
+        </>
       )}
 
       <AddChecklistModal

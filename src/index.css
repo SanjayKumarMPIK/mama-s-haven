@@ -161,6 +161,31 @@
 .animate-fadeIn  { animation: fadeIn 0.4s ease-out both; }
 .animate-scaleIn { animation: scaleIn 0.3s ease-out both; }
 
+/* ── Symptom Auto-Swap Animations ── */
+@keyframes symptomHighlight {
+  0% { box-shadow: 0 0 0 0 hsl(35 95% 55% / 0.5); background-color: hsl(35 95% 55% / 0.12); }
+  40% { box-shadow: 0 0 0 6px hsl(35 95% 55% / 0.2); background-color: hsl(35 95% 55% / 0.08); }
+  100% { box-shadow: 0 0 0 0 transparent; background-color: transparent; }
+}
+@keyframes symptomSlideIn {
+  0% { opacity: 0; transform: translateY(-10px) scale(0.95); }
+  60% { opacity: 1; transform: translateY(2px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes symptomSlideOut {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(10px) scale(0.95); }
+}
+.symptom-highlight {
+  animation: symptomHighlight 1.5s ease-out forwards;
+}
+.symptom-slide-in {
+  animation: symptomSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.symptom-slide-out {
+  animation: symptomSlideOut 0.25s ease-in both;
+}
+
 @keyframes swing {
   0%, 100% { transform: rotate(0deg); }
   20% { transform: rotate(15deg); }

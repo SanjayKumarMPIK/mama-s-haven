@@ -32,6 +32,7 @@ export interface ProfileData {
   cycleLength: number | null;
   lastPeriodDate: string;
   periodDuration: number; // default 5
+  menarcheDate: string | null; // Date of first period
 
   // Health
   haemoglobin: string;
@@ -154,6 +155,7 @@ export function useProfile() {
     const cycleLength = extras.cycleLength ?? (health?.cycleLength ? parseInt(health.cycleLength, 10) : 28);
     const lastPeriodDate = health?.lastPeriodDate ?? "";
     const periodDuration = extras.periodDuration;
+    const menarcheDate = (health as any)?.menarcheDate ?? null;
 
     const haemoglobin = health?.haemoglobin ?? "";
     const knownConditions = health?.knownConditions ?? "";
@@ -181,6 +183,7 @@ export function useProfile() {
       cycleLength,
       lastPeriodDate,
       periodDuration,
+      menarcheDate,
       haemoglobin,
       knownConditions,
       medicalConditions,
@@ -224,7 +227,7 @@ export function useProfile() {
     setExtras(updated);
   }, [extras]);
 
-  const updatePersonalInfo = useCallback((updates: { dob?: string; bloodGroup?: string; medicalConditions?: string[]; region?: "north" | "south" | "east" | "west" }) => {
+  const updatePersonalInfo = useCallback((updates: { dob?: string; bloodGroup?: string; medicalConditions?: string[]; region?: "north" | "south" | "east" | "west"; menarcheDate?: string | null }) => {
     updateProfile((prev) => {
       const dob = updates.dob ?? prev.basic.dob;
       const age = computeAgeFromDOB(dob);
@@ -249,6 +252,7 @@ export function useProfile() {
           ...prev.health,
           medicalConditions,
           knownConditions: medicalConditions.length > 0 ? medicalConditions.join(", ") : prev.health.knownConditions,
+          menarcheDate: updates.menarcheDate ?? prev.health.menarcheDate,
         },
         location: {
           ...prev.location,

@@ -184,34 +184,21 @@ const MENOPAUSE_LIBRARY: PredefinedSymptom[] = [
 // ─── Puberty Configuration ───────────────────────────────────────────────────
 
 const PUBERTY_CORE: ActiveSymptom[] = [
-  { id: "cramps", name: "Cramps", isCore: true },
-  { id: "fatigue", name: "Fatigue", isCore: true },
-  { id: "mood_swings", name: "Mood Swings", isCore: true },
-  { id: "headache", name: "Headache", isCore: true },
   { id: "acne", name: "Acne", isCore: true },
-  { id: "breast_tenderness", name: "Breast Tenderness", isCore: true },
+  { id: "moodSwings", name: "Mood Swings", isCore: true },
+  { id: "cramps", name: "Cramps", isCore: true },
+  { id: "headache", name: "Headache", isCore: true },
+  { id: "fatigue", name: "Fatigue", isCore: true },
+  { id: "bloating", name: "Bloating", isCore: true },
 ];
 
 const PUBERTY_LIBRARY: PredefinedSymptom[] = [
-  // Physical
-  { id: "back_pain", name: "Back Pain", category: "physical" },
-  { id: "bloating", name: "Bloating", category: "digestive" },
-  { id: "nausea", name: "Nausea", category: "digestive" },
-  { id: "dizziness", name: "Dizziness", category: "physical" },
-  
-  // Emotional
-  { id: "anxiety", name: "Anxiety", category: "mental" },
-  { id: "stress", name: "Stress", category: "mental" },
+  { id: "breastTenderness", name: "Breast Tenderness", category: "hormonal" },
+  { id: "backPain", name: "Back Pain", category: "physical" },
+  { id: "foodCravings", name: "Food Cravings", category: "digestive" },
   { id: "irritability", name: "Irritability", category: "emotional" },
-  { id: "emotional_changes", name: "Emotional Changes", category: "emotional" },
-  
-  // Skin
-  { id: "oily_skin", name: "Oily Skin", category: "skin" },
-  { id: "hair_changes", name: "Hair Changes", category: "skin" },
-  
-  // Period Related
-  { id: "heavy_flow", name: "Heavy Flow", category: "period" },
-  { id: "irregular_cycle", name: "Irregular Cycle", category: "period" },
+  { id: "sleepIssues", name: "Sleep Issues", category: "physical" },
+  { id: "anxiety", name: "Anxiety", category: "mental" },
 ];
 
 // ─── Phase Configuration Map ───────────────────────────────────────────────

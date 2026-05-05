@@ -39,6 +39,12 @@ export interface PubertyEntry {
     headache: boolean;
     acne: boolean;
     breastTenderness: boolean;
+    bloating?: boolean;
+    backPain?: boolean;
+    foodCravings?: boolean;
+    irritability?: boolean;
+    sleepIssues?: boolean;
+    anxiety?: boolean;
   };
   /** Intensity per symptom (1–10). Required for new logs, optional for legacy data. */
   symptomIntensities?: Record<string, number>;
@@ -706,6 +712,12 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
               headache: false,
               acne: false,
               breastTenderness: false,
+              bloating: false,
+              backPain: false,
+              foodCravings: false,
+              irritability: false,
+              sleepIssues: false,
+              anxiety: false,
             },
             mood: null,
             sleepHours: null,

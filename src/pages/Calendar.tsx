@@ -1,9 +1,9 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { EnhancedSlider, type Checkpoint } from "@/components/ui/enhanced-slider";
-import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon, Settings } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarChart3, PieChart as PieChartIcon, Lock, Droplets, Moon, Settings, ChevronDown } from "lucide-react";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
 
@@ -20,6 +20,134 @@ import MaternityCalendar from "@/components/calendar/MaternityCalendar";
 import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
 import { useDateSymptomLayout } from "@/hooks/useDateSymptomLayout";
 import { DateSymptomCustomizer } from "@/components/calendar/DateSymptomCustomizer";
+
+// Smart Symptom Management System with Usage Frequency Tracking
+const USAGE_FREQUENCY_KEY = "ss-puberty-symptom-usage";
+const ACTIVE_SYMPTOMS_KEY = "ss-puberty-active-symptoms";
+
+const ALL_PUBERTY_SYMPTOMS: { id: string; label: string }[] = [
+  { id: "acne", label: "Acne" },
+  { id: "moodSwings", label: "Mood Swings" },
+  { id: "cramps", label: "Cramps" },
+  { id: "headache", label: "Headache" },
+  { id: "fatigue", label: "Fatigue" },
+  { id: "bloating", label: "Bloating" },
+  { id: "breastTenderness", label: "Breast Tenderness" },
+  { id: "backPain", label: "Back Pain" },
+  { id: "foodCravings", label: "Food Cravings" },
+  { id: "irritability", label: "Irritability" },
+  { id: "sleepIssues", label: "Sleep Issues" },
+  { id: "anxiety", label: "Anxiety" },
+];
+
+interface SymptomPromotion {
+  id: string;
+  promotedAt: number; // timestamp when promoted to active list
+}
+
+function useSmartSymptomManagement() {
+  const [symptomPromotions, setSymptomPromotions] = useState<Record<string, SymptomPromotion>>(() => {
+    try {
+      const raw = localStorage.getItem("ss-puberty-symptom-promotions");
+      if (raw) return JSON.parse(raw);
+    } catch {}
+    
+    // Initialize with default zero promotions for all symptoms
+    const initial: Record<string, SymptomPromotion> = {};
+    ALL_PUBERTY_SYMPTOMS.forEach(s => {
+      initial[s.id] = { id: s.id, promotedAt: 0 };
+    });
+    return initial;
+  });
+
+  const [activeSymptoms, setActiveSymptoms] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem(ACTIVE_SYMPTOMS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as string[];
+        // Ensure we have exactly 6 active symptoms
+        const valid = parsed.filter(id => ALL_PUBERTY_SYMPTOMS.some(s => s.id === id));
+        if (valid.length >= 6) return valid.slice(0, 6);
+        if (valid.length > 0) {
+          // Add more symptoms to reach 6
+          const remaining = ALL_PUBERTY_SYMPTOMS
+            .map(s => s.id)
+            .filter(id => !valid.includes(id))
+            .slice(0, 6 - valid.length);
+          return [...valid, ...remaining];
+        }
+      }
+    } catch {}
+    
+    // Default: first 6 symptoms
+    return ALL_PUBERTY_SYMPTOMS.slice(0, 6).map(s => s.id);
+  });
+
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+  const [animatingId, setAnimatingId] = useState<string | null>(null);
+
+  // Get active and additional symptoms
+  const activeSymptomIds = useMemo(() => activeSymptoms, [activeSymptoms]);
+  const additionalSymptomIds = useMemo(() => {
+    return ALL_PUBERTY_SYMPTOMS
+      .map(s => s.id)
+      .filter(id => !activeSymptoms.includes(id));
+  }, [activeSymptoms]);
+
+  // Manual reordering: When user selects from "View More Symptoms"
+  const selectSymptomFromAdditional = useCallback((symptomId: string) => {
+    setAnimatingId(symptomId);
+    
+    // Find least recently promoted symptom in active list
+    const leastRecentlyPromoted = activeSymptoms.reduce((least, current) => {
+      const leastPromotedAt = symptomPromotions[least]?.promotedAt || 0;
+      const currentPromotedAt = symptomPromotions[current]?.promotedAt || 0;
+      
+      // Find the one with the oldest promotion time
+      if (currentPromotedAt < leastPromotedAt) return current;
+      return least;
+    });
+
+    // Update active symptoms list: move selected to top, remove least recently promoted
+    setActiveSymptoms(prev => {
+      // Remove the selected symptom from additional list and the least recently promoted from active
+      const newActive = [symptomId, ...prev.filter(id => id !== leastRecentlyPromoted)];
+      try { localStorage.setItem(ACTIVE_SYMPTOMS_KEY, JSON.stringify(newActive)); } catch {}
+      return newActive;
+    });
+
+    // Update promotion timestamps
+    setSymptomPromotions(prev => {
+      const updated = {
+        ...prev,
+        [symptomId]: { id: symptomId, promotedAt: Date.now() }
+      };
+      try { localStorage.setItem("ss-puberty-symptom-promotions", JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    
+    // Highlight the newly added symptom
+    setHighlightedId(symptomId);
+    setTimeout(() => setHighlightedId(null), 2000);
+    
+    // Clear animation
+    setTimeout(() => setAnimatingId(null), 300);
+  }, [activeSymptoms, symptomPromotions]);
+
+  const getSymptom = useCallback(
+    (id: string) => ALL_PUBERTY_SYMPTOMS.find((s) => s.id === id) ?? { id, label: id },
+    []
+  );
+
+  return {
+    activeSymptomIds,
+    additionalSymptomIds,
+    highlightedId,
+    animatingId,
+    selectSymptomFromAdditional,
+    getSymptom
+  };
+}
 
 type CalendarMode = "year" | "month";
 type SymptomTime = "morning" | "afternoon" | "evening";
@@ -329,6 +457,84 @@ function buildTooltipForEntry(entry: HealthLogEntry | undefined): string | undef
   if ((entry as any).bloodColor) parts.push(`Color: ${(entry as any).bloodColor}`);
   if (parts.length === 0) return "Logged";
   return `Logged: ${parts.join(", ")}`;
+}
+
+// Collapsible View More Symptoms Component
+interface CollapsibleViewMoreSymptomsProps {
+  additionalSymptomIds: string[];
+  getSymptom: (id: string) => { id: string; label: string };
+  selectedSymptoms: Record<string, boolean>;
+  toggleSymptom: (id: string) => void;
+}
+
+function CollapsibleViewMoreSymptoms({
+  additionalSymptomIds,
+  getSymptom,
+  selectedSymptoms,
+  toggleSymptom
+}: CollapsibleViewMoreSymptomsProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center justify-between w-full px-3 py-2 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <ChevronDown className={cn(
+            "w-4 h-4 text-muted-foreground transition-transform duration-200",
+            isExpanded && "rotate-180"
+          )} />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            View More Symptoms
+          </span>
+        </div>
+        <span className="text-[9px] text-muted-foreground">
+          {additionalSymptomIds.length} available
+        </span>
+      </button>
+
+      {isExpanded && (
+        <div className="space-y-2 animate-in slide-in-from-top-2 fade-in duration-200">
+          <div className="grid grid-cols-3 gap-2">
+            {additionalSymptomIds.slice(0, 9).map((symptomId) => {
+              const symptom = getSymptom(symptomId);
+              const isActive = !!selectedSymptoms[symptomId];
+
+              return (
+                <button
+                  key={symptomId}
+                  type="button"
+                  onClick={() => toggleSymptom(symptomId)}
+                  className={cn(
+                    "px-2 py-2 rounded-lg border text-xs font-medium transition-all text-center",
+                    isActive
+                      ? "bg-pink-100 border-pink-300 text-pink-700 shadow-sm"
+                      : "bg-card border-border hover:bg-muted/50 text-foreground hover:scale-105"
+                  )}
+                >
+                  <div className="flex items-center justify-center gap-1">
+                    <span className={cn(
+                      "w-2 h-2 rounded-full border shrink-0 transition-colors",
+                      isActive ? "bg-pink-500 border-pink-500" : "border-muted-foreground/40"
+                    )} />
+                    {symptom.label}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          {additionalSymptomIds.length > 9 && (
+            <div className="text-center text-[9px] text-muted-foreground">
+              Showing 9 of {additionalSymptomIds.length} symptoms
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Calendar Page Component ──────────────────────────────────────────────────
@@ -800,7 +1006,6 @@ function SymptomLogPanel({
   dateISO,
   phase,
   logs,
-  allLogs,
   symptomOptions,
   onClose,
   onSave,
@@ -810,6 +1015,9 @@ function SymptomLogPanel({
   cycleLength,
 }: SymptomLogPanelProps) {
   const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
+  
+  // Use smart symptom management for puberty phase only
+  const smartSymptoms = phase === "puberty" ? useSmartSymptomManagement() : null;
 
   // ── Family Planning: per-date symptom layout ──
   const fpDateLayout = phase === "family-planning" ? useDateSymptomLayout(dateISO) : null;
@@ -907,13 +1115,13 @@ function SymptomLogPanel({
     if (!showBloodColorSection) return false;
     return shouldShowDoctorAlert({
       dateISO,
-      allLogs,
+      allLogs: logs,
       selectedColor: bloodColor,
       periodSymptoms: periodInfectionSymptoms,
       lookbackDays: 7,
       repeatThreshold: 2,
     });
-  }, [showBloodColorSection, dateISO, allLogs, bloodColor, periodInfectionSymptoms]);
+  }, [showBloodColorSection, dateISO, logs, bloodColor, periodInfectionSymptoms]);
 
   const activeSymptomIds = useMemo(
     () => Object.entries(selectedSymptoms).filter(([, v]) => v).map(([k]) => k),
@@ -921,8 +1129,20 @@ function SymptomLogPanel({
   );
 
   const toggleSymptom = useCallback((id: string) => {
+    const currentlyActive = !!selectedSymptoms[id];
+    const willBeActive = !currentlyActive;
+    
+    // Manual reordering for puberty phase: only when selecting from "View More Symptoms"
+    if (phase === "puberty" && willBeActive && smartSymptoms) {
+      // If symptom is not in active list, it's from "View More Symptoms" - trigger manual reordering
+      if (!smartSymptoms.activeSymptomIds.includes(id) && smartSymptoms.additionalSymptomIds.includes(id)) {
+        smartSymptoms.selectSymptomFromAdditional(id);
+      }
+      // If symptom is already in active list, just toggle selection - no reordering
+    }
+    
     setSelectedSymptoms((prev) => ({ ...prev, [id]: !prev[id] }));
-  }, []);
+  }, [phase, smartSymptoms, selectedSymptoms]);
 
   // Compute analytics for selected symptom
   const analyticsResult = useMemo(() => {
@@ -1440,49 +1660,118 @@ function SymptomLogPanel({
             </section>
           )}
 
-          {/* Symptom Toggle Grid */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Activity className="w-4 h-4 text-primary" />
-                Symptoms
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowSymptomCustomizer(true)}
-                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-              >
-                <Settings className="w-3 h-3" />
-                Customize
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {effectiveSymptomOptions.map((opt) => {
-                const isActive = !!selectedSymptoms[opt.id];
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => toggleSymptom(opt.id)}
-                    className={cn(
-                      "px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
-                      isActive
-                        ? "bg-primary/15 border-primary/50 text-primary shadow-sm"
-                        : "bg-card border-border hover:bg-muted/50 text-foreground"
-                    )}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className={cn(
-                        "w-3 h-3 rounded-full border-2 transition-colors",
-                        isActive ? "bg-primary border-primary" : "border-muted-foreground/40"
-                      )} />
-                      {opt.label}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </section>
+          {/* Smart Symptom Management - Puberty Only */}
+          {phase === "puberty" && smartSymptoms ? (
+            <section className="space-y-4">
+              <div className="flex items-center">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-pink-600" />
+                  Active Symptoms
+                  <span className="text-[10px] text-muted-foreground font-normal ml-4">
+                    Tap to select • Manual reorder from View More
+                  </span>
+                </h3>
+              </div>
+
+              {/* Active Symptoms Grid (6 symptoms) */}
+              <div className="grid grid-cols-2 gap-3">
+                {smartSymptoms.activeSymptomIds.map((symptomId) => {
+                  const symptom = smartSymptoms.getSymptom(symptomId);
+                  const isActive = !!selectedSymptoms[symptomId];
+                  const isHighlighted = smartSymptoms.highlightedId === symptomId;
+                  const isAnimating = smartSymptoms.animatingId === symptomId;
+
+                  return (
+                    <div key={symptomId} className={cn(
+                      "w-full transition-all duration-300",
+                      isAnimating && "scale-95 opacity-70",
+                      isHighlighted && "ring-2 ring-primary/50 ring-offset-2"
+                    )}>
+                      <button
+                        type="button"
+                        onClick={() => toggleSymptom(symptomId)}
+                        className={cn(
+                          "w-full px-3 py-3 rounded-xl border text-sm font-medium transition-all text-left",
+                          isActive
+                            ? "bg-pink-100 border-pink-300 text-pink-700 shadow-sm"
+                            : "bg-card border-border hover:bg-muted/50 text-foreground"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            <span className={cn(
+                              "w-3 h-3 rounded-full border-2 shrink-0 transition-colors",
+                              isActive ? "bg-pink-500 border-pink-500" : "border-muted-foreground/40"
+                            )} />
+                            {symptom.label}
+                          </span>
+                          {isActive && (
+                            <span className="text-[9px] font-medium text-pink-700 bg-pink-100 px-2 py-0.5 rounded-full shrink-0">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Collapsible View More Symptoms Section */}
+              <div className="space-y-2">
+                <CollapsibleViewMoreSymptoms 
+                  additionalSymptomIds={smartSymptoms.additionalSymptomIds}
+                  getSymptom={smartSymptoms.getSymptom}
+                  selectedSymptoms={selectedSymptoms}
+                  toggleSymptom={toggleSymptom}
+                />
+              </div>
+            </section>
+          ) : (
+            /* Original symptom grid for non-puberty phases */
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-primary" />
+                  Symptoms
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowSymptomCustomizer(true)}
+                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                >
+                  <Settings className="w-3 h-3" />
+                  Customize
+                </button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {effectiveSymptomOptions.map((opt) => {
+                  const isActive = !!selectedSymptoms[opt.id];
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => toggleSymptom(opt.id)}
+                      className={cn(
+                        "px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
+                        isActive
+                          ? "bg-primary/15 border-primary/50 text-primary shadow-sm"
+                          : "bg-card border-border hover:bg-muted/50 text-foreground"
+                      )}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span className={cn(
+                          "w-3 h-3 rounded-full border-2 transition-colors",
+                          isActive ? "bg-primary border-primary" : "border-muted-foreground/40"
+                        )} />
+                        {opt.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           {/* Mood */}
           <section className="space-y-2">
@@ -1756,7 +2045,9 @@ function SymptomLogPanel({
             className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold shadow-sm transition-all ${
               saving
                 ? "bg-muted text-muted-foreground cursor-not-allowed"
-                : "bg-primary text-primary-foreground hover:shadow-md active:scale-[0.97]"
+                : phase === "puberty" 
+                  ? "bg-pink-500 text-white hover:bg-pink-600 hover:shadow-md active:scale-[0.97]"
+                  : "bg-primary text-primary-foreground hover:shadow-md active:scale-[0.97]"
             }`}
           >
             {saving ? "Saving…" : "Save log"}

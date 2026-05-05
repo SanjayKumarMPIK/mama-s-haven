@@ -7,7 +7,6 @@ import { useProfile } from "@/hooks/useProfile";
 import type { Phase } from "@/hooks/usePhase";
 import { X, ChevronRight, ChevronLeft, AlertTriangle, Check, Info, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
-import PubertyQuestions from "./PubertyQuestions";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -183,17 +182,19 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 
 export default function OnboardingFlow() {
   const { config, showOnboarding, setShowOnboarding, saveConfig } = useOnboarding();
-  const { fullProfile, updateProfile } = useAuth();
+  const { profile, updateWeight, updateHeight, updateCycleConfig, updatePersonalInfo, updateLifestyle } = useProfile();
   const { saveProfile, clearProfile } = usePregnancyProfile();
-  const { profile: userProfile } = useProfile();
   const navigate = useNavigate();
 
   // Local state for form
-  const [step, setStep] = useState(2); // 1 = medical (skipped), 2 = purpose, 3 = goals/maternity, 4 = puberty questions
+  const [step, setStep] = useState(2); // 1 = medical (skipped), 2 = purpose, 3 = goals/maternity
+  const [hasFirstPeriod, setHasFirstPeriod] = useState<boolean | null>(null);
+  const [firstPeriodMonth, setFirstPeriodMonth] = useState<string>("");
+  const [firstPeriodYear, setFirstPeriodYear] = useState<string>("");
   const [selectedPhase, setSelectedPhase] = useState<Phase | null>(config.onboardingCompleted ? config.phase : null);
   const [selectedGoals, setSelectedGoals] = useState<Set<Goal>>(new Set(config.goals));
   const [selectedMedicalConditions, setSelectedMedicalConditions] = useState<Set<string>>(
-    new Set(fullProfile?.health?.medicalConditions ?? []),
+    new Set(profile?.medicalConditions ?? []),
   );
   const [ageWarning, setAgeWarning] = useState<string | null>(null);
   const [phaseToConfirm, setPhaseToConfirm] = useState<Phase | null>(null);
@@ -201,7 +202,7 @@ export default function OnboardingFlow() {
   // Maternity setup form state
   const [maternityLmp, setMaternityLmp] = useState("");
   const [lmpError, setLmpError] = useState("");
-  const name = userProfile?.name || "User";
+  const name = profile?.name || "User";
 
   // Pre-fill when re-opening
   useEffect(() => {
@@ -214,7 +215,7 @@ export default function OnboardingFlow() {
 
   if (!showOnboarding) return null;
 
-  const userAge = fullProfile?.basic?.age ? parseInt(fullProfile.basic.age, 10) : config.age;
+  const userAge = profile?.age || config.age;
   const totalSteps = 3;
 
   // ─── Age validation ────────────────────────────────────────────────────────
@@ -284,14 +285,9 @@ export default function OnboardingFlow() {
 
   const persistMedicalConditions = () => {
     const medicalConditions = Array.from(selectedMedicalConditions);
-    updateProfile((prev) => ({
-      ...prev,
-      health: {
-        ...prev.health,
-        medicalConditions,
-        knownConditions: medicalConditions.join(", "),
-      },
-    }));
+    updatePersonalInfo({
+      medicalConditions,
+    });
   };
 
   const handleContinueMedical = () => {
@@ -312,7 +308,24 @@ export default function OnboardingFlow() {
     if (!selectedPhase || selectedGoals.size === 0) return;
     
     if (selectedPhase === "puberty") {
-      setStep(4); // Progress to the Puberty specific questionnaire
+      // Store first period information if provided
+      if (hasFirstPeriod === true && firstPeriodMonth && firstPeriodYear && !profile?.menarcheDate) {
+        const menarcheDate = new Date(parseInt(firstPeriodYear), parseInt(firstPeriodMonth) - 1, 1).toISOString().split('T')[0];
+        updatePersonalInfo({
+          menarcheDate: menarcheDate,
+        });
+        console.log("First period date stored during puberty onboarding:", menarcheDate);
+      }
+      
+      // Complete puberty onboarding
+      const cfg: Partial<OnboardingConfig> = {
+        phase: selectedPhase,
+        goals: Array.from(selectedGoals),
+        age: userAge,
+        onboardingCompleted: true,
+      };
+      saveConfig(cfg);
+      setShowOnboarding(false);
       return;
     }
 
@@ -367,18 +380,7 @@ export default function OnboardingFlow() {
     navigate("/", { replace: true });
   };
 
-  const handlePubertyComplete = (pubertyData: any) => {
-    const cfg: Partial<OnboardingConfig> = {
-      phase: selectedPhase!,
-      goals: Array.from(selectedGoals),
-      age: userAge,
-      onboardingCompleted: true,
-      pubertyData: pubertyData,
-    };
-    saveConfig(cfg);
-    setShowOnboarding(false);
-  };
-
+  
   // ─── Render ────────────────────────────────────────────────────────────────
 
   const content = (
@@ -636,6 +638,95 @@ export default function OnboardingFlow() {
                 })}
               </div>
 
+              {/* First Period Question for Puberty Phase */}
+              {selectedPhase === "puberty" && !profile?.menarcheDate && (
+                <div className="mt-6 p-4 bg-pink-50 rounded-xl border border-pink-200">
+                  <h3 className="text-sm font-semibold text-pink-800 mb-3">Have you got your first periods?</h3>
+                  <div className="space-y-3">
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setHasFirstPeriod(true)}
+                        className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                          hasFirstPeriod === true
+                            ? "border-pink-500 bg-pink-500 text-white"
+                            : "border-pink-200 bg-white text-pink-700 hover:border-pink-300"
+                        }`}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setHasFirstPeriod(false)}
+                        className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition-colors ${
+                          hasFirstPeriod === false
+                            ? "border-pink-500 bg-pink-500 text-white"
+                            : "border-pink-200 bg-white text-pink-700 hover:border-pink-300"
+                        }`}
+                      >
+                        No
+                      </button>
+                    </div>
+                    
+                    {/* Show month/year dropdowns if user answered Yes */}
+                    {hasFirstPeriod === true && (
+                      <div className="space-y-3 pt-3 border-t border-pink-200">
+                        <h4 className="text-sm font-medium text-pink-800">When was your first period?</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-pink-700">Month</label>
+                            <select
+                              value={firstPeriodMonth}
+                              onChange={(e) => setFirstPeriodMonth(e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-pink-200 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                            >
+                              <option value="">Select month</option>
+                              <option value="1">January</option>
+                              <option value="2">February</option>
+                              <option value="3">March</option>
+                              <option value="4">April</option>
+                              <option value="5">May</option>
+                              <option value="6">June</option>
+                              <option value="7">July</option>
+                              <option value="8">August</option>
+                              <option value="9">September</option>
+                              <option value="10">October</option>
+                              <option value="11">November</option>
+                              <option value="12">December</option>
+                            </select>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-xs font-medium text-pink-700">Year</label>
+                            <select
+                              value={firstPeriodYear}
+                              onChange={(e) => setFirstPeriodYear(e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg border border-pink-200 text-sm focus:outline-none focus:ring-2 focus:ring-pink-500"
+                            >
+                              <option value="">Select year</option>
+                              {(() => {
+                                const currentYear = new Date().getFullYear();
+                                const birthYear = profile?.dob ? new Date(profile.dob).getFullYear() : currentYear - 20;
+                                const years = [];
+                                for (let year = currentYear; year >= birthYear; year--) {
+                                  years.push(year);
+                                }
+                                return years.map(year => (
+                                  <option key={year} value={year}>{year}</option>
+                                ));
+                              })()}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-pink-600">
+                      This helps us provide personalized nutrition guidance for your puberty phase.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex flex-col items-center gap-3 mt-8">
                 <button
@@ -658,15 +749,7 @@ export default function OnboardingFlow() {
             </div>
           )}
 
-          {/* ───── Step 3: Puberty Questionnaire (Optional) ───── */}
-          {step === 4 && selectedPhase === "puberty" && (
-            <PubertyQuestions 
-              onBack={() => setStep(3)} 
-              userDob={fullProfile?.basic?.dob}
-              onComplete={handlePubertyComplete} 
-            />
-          )}
-
+          
         </div>
       </div>
 

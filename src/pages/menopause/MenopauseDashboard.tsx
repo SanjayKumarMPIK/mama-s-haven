@@ -294,12 +294,12 @@ export default function MenopauseDashboard() {
           <ModuleCard to="/menopause/bone-health" icon={Bone} label="Bone Health" emoji="🦴" gradient="bg-gradient-to-br from-teal-500 to-emerald-500" delay={160} />
           <ModuleCard to="/menopause/nutrition" icon={Apple} label="Nutrition Guide" emoji="🥗" gradient="bg-gradient-to-br from-green-500 to-emerald-500" delay={170} />
           <ModuleCard to="/menopause/sleep-mood" icon={Moon} label="Sleep & Mood" emoji="😴" gradient="bg-gradient-to-br from-indigo-500 to-purple-500" delay={180} />
-          <ModuleCard to="/menopause/weight" icon={Scale} label="Weight & Metabolism" emoji="⚖️" gradient="bg-gradient-to-br from-blue-500 to-cyan-500" delay={190} />
-          <ModuleCard to="/menopause/heart" icon={Heart} label="Heart Health" emoji="❤️" gradient="bg-gradient-to-br from-rose-500 to-pink-500" delay={200} />
+          <ModuleCard to="/menopause/weight-metabolism" icon={Scale} label="Weight & Metabolism" emoji="⚖️" gradient="bg-gradient-to-br from-blue-500 to-cyan-500" delay={190} />
+          <ModuleCard to="/menopause/heart-health" icon={Heart} label="Heart Health" emoji="❤️" gradient="bg-gradient-to-br from-rose-500 to-pink-500" delay={200} />
           <ModuleCard to="/menopause/goals" icon={Target} label="Daily Goals" emoji="🎯" gradient="bg-gradient-to-br from-amber-500 to-orange-500" delay={210} />
           <ModuleCard to="/menopause/fun" icon={Sparkles} label="Fun Activity" emoji="🌟" gradient="bg-gradient-to-br from-pink-500 to-rose-400" delay={220} />
-          <ModuleCard to="/assistant" icon={Bot} label="AI Assistant" emoji="🤖" gradient="bg-gradient-to-br from-violet-500 to-purple-600" delay={230} />
-          <ModuleCard to="/phc-nearby" icon={Building2} label="PHC Support" emoji="🏥" gradient="bg-gradient-to-br from-slate-600 to-slate-800" delay={240} />
+          <ModuleCard to="/menopause/ai-assistant" icon={Bot} label="AI Assistant" emoji="🤖" gradient="bg-gradient-to-br from-violet-500 to-purple-600" delay={230} />
+          <ModuleCard to="/menopause/phc-support" icon={Building2} label="PHC Support" emoji="🏥" gradient="bg-gradient-to-br from-slate-600 to-slate-800" delay={240} />
         </div>
 
         {/* ── Privacy Footer ────────────────────────────────────── */}

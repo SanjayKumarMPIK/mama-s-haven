@@ -5,7 +5,7 @@ import { useWellnessRecommendation } from "@/hooks/useWellnessRecommendation";
 import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
-import { useHealthLog, PubertyEntry, FamilyPlanningEntry } from "@/hooks/useHealthLog";
+import { useHealthLog, PubertyEntry, FamilyPlanningEntry, MenopauseEntry } from "@/hooks/useHealthLog";
 import VisualAnalytics from "@/components/dashboard/VisualAnalytics";
 import {
   computeWellnessScore,
@@ -204,7 +204,7 @@ export default function WellnessDashboard() {
     const todayISO = new Date().toISOString().slice(0, 10);
     return Object.entries(logs)
       .filter(([date, entry]) => {
-        if (entry.phase !== "puberty" && entry.phase !== "family-planning") return false;
+        if (entry.phase !== "puberty" && entry.phase !== "family-planning" && entry.phase !== "menopause") return false;
         if (date > todayISO) return false;
         if ((entry as any)._periodAutoMarked) return false;
         if (entry.phase === "puberty") {
@@ -213,6 +213,10 @@ export default function WellnessDashboard() {
         }
         if (entry.phase === "family-planning") {
           const e = entry as FamilyPlanningEntry;
+          return Object.values(e.symptoms).some(Boolean) || !!e.mood;
+        }
+        if (entry.phase === "menopause") {
+          const e = entry as MenopauseEntry;
           return Object.values(e.symptoms).some(Boolean) || !!e.mood;
         }
         return false;
@@ -225,6 +229,16 @@ export default function WellnessDashboard() {
             flowIntensity: null,
             symptoms: { cramps: fp.symptoms.ovulationPain, fatigue: fp.symptoms.fatigue, moodSwings: fp.symptoms.moodChanges, headache: fp.symptoms.stress, acne: false, breastTenderness: fp.symptoms.sleepIssues },
             mood: fp.mood, sleepHours: fp.sleepHours ?? null, sleepQuality: fp.sleepQuality ?? null, notes: fp.notes,
+          };
+          return { date, entry: norm };
+        }
+        if (entry.phase === "menopause") {
+          const m = entry as MenopauseEntry;
+          const norm: any = {
+            phase: "puberty", periodStarted: false, periodEnded: false,
+            flowIntensity: null,
+            symptoms: m.symptoms,
+            mood: m.mood, sleepHours: m.sleepHours ?? null, sleepQuality: m.sleepQuality ?? null, notes: m.notes,
           };
           return { date, entry: norm };
         }

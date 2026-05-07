@@ -77,6 +77,7 @@ import FPFoodsToAvoidPage from "./pages/familyplanning/FPFoodsToAvoidPage";
 import CareLog from "./pages/familyplanning/CareLog";
 import MaternityDeficiencyInsightsPage from "./pages/maternity/MaternityDeficiencyInsightsPage";
 import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
+import { NotificationProvider } from "@/hooks/useNotificationStore";
 
 
 const queryClient = new QueryClient();
@@ -94,8 +95,9 @@ const App = () => (
                   <Toaster />
                   <Sonner />
                   <BrowserRouter>
-                    <AuthGate>
-                      <CustomSymptomsProvider>
+                  <AuthGate>
+                    <NotificationProvider>
+                    <CustomSymptomsProvider>
                         <Navbar />
                         <Routes>
                           <Route path="/" element={<Index />} />
@@ -174,6 +176,7 @@ const App = () => (
                         <MaternityPhaseGatedReminders />
                         <Footer />
                       </CustomSymptomsProvider>
+                      </NotificationProvider>
                     </AuthGate>
                   </BrowserRouter>
                 </TooltipProvider>

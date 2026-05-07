@@ -56,7 +56,7 @@ const FAMILY_PLANNING_ONLY_ROUTES = new Set([
 const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause", label: "Home", icon: Home },
   { to: "/menopause/ai-assistant", label: "AI Assistant", icon: Bot },
-  { to: "/menopause/calendar", label: "Calendar", icon: Calendar },
+  { to: "/calendar", label: "Calendar", icon: Calendar },
   { to: "/menopause/nutrition", label: "Nutrition Guide", icon: Apple },
   { to: "/menopause/symptoms", label: "Symptoms", icon: Search },
   { to: "/menopause/wellness", label: "Wellness Tracker", icon: Trophy },

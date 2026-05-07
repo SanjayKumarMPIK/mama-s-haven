@@ -33,7 +33,7 @@ export default function MissedLogReminder() {
       case "puberty":
         return "/calendar";
       case "menopause":
-        return "/menopause/calendar";
+        return "/calendar";
       case "family-planning":
         return "/calendar";
       default:

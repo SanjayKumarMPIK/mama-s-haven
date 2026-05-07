@@ -1484,7 +1484,7 @@ function SymptomLogPanel({
         <div className="flex items-start justify-between px-5 py-4 border-b border-border/60">
           <div>
             <p className="text-xs text-muted-foreground font-medium">{formatDisplayDate(dateISO)}</p>
-            <h2 className="text-lg font-bold mt-0.5">Daily Symptom Log</h2>
+            <h2 className="text-lg font-bold mt-0.5">{phase === "menopause" ? "Menopause Daily Log" : "Daily Symptom Log"}</h2>
             <p className="text-xs text-muted-foreground mt-1">
               Select symptoms, then tap one to see analytics.
             </p>

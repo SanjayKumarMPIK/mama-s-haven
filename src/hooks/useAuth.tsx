@@ -432,7 +432,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ...next,
           healthCycleStatus: next.health.lifeStage,
         },
-      });
+      }).catch(() => {});
     }
     if (user) {
       const refreshedSession = createSessionFromStored(next);

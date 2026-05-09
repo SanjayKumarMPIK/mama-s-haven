@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import ScrollReveal from "@/components/ScrollReveal";
 import { usePregnancyProfile, type GDMStatus } from "@/hooks/usePregnancyProfile";
+import { shouldShowGTTPopup } from "@/lib/utils";
 
 const MATERNITY_DIABETES_HEALTH_KEY = "maternity-module-diabetes-health";
 
@@ -53,8 +54,18 @@ function loadMaternityHealthMerged(): MaternityHealthState {
 }
 
 export function DiabetesDashboardWidget({ currentWeek }: { currentWeek: number }) {
-  const { profile, setGDMStatus } = usePregnancyProfile();
+  const { profile, setGDMStatus, mode } = usePregnancyProfile();
   const [health, setHealth] = useState<MaternityHealthState>(() => loadMaternityHealthMerged());
+
+  // Use centralized GTT visibility condition for GTT Test Status section
+  const shouldShowGTTStatus = shouldShowGTTPopup(
+    mode,
+    currentWeek,
+    profile.gdmStatus,
+    profile.isSetup,
+    false, // Not checking if popup is open for widget
+    profile.gttQuestionCompleted
+  );
 
   const updateStage = useCallback((stage: DiabetesStage) => {
     setHealth((prev) => ({
@@ -121,8 +132,9 @@ export function DiabetesDashboardWidget({ currentWeek }: { currentWeek: number }
 
   return (
     <div className="space-y-6">
-      {/* GDM Status Editor */}
-      <ScrollReveal>
+      {/* GDM Status Editor - only show during GTT window */}
+      {shouldShowGTTStatus && (
+        <ScrollReveal>
         <div className="rounded-2xl border border-border/60 bg-card shadow-sm text-left p-5">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -170,6 +182,7 @@ export function DiabetesDashboardWidget({ currentWeek }: { currentWeek: number }
           )}
         </div>
       </ScrollReveal>
+      )}
 
       {!health?.diabetesPromptShown && (
         <ScrollReveal>

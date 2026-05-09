@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/form";
 import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useRole } from "@/hooks/useRole";
 
 const passwordSchema = z.object({
   emailOrMobile: z.string().email("Enter your registered email"),
@@ -26,6 +27,7 @@ export default function Login() {
   const { t } = useLanguage();
   const navigate = useNavigate();
   const { loginWithPassword } = useAuth();
+  const { role } = useRole();
   const [isLoading, setIsLoading] = useState(false);
 
   const pwdForm = useForm<z.infer<typeof passwordSchema>>({
@@ -50,10 +52,10 @@ export default function Login() {
             <ShieldCheck className="w-full h-full text-primary" />
           </div>
           <h2 className="text-center text-3xl font-extrabold text-slate-900 tracking-tight">
-            Welcome to SwasthyaSakhi
+            {role === "doctor" ? "Doctor Login" : "Welcome to SwasthyaSakhi"}
           </h2>
           <p className="mt-2 text-center text-sm text-slate-600">
-            Sign in to your maternal health dashboard
+            {role === "doctor" ? "Sign in to your doctor dashboard" : "Sign in to your maternal health dashboard"}
           </p>
         </div>
 
@@ -104,7 +106,7 @@ export default function Login() {
               <Button type="submit" className="w-full h-12 text-base font-semibold rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20" disabled={isLoading}>
                 {isLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : (
                   <span className="flex items-center justify-center gap-2">
-                    Sign In securely
+                    {role === "doctor" ? "Doctor Sign In" : "Sign In securely"}
                     <ArrowRight className="w-5 h-5" />
                   </span>
                 )}
@@ -112,12 +114,14 @@ export default function Login() {
             </form>
           </Form>
 
-          <div className="mt-8 text-center text-sm">
-            <span className="text-slate-500">Don't have an account? </span>
-            <Link to="/register" className="font-bold text-primary hover:text-primary/80 hover:underline">
-              Create an account now
-            </Link>
-          </div>
+          {role !== "doctor" && (
+            <div className="mt-8 text-center text-sm">
+              <span className="text-slate-500">Don't have an account? </span>
+              <Link to="/register" className="font-bold text-primary hover:text-primary/80 hover:underline">
+                Create an account now
+              </Link>
+            </div>
+          )}
 
           <div className="mt-4 bg-slate-50 rounded-lg p-3 border border-slate-100">
             <p className="text-[11px] text-slate-500 text-center flex items-center justify-center gap-1.5">

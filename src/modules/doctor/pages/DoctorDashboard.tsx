@@ -41,8 +41,8 @@ export default function DoctorDashboard() {
                 <p className="text-teal-100 mt-1">Welcome back, Dr. {user?.name ?? "Doctor"}</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <button className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium hover:bg-white/30 transition-colors">
+            <div className="flex items-center gap-2">
+              <button className="inline-flex items-center gap-2 rounded-lg bg-white/20 px-4 py-2 text-sm font-medium hover:bg-white/30 transition-colors max-sm:hidden">
                 <Search className="h-4 w-4" />
                 Search Patient
               </button>

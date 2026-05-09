@@ -1,6 +1,7 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { usePhase } from "@/hooks/usePhase";
+import { useAuth } from "@/hooks/useAuth";
 import {
   evaluateMaternitySymptomFrequency,
   shouldShowWarning,
@@ -9,6 +10,23 @@ import {
 
 const DISMISSED_LS_KEY = "ss-maternity-symptom-warnings-dismissed";
 const SESSION_DISMISSED_KEY = "ss-maternity-warning-session-dismissed";
+const DOCTOR_ALERTS_KEY = "ss-maternity-doctor-alerts";
+
+export type AlertPriority = "green" | "yellow" | "orange" | "red";
+export type AlertStatus = "active" | "reviewed" | "resolved";
+
+export interface DoctorAlert {
+  id: string;
+  patientName: string;
+  symptomName: string | null;
+  triggerType: string;
+  priority: AlertPriority;
+  symptomCount: number;
+  consecutiveDays: number;
+  timestamp: number;
+  maternityPhase: string;
+  alertStatus: AlertStatus;
+}
 
 function loadDismissedWarnings(): Set<string> {
   try {
@@ -61,17 +79,49 @@ function savePersistentDismissed(ids: Set<string>) {
   }
 }
 
+function loadDoctorAlerts(): DoctorAlert[] {
+  try {
+    const raw = localStorage.getItem(DOCTOR_ALERTS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
+function saveDoctorAlerts(alerts: DoctorAlert[]) {
+  try {
+    localStorage.setItem(DOCTOR_ALERTS_KEY, JSON.stringify(alerts));
+  } catch {
+    /* ignore */
+  }
+}
+
+function getPatientName(fullProfile: unknown): string {
+  try {
+    const profile = fullProfile as { basic?: { fullName?: string } } | null;
+    if (profile?.basic?.fullName) return profile.basic.fullName;
+  } catch {
+    /* ignore */
+  }
+  return "Patient";
+}
+
 export interface UseMaternitySymptomWarningReturn {
   activeWarning: SymptomWarning | null;
   visible: boolean;
   hasAnyWarning: boolean;
   dismissWarning: () => void;
   dismissAll: () => void;
+  sendDoctorAlert: () => void;
+  ignoreWarning: () => void;
+  isHighRisk: boolean;
 }
 
 export function useMaternitySymptomWarning(): UseMaternitySymptomWarningReturn {
   const { phase } = usePhase();
   const { maternityLogs } = useHealthLog();
+  const { fullProfile } = useAuth();
 
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
     const session = loadDismissedWarnings();
@@ -92,6 +142,8 @@ export function useMaternitySymptomWarning(): UseMaternitySymptomWarningReturn {
   const activeWarning = useMemo(() => {
     return shouldShowWarning(warnings, dismissed);
   }, [warnings, dismissed]);
+
+  const isHighRisk = activeWarning?.isHighRisk === true;
 
   useEffect(() => {
     const isVisible = visibleRef.current;
@@ -142,11 +194,81 @@ export function useMaternitySymptomWarning(): UseMaternitySymptomWarningReturn {
     });
   }, [warnings]);
 
+  const ignoreWarning = useCallback(() => {
+    setVisible(false);
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      if (activeWarning) {
+        next.add(activeWarning.warningId);
+      }
+      saveDismissedWarnings(next);
+      return next;
+    });
+  }, [activeWarning]);
+
+  const sendDoctorAlert = useCallback(() => {
+    if (!activeWarning) return;
+
+    const patientName = getPatientName(fullProfile);
+    const triggerTypeMap: Record<string, string> = {
+      "consecutive-3": "consecutive_symptoms",
+      "consecutive-4": "consecutive_symptoms",
+      "within-7d-4": "weekly_frequency",
+      "weekly-5": "weekly_frequency",
+      "within-30d-10": "monthly_frequency",
+      "monthly-15": "monthly_frequency",
+      "high-risk-25": "high_risk_monthly_frequency",
+    };
+
+    const priorityMap: Record<string, AlertPriority> = {
+      "consecutive-3": "green",
+      "consecutive-4": "green",
+      "within-7d-4": "yellow",
+      "weekly-5": "yellow",
+      "within-30d-10": "orange",
+      "monthly-15": "orange",
+      "high-risk-25": "red",
+    };
+
+    const mappedTrigger = triggerTypeMap[activeWarning.triggerType] ?? activeWarning.triggerType;
+    const priority = priorityMap[activeWarning.triggerType] ?? "green";
+    const now = Date.now();
+    const id = `ALT-${now}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    const alert: DoctorAlert = {
+      id,
+      patientName,
+      symptomName: activeWarning.symptomId !== "_overall" ? activeWarning.symptomName : null,
+      triggerType: mappedTrigger,
+      priority,
+      symptomCount: activeWarning.count,
+      consecutiveDays: activeWarning.windowDays,
+      timestamp: now,
+      maternityPhase: phase,
+      alertStatus: "active",
+    };
+
+    const alerts = loadDoctorAlerts();
+    alerts.push(alert);
+    saveDoctorAlerts(alerts);
+
+    setVisible(false);
+    setDismissed((prev) => {
+      const next = new Set(prev);
+      next.add(activeWarning.warningId);
+      saveDismissedWarnings(next);
+      return next;
+    });
+  }, [activeWarning, fullProfile, phase]);
+
   return {
     activeWarning,
     visible,
     hasAnyWarning,
     dismissWarning,
     dismissAll,
+    sendDoctorAlert,
+    ignoreWarning,
+    isHighRisk,
   };
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package, History, Bell, AlertCircle, FileText, Map, Stethoscope } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package, History, Bell, MessageSquareText, AlertCircle, FileText, Map, Stethoscope } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -75,7 +75,7 @@ const DOCTOR_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/doctor/calendar", label: "Calendar", icon: Calendar },
   { to: "/doctor/profile", label: "Profile", icon: User },
   { to: "/doctor/history", label: "History", icon: History },
-  { to: "/doctor/notifications", label: "Notifications", icon: Bell },
+  { to: "/doctor/questions", label: "Questions", icon: MessageSquareText },
   { to: "/doctor/alerts", label: "Alerts", icon: AlertCircle },
   { to: "/doctor/requests", label: "Requests", icon: FileText },
   { to: "/doctor/hotspots", label: "Hotspots", icon: Map },
@@ -256,16 +256,22 @@ export default function HamburgerMenu({
                   // Show family-planning-only routes only in family-planning phase
                   if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
                   return true;
-                }).map((item) => (
-                  <NavItem
-                    key={item.to}
-                    to={item.to}
-                    label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
-                    icon={item.icon}
-                    active={location.pathname === item.to}
-                    onClick={onClose}
-                  />
-                ))
+                }).map((item) => {
+                  let dynamicLabel = item.label ?? (item.labelKey ? t(item.labelKey) : "");
+                  if (item.to === "/dashboard" && phase === "maternity") {
+                    dynamicLabel = "Maternal Guide";
+                  }
+                  return (
+                    <NavItem
+                      key={item.to}
+                      to={item.to}
+                      label={dynamicLabel}
+                      icon={item.icon}
+                      active={location.pathname === item.to}
+                      onClick={onClose}
+                    />
+                  );
+                })
               )}
             </nav>
           </div>

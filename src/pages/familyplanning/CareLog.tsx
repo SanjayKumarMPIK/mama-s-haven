@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { useCareLog, detectRedFlags, type CareProfile, type CareLogEntry, type CareChecklist, type WeeklyCheckIn, type ProcedureType, type ConcernId, type PainLevel } from "@/hooks/useCareLog";
 import { PROCEDURE_OPTIONS, CONCERN_OPTIONS, RECOVERY_MESSAGES, PROCEDURE_GUIDANCE, CHECKLIST_ITEMS, SYMPTOM_WATCH_TOGGLES, WEEKLY_QUESTIONS, SAFETY_DISCLAIMER, RED_FLAG_WARNING } from "@/lib/careLogGuidance";
 import { ArrowLeft, Shield, Phone, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, RotateCcw, Heart, Activity, ClipboardList, Calendar, Stethoscope } from "lucide-react";
+import SOSButton from "@/components/emergency/SOSButton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -455,7 +456,10 @@ export default function CareLog() {
             </div>
           </div>
 
-          {/* 7. Safety Disclaimer */}
+          {/* 7. SOS Action */}
+          <SOSButton />
+
+          {/* 8. Safety Disclaimer */}
           <div className="rounded-2xl border border-border bg-muted/30 p-4 flex items-center gap-3">
             <Shield className="w-5 h-5 text-muted-foreground shrink-0" />
             <p className="text-[11px] text-muted-foreground leading-relaxed">{SAFETY_DISCLAIMER}</p>

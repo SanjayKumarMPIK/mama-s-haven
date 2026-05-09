@@ -16,7 +16,6 @@ import Index from "./pages/Index";
 import Tools from "./pages/Tools";
 import Shopping from "./pages/Shopping";
 import StressRelief from "./pages/StressRelief";
-import Articles from "./pages/Articles";
 import Postpartum from "./pages/Postpartum";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
@@ -56,6 +55,8 @@ const MenoSleepMood = lazy(() => import("./pages/menopause/MenoSleepMood"));
 const MenoWeightMetabolism = lazy(() => import("./pages/menopause/MenoWeightMetabolism"));
 const MenoHeartHealth = lazy(() => import("./pages/menopause/MenoHeartHealth"));
 const MenoPHCSupport = lazy(() => import("./pages/menopause/MenoPHCSupport"));
+const MenoTools = lazy(() => import("./pages/menopause/MenoTools"));
+const MenoHotFlashTracker = lazy(() => import("./pages/menopause/MenoHotFlashTracker"));
 import BabySupportiveHelper from "./pages/BabySupportiveHelper";
 import FPToolPage from "./pages/FPToolPage";
 import FitnessHealthCalculatorPage from "./pages/maternity/FitnessHealthCalculatorPage";
@@ -104,7 +105,6 @@ const App = () => (
                           <Route path="/tools/fp/:toolId" element={<FPToolPage />} />
                           <Route path="/shopping" element={<Shopping />} />
                           <Route path="/stress-relief" element={<StressRelief />} />
-                          <Route path="/articles" element={<Articles />} />
                           <Route path="/postpartum-guide" element={<Postpartum />} />
                           <Route path="/assistant" element={<Assistant />} />
                           <Route path="/dashboard" element={<WeeklyGuide />} />
@@ -157,8 +157,8 @@ const App = () => (
                         <Route path="/menopause/phc-support" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoPHCSupport /></Suspense>} />
                         <Route path="/menopause/analytics" element={<SymptomAnalytics />} />
                         <Route path="/menopause/wellness" element={<WellnessDashboard />} />
-                        <Route path="/menopause/tools" element={<Tools />} />
-                        <Route path="/menopause/articles" element={<Articles />} />
+                        <Route path="/menopause/tools" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoTools /></Suspense>} />
+                        <Route path="/menopause/hot-flash-tracker" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoHotFlashTracker /></Suspense>} />
                         <Route path="/menopause/goals" element={<DailyGoals />} />
                         <Route path="/menopause/care-essentials" element={<MenopauseCareEssentials />} />
                         <Route path="/menopause/fun" element={<FunActivity />} />

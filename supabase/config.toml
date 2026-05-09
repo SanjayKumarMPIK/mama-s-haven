@@ -1,7 +1,10 @@
-project_id = "nbhznocwvacctkuoadyb"
+project_id = "pgxyldrpjykmrmdmnvew"
 
 [functions.send-email-otp]
 verify_jwt = false
 
 [functions.verify-email-otp]
+verify_jwt = false
+
+[functions.pregnancy-assistant]
 verify_jwt = false

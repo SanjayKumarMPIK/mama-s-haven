@@ -117,6 +117,31 @@ export interface CommunityWin {
   date: string;                   // ISO date
 }
 
+// ─── Hot Flash Event (granular per-event tracking) ───────────────────────────
+
+export type HotFlashType = 'hot_flash' | 'night_sweat';
+export type HotFlashSeverity = 'mild' | 'moderate' | 'severe';
+export type HotFlashTrigger = 'spicy_food' | 'caffeine' | 'stress' | 'warm_weather' | 'poor_sleep' | 'exercise' | 'unknown';
+
+export const HOT_FLASH_TRIGGER_OPTIONS: { id: HotFlashTrigger; label: string; emoji: string }[] = [
+  { id: 'spicy_food', label: 'Spicy food', emoji: '🌶️' },
+  { id: 'caffeine', label: 'Caffeine', emoji: '☕' },
+  { id: 'stress', label: 'Stress', emoji: '😰' },
+  { id: 'warm_weather', label: 'Warm weather', emoji: '☀️' },
+  { id: 'poor_sleep', label: 'Poor sleep', emoji: '😴' },
+  { id: 'exercise', label: 'Exercise', emoji: '🏃' },
+  { id: 'unknown', label: 'Unknown', emoji: '❓' },
+];
+
+export interface HotFlashEvent {
+  id: string;                     // unique ID
+  dateTime: string;               // ISO datetime
+  type: HotFlashType;
+  severity: HotFlashSeverity;
+  triggers: HotFlashTrigger[];
+  notes: string;
+}
+
 // ─── Storage Keys ────────────────────────────────────────────────────────────
 
 const PROFILE_KEY = "ss-menopause-profile";
@@ -124,6 +149,7 @@ const LOGS_KEY = "ss-menopause-logs";
 const REMINDERS_KEY = "ss-menopause-reminders";
 const WINS_KEY = "ss-menopause-wins";
 const GOALS_KEY = "ss-menopause-goals";
+const HOT_FLASH_KEY = "ss-meno-hotflash-logs";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -240,6 +266,7 @@ export function useMenopause() {
   const rk = `${REMINDERS_KEY}-${userId}`;
   const wk = `${WINS_KEY}-${userId}`;
   const gk = `${GOALS_KEY}-${userId}`;
+  const hfk = `${HOT_FLASH_KEY}-${userId}`;
 
   const [profile, setProfile] = useState<MenopauseProfile | null>(() => readJSON(pk, null));
   const [logs, setLogs] = useState<MenopauseLogEntry[]>(() => readAndMigrateLogs(lk));
@@ -255,6 +282,7 @@ export function useMenopause() {
   );
   const [wins, setWins] = useState<CommunityWin[]>(() => readJSON(wk, []));
   const [goalCompletions, setGoalCompletions] = useState<GoalCompletion[]>(() => readJSON(gk, []));
+  const [hotFlashEvents, setHotFlashEvents] = useState<HotFlashEvent[]>(() => readJSON(hfk, []));
 
   // ── Profile ────────────────────────────────────────────────────────────────
 
@@ -420,6 +448,42 @@ export function useMenopause() {
     [goalCompletions]
   );
 
+  // ── Hot Flash Events ────────────────────────────────────────────────────────
+
+  const addHotFlashEvent = useCallback(
+    (event: Omit<HotFlashEvent, 'id'>) => {
+      const newEvent: HotFlashEvent = { ...event, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) };
+      setHotFlashEvents((prev) => {
+        const next = [newEvent, ...prev];
+        writeJSON(hfk, next);
+        return next;
+      });
+      return newEvent;
+    },
+    [hfk]
+  );
+
+  const deleteHotFlashEvent = useCallback(
+    (id: string) => {
+      setHotFlashEvents((prev) => {
+        const next = prev.filter((e) => e.id !== id);
+        writeJSON(hfk, next);
+        return next;
+      });
+    },
+    [hfk]
+  );
+
+  const getHotFlashEventsForDays = useCallback(
+    (days: number): HotFlashEvent[] => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - days);
+      const cutoffISO = cutoff.toISOString();
+      return hotFlashEvents.filter((e) => e.dateTime >= cutoffISO);
+    },
+    [hotFlashEvents]
+  );
+
   return {
     profile,
     saveMenopauseProfile,
@@ -439,5 +503,10 @@ export function useMenopause() {
     getWeekStreak,
     getMonthCompletionMap,
     goalCompletions,
+    // Hot flash tracker
+    hotFlashEvents,
+    addHotFlashEvent,
+    deleteHotFlashEvent,
+    getHotFlashEventsForDays,
   };
 }

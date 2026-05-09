@@ -147,18 +147,15 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
     } catch {}
   }, [storageKey, setPhase]);
 
-  // Auto-show onboarding ONCE if not completed AND user is logged in
-  const hasAutoShown = useRef(false);
+  // Auto-show onboarding if not completed AND user is logged in
+  // This relies on config being loaded from localStorage (which persists across reloads)
   useEffect(() => {
-    if (hasAutoShown.current) return;
     if (user && !config.onboardingCompleted) {
       setShowOnboarding(true);
-      hasAutoShown.current = true;
     } else if (!user) {
       setShowOnboarding(false);
-      hasAutoShown.current = false;
     }
-  }, [config.onboardingCompleted, user]);
+  }, [user?.id, config.onboardingCompleted]);
 
   const saveConfig = useCallback(
     (partial: Partial<OnboardingConfig>) => {

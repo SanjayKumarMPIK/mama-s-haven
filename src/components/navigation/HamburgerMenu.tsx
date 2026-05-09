@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package, History, Bell, MessageSquareText, AlertCircle, FileText, Map, Stethoscope } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -16,10 +16,10 @@ interface HamburgerMenuProps {
   onClose: () => void;
   language: Language;
   onLanguageChange: (language: Language) => void;
-  t: (key: "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools" | "articles") => string;
+  t: (key: "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools") => string;
 }
 
-type SecondaryKey = "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools" | "articles";
+type SecondaryKey = "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools";
 
 const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; icon: LucideIcon }[] = [
   { to: "/", labelKey: "home" as const, icon: Home },
@@ -32,11 +32,9 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/tools", label: "Tools", icon: Wrench },
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
   { to: "/dashboard", label: "Dashboard", icon: Calendar },
-  { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
   { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
   { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
   { to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList },
-  { to: "/connect", label: "Connect", icon: Stethoscope },
 ];
 
 
@@ -64,22 +62,6 @@ const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause/tools", label: "Tools", icon: Wrench },
   { to: "/menopause/care-essentials", label: "Care Essentials", icon: Package },
   { to: "/menopause/dashboard", label: "Dashboard", icon: Calendar },
-  { to: "/menopause/articles", label: "Articles", icon: BookOpen },
-  { to: "/menopause/connect", label: "Connect", icon: Stethoscope },
-];
-
-// Doctor-specific menu items
-const DOCTOR_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/doctor", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/doctor/schedules", label: "Schedules", icon: ClipboardList },
-  { to: "/doctor/calendar", label: "Calendar", icon: Calendar },
-  { to: "/doctor/profile", label: "Profile", icon: User },
-  { to: "/doctor/history", label: "History", icon: History },
-  { to: "/doctor/questions", label: "Questions", icon: MessageSquareText },
-  { to: "/doctor/alerts", label: "Alerts", icon: AlertCircle },
-  { to: "/doctor/requests", label: "Requests", icon: FileText },
-  { to: "/doctor/hotspots", label: "Hotspots", icon: Map },
-  { to: "/doctor/patients", label: "Patients", icon: User },
 ];
 
 export default function HamburgerMenu({
@@ -219,24 +201,7 @@ export default function HamburgerMenu({
 
             {/* Navigation items */}
             <nav className="space-y-2" aria-label="Secondary navigation">
-              {location.pathname.startsWith("/doctor") ? (
-                <>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Stethoscope className="h-4 w-4 text-teal-600" />
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Doctor Module</p>
-                  </div>
-                  {DOCTOR_ITEMS.map((item) => (
-                    <NavItem
-                      key={item.to}
-                      to={item.to}
-                      label={item.label}
-                      icon={item.icon}
-                      active={location.pathname === item.to}
-                      onClick={onClose}
-                    />
-                  ))}
-                </>
-              ) : phase === "menopause" ? (
+              {phase === "menopause" ? (
                 MENOPAUSE_ITEMS.map((item) => (
                   <NavItem
                     key={item.to}
@@ -256,22 +221,16 @@ export default function HamburgerMenu({
                   // Show family-planning-only routes only in family-planning phase
                   if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
                   return true;
-                }).map((item) => {
-                  let dynamicLabel = item.label ?? (item.labelKey ? t(item.labelKey) : "");
-                  if (item.to === "/dashboard" && phase === "maternity") {
-                    dynamicLabel = "Maternal Guide";
-                  }
-                  return (
-                    <NavItem
-                      key={item.to}
-                      to={item.to}
-                      label={dynamicLabel}
-                      icon={item.icon}
-                      active={location.pathname === item.to}
-                      onClick={onClose}
-                    />
-                  );
-                })
+                }).map((item) => (
+                  <NavItem
+                    key={item.to}
+                    to={item.to}
+                    label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
+                    icon={item.icon}
+                    active={location.pathname === item.to}
+                    onClick={onClose}
+                  />
+                ))
               )}
             </nav>
           </div>

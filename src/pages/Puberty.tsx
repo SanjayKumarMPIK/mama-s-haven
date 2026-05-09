@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import PubertyGuide from "@/components/guidance/PubertyGuide";
 import ScrollReveal from "@/components/ScrollReveal";
-import { ArrowLeft, Calendar, Heart, Utensils, Activity, ChevronRight } from "lucide-react";
+import { ArrowLeft, Calendar, Heart, Utensils, Activity, ChevronRight, Stethoscope } from "lucide-react";
+import SOSButton from "@/components/emergency/SOSButton";
 
 const Puberty = () => {
 
@@ -93,6 +94,55 @@ const Puberty = () => {
                 <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-green-600 group-hover:translate-x-1 transition-all" />
               </div>
             </Link>
+          </div>
+        </ScrollReveal>
+
+        {/* Connect with a Doctor */}
+        <ScrollReveal delay={150}>
+          <Link
+            to="/connect"
+            className="group bg-white rounded-2xl p-6 border border-teal-100 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] block mb-8"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-teal-100 to-cyan-200 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Stethoscope className="w-6 h-6 text-teal-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 mb-1">Connect with a Doctor</h3>
+                <p className="text-sm text-gray-600">Send a connection request using your doctor's code</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
+            </div>
+          </Link>
+        </ScrollReveal>
+
+        {/* Emergency SOS */}
+        <ScrollReveal delay={160}>
+          <div className="rounded-2xl border border-red-200 bg-red-50 p-6 md:p-8">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                <div className="w-5 h-5 text-red-600">⚠️</div>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-red-800">Emergency Help</h2>
+                <p className="text-xs text-red-600">Immediate assistance when you need it</p>
+              </div>
+            </div>
+            <SOSButton />
+            <div className="flex flex-wrap gap-3 mt-2">
+              <a
+                href="tel:104"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold shadow hover:bg-red-700 transition-all active:scale-[0.97]"
+              >
+                📞 Call 104 – Health Helpline
+              </a>
+              <a
+                href="tel:108"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border-2 border-red-400 text-red-700 text-sm font-semibold hover:bg-red-100 transition-all active:scale-[0.97]"
+              >
+                🚑 Call 108 – Ambulance
+              </a>
+            </div>
           </div>
         </ScrollReveal>
 

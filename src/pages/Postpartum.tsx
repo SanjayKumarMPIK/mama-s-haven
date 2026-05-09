@@ -1,4 +1,5 @@
 import { ArrowLeft, ArrowRight, Baby, Heart, Brain, Shield, Activity, AlertTriangle, Sparkles, RotateCcw } from "lucide-react";
+import SOSButton from "@/components/emergency/SOSButton";
 import { Link } from "react-router-dom";
 import { usePostpartumCheckin } from "@/hooks/usePostpartumCheckin";
 import type { RiskLevel, CarePlan, Alert, Question } from "@/lib/postpartumEngine";
@@ -240,6 +241,9 @@ function ResultView({
           </div>
         </div>
       )}
+
+      {/* SOS Action */}
+      <SOSButton />
 
       {/* Disclaimer */}
       <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-800">

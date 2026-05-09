@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useRole } from "@/hooks/useRole";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 import type { ReactNode } from "react";
 
@@ -30,6 +31,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const { config, showOnboarding } = useOnboarding();
   const { phase } = usePhase();
   const { profile: pregnancyProfile } = usePregnancyProfile();
+  const { role } = useRole();
   const location = useLocation();
 
   // Don't flash anything while checking session
@@ -41,8 +43,17 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
+  // 1. Enforce Role Selection First
+  if (!role) {
+    if (location.pathname !== "/") {
+      return <Navigate to="/" replace />;
+    }
+    // Allow rendering RoleSelect at "/" without further checks
+    return <>{children}</>;
+  }
+
   // Public routes accessible without login
-  const publicPaths = ["/login", "/register", "/emergency"];
+  const publicPaths = ["/login", "/register", "/emergency", "/"];
   const isPublicRoute = publicPaths.includes(location.pathname);
 
   // Not logged in
@@ -53,14 +64,20 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Logged in but on auth pages → redirect to dashboard
-  if (location.pathname === "/login" || location.pathname === "/register") {
-    return <Navigate to="/" replace />;
+  // Logged in but on auth pages or root → redirect to dashboard
+  if (location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/") {
+    if (role === "doctor") {
+      return <Navigate to="/doctor" replace />;
+    }
+    if (phase === "postpartum") {
+      return <Navigate to="/postpartum-dashboard" replace />;
+    }
+    return <Navigate to="/dashboard" replace />;
   }
 
   // Require profile setup (weight & height) before allowing access to the rest of the application
   const isProfileComplete = hasCompletedProfileSetup();
-  if (!isProfileComplete && location.pathname !== "/profile") {
+  if (!isProfileComplete && location.pathname !== "/profile" && role !== "doctor") {
     return <Navigate to="/profile?setup=true" replace />;
   }
 
@@ -69,7 +86,8 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     config.onboardingCompleted &&
     phase === "maternity" &&
     !pregnancyProfile.isSetup &&
-    location.pathname !== "/pregnancy-dashboard"
+    location.pathname !== "/pregnancy-dashboard" &&
+    role !== "doctor"
   ) {
     return <Navigate to="/pregnancy-dashboard" replace />;
   }
@@ -77,7 +95,7 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   // Logged in → show onboarding if not completed (or if manually re-opened)
   return (
     <>
-      {(!config.onboardingCompleted || showOnboarding) && <OnboardingFlow />}
+      {(!config.onboardingCompleted || showOnboarding) && role !== "doctor" && <OnboardingFlow />}
       {children}
     </>
   );

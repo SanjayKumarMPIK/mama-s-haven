@@ -2,13 +2,33 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
 import { useProfile } from "@/hooks/useProfile";
-import { ArrowLeft, Heart, Activity, Calendar, Baby, Utensils, Moon, Sun, Droplets, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Heart, Activity, Calendar, Baby, Utensils, Moon, Sun, Droplets, ShieldAlert, Stethoscope, ChevronRight } from "lucide-react";
+
+import { PostpartumGuard } from "../components/PostpartumGuard";
+import PostpartumOverviewCard from "../components/PostpartumOverviewCard";
+import RecoverySummaryCards from "../components/RecoverySummaryCards";
+import { PostpartumRecoveryCard } from "../recovery/PostpartumRecoveryCard";
+import { PostpartumTimeline } from "../recovery/PostpartumTimeline";
+import NutritionTipsCard from "../components/NutritionTipsCard";
+import ActiveAlertsCard from "../components/ActiveAlertsCard";
+import VisualAnalytics from "@/components/dashboard/VisualAnalytics";
+import { usePostpartumRecovery } from "../recovery/usePostpartumRecovery";
+import { useHealthLog } from "@/hooks/useHealthLog";
 
 const PostpartumDashboard = () => {
   const { profile } = useProfile();
+  const { currentWeek } = usePostpartumRecovery();
+  const { getPhaseLogs } = useHealthLog();
+
+  const postpartumLogs = getPhaseLogs("postpartum");
+  const mappedLogs = Object.entries(postpartumLogs).map(([date, entry]) => ({
+    date,
+    entry: entry as any,
+  }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <PostpartumGuard>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-10">
         <div className="container py-4">
@@ -85,104 +105,75 @@ const PostpartumDashboard = () => {
           </div>
         </ScrollReveal>
 
-        {/* Quick Actions */}
-        <ScrollReveal delay={200}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Link 
-              to="/health-log"
-              className="group bg-white rounded-xl p-6 border border-blue-100 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Calendar className="w-6 h-6 text-blue-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Daily Log</h3>
-                <p className="text-sm text-gray-600">Track your recovery</p>
-              </div>
-            </Link>
-
-            <div className="group bg-white rounded-xl p-6 border border-purple-100 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Activity className="w-6 h-6 text-purple-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Exercises</h3>
-                <p className="text-sm text-gray-600">Gentle recovery workouts</p>
-              </div>
-            </div>
-
-            <div className="group bg-white rounded-xl p-6 border border-pink-100 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Droplets className="w-6 h-6 text-pink-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Hydration</h3>
-                <p className="text-sm text-gray-600">Track water intake</p>
-              </div>
-            </div>
-
-            <div className="group bg-white rounded-xl p-6 border border-green-100 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <ShieldAlert className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Emergency</h3>
-                <p className="text-sm text-gray-600">Quick help access</p>
-              </div>
-            </div>
+        {/* --- NEW PREMIUM DASHBOARD SECTION --- */}
+        
+        {/* Metrics & Recovery */}
+        <ScrollReveal delay={150}>
+          <div className="mb-8">
+            <RecoverySummaryCards />
           </div>
         </ScrollReveal>
 
-        {/* Recovery Timeline */}
+        {/* Connect with a Doctor */}
+        <ScrollReveal delay={160}>
+          <Link
+            to="/connect"
+            className="block rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50/80 via-cyan-50/60 to-sky-50/40 p-5 shadow-sm hover:shadow-md hover:border-teal-300 transition-all duration-200 group mb-8"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-md shadow-teal-200/50">
+                <Stethoscope className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900">Connect with a Doctor</h3>
+                <p className="text-sm text-gray-500">Send a connection request using your doctor's code</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
+            </div>
+          </Link>
+        </ScrollReveal>
+
+        {/* Score & Timeline */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-1">
+             <ScrollReveal delay={200} className="h-full">
+               <PostpartumRecoveryCard />
+             </ScrollReveal>
+          </div>
+          <div className="lg:col-span-2">
+             <ScrollReveal delay={250} className="h-full">
+               <PostpartumTimeline />
+             </ScrollReveal>
+          </div>
+        </div>
+
+        {/* Visual Analytics */}
         <ScrollReveal delay={300}>
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-blue-100">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Recovery Timeline</h2>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-blue-600 font-bold">1</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">First 24 Hours</h3>
-                  <p className="text-sm text-gray-600">Rest, hydration, and basic monitoring</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-purple-600 font-bold">2</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">First Week</h3>
-                  <p className="text-sm text-gray-600">Focus on healing, nutrition, and establishing routines</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-pink-600 font-bold">3</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Weeks 2-6</h3>
-                  <p className="text-sm text-gray-600">Gradual return to activities and continued recovery</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-green-600 font-bold">4</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">6+ Weeks</h3>
-                  <p className="text-sm text-gray-600">Postpartum check-up and gradual return to normal activities</p>
-                </div>
-              </div>
-            </div>
+          <div className="mb-8">
+            <VisualAnalytics pubertyLogs={mappedLogs} />
           </div>
         </ScrollReveal>
+
+        {/* Tips & Alerts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <ScrollReveal delay={350} className="h-full">
+             <NutritionTipsCard />
+          </ScrollReveal>
+          <ScrollReveal delay={400} className="h-full">
+             <ActiveAlertsCard />
+          </ScrollReveal>
+        </div>
+
+        {/* Status Footer */}
+        <ScrollReveal delay={450}>
+          <div className="mb-8">
+            <PostpartumOverviewCard />
+          </div>
+        </ScrollReveal>
+
       </div>
     </div>
+    </PostpartumGuard>
   );
 };
 

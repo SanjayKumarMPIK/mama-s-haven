@@ -258,6 +258,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const init = async () => {
+      // Bypass Supabase if doctor demo session exists
+      const isDoctorDemo = sessionStorage.getItem("doctor_demo_logged_in") === "true";
+      if (isDoctorDemo) {
+        setUser({
+          id: "doctor-demo-123",
+          name: "Dr. Demo",
+          email: "doctor@swasthyasakhi.com",
+          isLoggedIn: true,
+        });
+        setIsLoading(false);
+        return;
+      }
+
       const {
         data: { session: supabaseSession },
       } = await supabase.auth.getSession();
@@ -279,6 +292,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Login with email/mobile + password (validates against localStorage) ────
   const loginWithPassword = async (emailOrMobile: string, password: string) => {
     const email = emailOrMobile.trim().toLowerCase();
+    
+    // Doctor demo login bypass
+    const isDoctorRole = sessionStorage.getItem("ss-role") === "doctor";
+    if (isDoctorRole) {
+      sessionStorage.setItem("doctor_demo_logged_in", "true");
+      setUser({
+        id: "doctor-demo-123",
+        name: "Dr. Demo",
+        email: email,
+        isLoggedIn: true,
+      });
+      toast.success("Doctor Login successful! Welcome back.");
+      return true;
+    }
+
     if (!email.includes("@")) {
       toast.error("Please log in with your registered email.");
       return false;
@@ -432,7 +460,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAccessToken(null);
     supabase.auth.signOut();
     localStorage.removeItem(STORAGE_KEY_USER);
+    localStorage.removeItem("ss-role");
+    sessionStorage.removeItem("ss-role");
+    sessionStorage.removeItem("doctor_demo_logged_in");
+    localStorage.removeItem("ss-wellness-profile");
     toast.info("Logged out successfully.");
+    // Force page reload to clear all React state
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 500);
   };
 
   return (

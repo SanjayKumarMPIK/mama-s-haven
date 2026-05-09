@@ -60,6 +60,7 @@ const MATERNITY_LIBRARY: PredefinedSymptom[] = [
   { id: "heartburn", name: "Heartburn", category: "digestive" },
   { id: "constipation", name: "Constipation", category: "digestive" },
   { id: "frequent_urination", name: "Frequent Urination", category: "physical" },
+  { id: "excess_thirst", name: "Excess Thirst", category: "physical" },
   
   // Emotional
   { id: "mood_swings", name: "Mood Swings", category: "emotional" },

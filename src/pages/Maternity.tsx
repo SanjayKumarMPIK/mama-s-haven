@@ -3,8 +3,9 @@ import { Link } from "react-router-dom";
 import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useMedicineReminder } from "@/hooks/useMedicineReminder";
-import { ArrowLeft, Layers, ShieldAlert, Droplets, Sun, Pill, ChevronRight, CheckCircle2, Clock, AlertTriangle, Hourglass, Timer } from "lucide-react";
+import { ArrowLeft, Layers, ShieldAlert, Droplets, Sun, Pill, ChevronRight, CheckCircle2, Clock, AlertTriangle, Hourglass, Timer, Stethoscope } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
+import SOSButton from "@/components/emergency/SOSButton";
 
 // ─── Trimester content lookup ─────────────────────────────────────────────────
 
@@ -272,6 +273,8 @@ function WarningSigns() {
         </div>
       </div>
 
+      <SOSButton />
+
       <div className="grid sm:grid-cols-2 gap-3">
         {WARNING_SIGNS.map((sign, i) => (
           <div
@@ -284,7 +287,7 @@ function WarningSigns() {
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3">
         <a
           href="tel:104"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold shadow hover:bg-red-700 transition-all active:scale-[0.97]"
@@ -688,6 +691,27 @@ export default function Maternity() {
           {/* Care Log card */}
           <ScrollReveal delay={140}>
             <CareLogCard />
+          </ScrollReveal>
+
+          {/* Connect with a Doctor */}
+          <ScrollReveal delay={155}>
+            <Link
+              to="/connect"
+              className="block rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50/80 via-cyan-50/60 to-sky-50/40 p-6 md:p-8 shadow-sm hover:shadow-md hover:border-teal-300 transition-all duration-200 group"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-md shadow-teal-200/50">
+                    <Stethoscope className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg font-bold">Connect with a Doctor</h2>
+                    <p className="text-xs text-muted-foreground">Send a connection request using your doctor's code</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+              </div>
+            </Link>
           </ScrollReveal>
 
           {/* Warning signs — always visible */}

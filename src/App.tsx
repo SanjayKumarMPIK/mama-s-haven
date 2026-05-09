@@ -36,7 +36,7 @@ import Shopping from "./pages/Shopping";
 
 import StressRelief from "./pages/StressRelief";
 
-import Articles from "./pages/Articles";
+
 
 import Postpartum from "./pages/Postpartum";
 
@@ -252,7 +252,7 @@ const App = () => (
 
                           <Route path="/stress-relief" element={<StressRelief />} />
 
-                          <Route path="/articles" element={<Articles />} />
+
 
                           <Route path="/postpartum-guide" element={<Postpartum />} />
 
@@ -370,9 +370,9 @@ const App = () => (
                         <Route path="/menopause/tools" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoTools /></Suspense>} />
                         <Route path="/menopause/hot-flash-tracker" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoHotFlashTracker /></Suspense>} />
 
-                        <Route path="/menopause/tools" element={<Tools />} />
 
-                        <Route path="/menopause/articles" element={<Articles />} />
+
+
 
                         <Route path="/menopause/goals" element={<DailyGoals />} />
 

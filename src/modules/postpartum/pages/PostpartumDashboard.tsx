@@ -4,11 +4,22 @@ import ScrollReveal from "@/components/ScrollReveal";
 import { useProfile } from "@/hooks/useProfile";
 import { ArrowLeft, Heart, Activity, Calendar, Baby, Utensils, Moon, Sun, Droplets, ShieldAlert } from "lucide-react";
 
+import { PostpartumGuard } from "../components/PostpartumGuard";
+import PostpartumOverviewCard from "../components/PostpartumOverviewCard";
+import RecoverySummaryCards from "../components/RecoverySummaryCards";
+import PostpartumGrid from "../components/PostpartumGrid";
+import PostpartumRecoveryTimeline from "../components/PostpartumRecoveryTimeline";
+import NutritionTipsCard from "../components/NutritionTipsCard";
+import ActiveAlertsCard from "../components/ActiveAlertsCard";
+import { usePostpartumRecovery } from "../recovery/usePostpartumRecovery";
+
 const PostpartumDashboard = () => {
   const { profile } = useProfile();
+  const { currentWeek } = usePostpartumRecovery();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
+    <PostpartumGuard>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
       {/* Header */}
       <div className="bg-white/80 backdrop-blur-sm border-b border-blue-100 sticky top-0 z-10">
         <div className="container py-4">
@@ -85,104 +96,47 @@ const PostpartumDashboard = () => {
           </div>
         </ScrollReveal>
 
-        {/* Quick Actions */}
+        {/* --- NEW PREMIUM DASHBOARD SECTION --- */}
+        
+        {/* Overview Section */}
+        <ScrollReveal delay={150}>
+          <div className="mb-8">
+            <PostpartumOverviewCard />
+          </div>
+        </ScrollReveal>
+
+        {/* Metrics & Recovery */}
         <ScrollReveal delay={200}>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Link 
-              to="/health-log"
-              className="group bg-white rounded-xl p-6 border border-blue-100 hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-            >
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Calendar className="w-6 h-6 text-blue-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Daily Log</h3>
-                <p className="text-sm text-gray-600">Track your recovery</p>
-              </div>
-            </Link>
-
-            <div className="group bg-white rounded-xl p-6 border border-purple-100 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Activity className="w-6 h-6 text-purple-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Exercises</h3>
-                <p className="text-sm text-gray-600">Gentle recovery workouts</p>
-              </div>
-            </div>
-
-            <div className="group bg-white rounded-xl p-6 border border-pink-100 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <Droplets className="w-6 h-6 text-pink-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Hydration</h3>
-                <p className="text-sm text-gray-600">Track water intake</p>
-              </div>
-            </div>
-
-            <div className="group bg-white rounded-xl p-6 border border-green-100 hover:shadow-lg transition-all duration-300 hover:scale-[1.02] cursor-pointer">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                  <ShieldAlert className="w-6 h-6 text-green-600" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-1">Emergency</h3>
-                <p className="text-sm text-gray-600">Quick help access</p>
-              </div>
-            </div>
+          <div className="mb-8">
+            <RecoverySummaryCards />
           </div>
         </ScrollReveal>
 
-        {/* Recovery Timeline */}
-        <ScrollReveal delay={300}>
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-blue-100">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Recovery Timeline</h2>
-            
-            <div className="space-y-4">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-blue-600 font-bold">1</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">First 24 Hours</h3>
-                  <p className="text-sm text-gray-600">Rest, hydration, and basic monitoring</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-purple-600 font-bold">2</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">First Week</h3>
-                  <p className="text-sm text-gray-600">Focus on healing, nutrition, and establishing routines</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-pink-600 font-bold">3</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">Weeks 2-6</h3>
-                  <p className="text-sm text-gray-600">Gradual return to activities and continued recovery</p>
-                </div>
-              </div>
-              
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-                  <span className="text-green-600 font-bold">4</span>
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900">6+ Weeks</h3>
-                  <p className="text-sm text-gray-600">Postpartum check-up and gradual return to normal activities</p>
-                </div>
-              </div>
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+             <ScrollReveal delay={250}>
+               <PostpartumGrid />
+             </ScrollReveal>
+             <ScrollReveal delay={300}>
+               <div className="bg-white rounded-2xl p-6 shadow-lg border border-blue-100">
+                 <h2 className="text-xl font-bold text-gray-900 mb-6">Detailed Recovery Timeline</h2>
+                 <PostpartumRecoveryTimeline currentWeek={currentWeek} />
+               </div>
+             </ScrollReveal>
           </div>
-        </ScrollReveal>
+          <div className="lg:col-span-1 space-y-6">
+             <ScrollReveal delay={350}>
+               <ActiveAlertsCard />
+             </ScrollReveal>
+             <ScrollReveal delay={400}>
+               <NutritionTipsCard />
+             </ScrollReveal>
+          </div>
+        </div>
+
       </div>
     </div>
+    </PostpartumGuard>
   );
 };
 

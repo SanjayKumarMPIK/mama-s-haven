@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { WEEK_DATA } from "@/lib/pregnancyData";
 import { DAILY_CHECKLIST } from "@/lib/pregnancyDashboardData";
+import { shouldShowGTTPopup } from "@/lib/utils";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import { TimelineOverview } from "@/components/dashboard/TimelineOverview";
@@ -399,6 +400,9 @@ export default function PregnancyDashboard() {
 
   // Route guard: only maternity users can access this page
   if (phase !== "maternity") {
+    if (phase === "postpartum") {
+      return <Navigate to="/postpartum-dashboard" replace />;
+    }
     return <Navigate to="/" replace />;
   }
 
@@ -440,13 +444,21 @@ function DashboardView({
   const healthMetrics = useMemo(() => {
     return getMaternityDashboardMetrics(maternityLogs);
   }, [maternityLogs]);
-  const { profile, clearProfile, openGTTPopup } = usePregnancyProfile();
+  const { profile, clearProfile, openGTTPopup, mode } = usePregnancyProfile();
   const weekData = WEEK_DATA[Math.min(selectedWeek, 40) - 1];
   const babyVisual = getBabyVisual(selectedWeek);
   const trimesterLabel = trimester === 1 ? "1st Trimester" : trimester === 2 ? "2nd Trimester" : "3rd Trimester";
   const trimesterColor = trimester === 1 ? "text-teal-600" : trimester === 2 ? "text-amber-600" : "text-primary";
 
-  const showGDMRcard = currentWeek >= 25 && (profile.gdmStatus === null || profile.gdmStatus === "not_done" || profile.gdmStatus === "not_sure");
+  // Use centralized GTT visibility condition for GDM Follow-Up card
+  const showGDMRcard = shouldShowGTTPopup(
+    mode,
+    currentWeek,
+    profile.gdmStatus,
+    profile.isSetup,
+    false, // Not checking if popup is open for dashboard card
+    profile.gttQuestionCompleted
+  );
 
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>

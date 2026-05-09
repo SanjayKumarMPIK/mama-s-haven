@@ -1,3 +1,4 @@
+import { Navigate } from "react-router-dom";
 import { usePhase } from "@/hooks/usePhase";
 import MenstrualGuide from "@/components/guidance/MenstrualGuide";
 import MaternalGuide from "@/components/guidance/MaternalGuide";
@@ -12,6 +13,10 @@ export default function WeeklyGuide() {
 
   if (phase === "maternity") {
     return <MaternalGuide />;
+  }
+
+  if (phase === "postpartum") {
+    return <Navigate to="/postpartum-dashboard" replace />;
   }
 
   // For all other phases, show the standard MenstrualGuide

@@ -19,7 +19,7 @@ const ROLE_STORAGE_KEY = "ss-role";
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [role, setRoleState] = useState<AppRole | null>(() => {
     try {
-      const raw = localStorage.getItem(ROLE_STORAGE_KEY);
+      const raw = sessionStorage.getItem(ROLE_STORAGE_KEY);
       if (raw === "user" || raw === "doctor") return raw;
     } catch {}
     return null;
@@ -28,20 +28,22 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const setRole = (newRole: AppRole) => {
     setRoleState(newRole);
     try {
-      localStorage.setItem(ROLE_STORAGE_KEY, newRole);
+      sessionStorage.setItem(ROLE_STORAGE_KEY, newRole);
+      localStorage.removeItem(ROLE_STORAGE_KEY); // Clean up old persist
     } catch {}
   };
 
   const clearRole = () => {
     setRoleState(null);
     try {
-      localStorage.removeItem(ROLE_STORAGE_KEY);
+      sessionStorage.removeItem(ROLE_STORAGE_KEY);
+      localStorage.removeItem(ROLE_STORAGE_KEY); // Clean up old persist
     } catch {}
   };
 
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(ROLE_STORAGE_KEY);
+      const raw = sessionStorage.getItem(ROLE_STORAGE_KEY);
       if (raw === "user" || raw === "doctor") {
         setRoleState(raw);
       }

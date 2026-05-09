@@ -13,13 +13,17 @@ export default function RoleEntry() {
   useEffect(() => {
     if (didRedirect.current) return;
 
-    if (role && user) {
+    if (role) {
       didRedirect.current = true;
-      navigate(role === "doctor" ? "/doctor" : "/dashboard", { replace: true });
+      if (user) {
+        navigate(role === "doctor" ? "/doctor" : "/dashboard", { replace: true });
+      } else {
+        navigate("/login", { replace: true });
+      }
     }
   }, [role, user, navigate]);
 
-  if (role && user) return null;
+  if (role) return null;
 
   return <RoleSelectionPage />;
 }

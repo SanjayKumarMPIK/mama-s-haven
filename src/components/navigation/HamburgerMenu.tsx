@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package, History, Bell, AlertCircle, FileText, Map, Stethoscope } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -64,6 +64,18 @@ const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause/care-essentials", label: "Care Essentials", icon: Package },
   { to: "/menopause/dashboard", label: "Dashboard", icon: Calendar },
   { to: "/menopause/articles", label: "Articles", icon: BookOpen },
+];
+
+// Doctor-specific menu items
+const DOCTOR_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
+  { to: "/doctor", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/doctor/schedules", label: "Schedules", icon: ClipboardList },
+  { to: "/doctor/calendar", label: "Calendar", icon: Calendar },
+  { to: "/doctor/history", label: "History", icon: History },
+  { to: "/doctor/notifications", label: "Notifications", icon: Bell },
+  { to: "/doctor/alerts", label: "Alerts", icon: AlertCircle },
+  { to: "/doctor/requests", label: "Requests", icon: FileText },
+  { to: "/doctor/hotspots", label: "Hotspots", icon: Map },
 ];
 
 export default function HamburgerMenu({
@@ -203,7 +215,24 @@ export default function HamburgerMenu({
 
             {/* Navigation items */}
             <nav className="space-y-2" aria-label="Secondary navigation">
-              {phase === "menopause" ? (
+              {location.pathname.startsWith("/doctor") ? (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Stethoscope className="h-4 w-4 text-teal-600" />
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Doctor Module</p>
+                  </div>
+                  {DOCTOR_ITEMS.map((item) => (
+                    <NavItem
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                      icon={item.icon}
+                      active={location.pathname === item.to}
+                      onClick={onClose}
+                    />
+                  ))}
+                </>
+              ) : phase === "menopause" ? (
                 MENOPAUSE_ITEMS.map((item) => (
                   <NavItem
                     key={item.to}

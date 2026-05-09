@@ -5,11 +5,9 @@ export function PostpartumGuard({ children }: { children?: React.ReactNode }) {
   const { profile } = usePregnancyProfile();
 
   const deliveryCompleted = profile.delivery?.isDelivered;
-  const congratulationsCompleted = profile.delivery?.isDelivered; 
-  const babyQuestionsCompleted = profile.delivery?.isDelivered && profile.delivery?.birthWeight !== null; 
   const deliveryWeeks = profile.delivery?.weeksAtBirth || 0;
 
-  if (!deliveryCompleted || !congratulationsCompleted || !babyQuestionsCompleted) {
+  if (!deliveryCompleted) {
     return <Navigate to="/pregnancy-dashboard" replace />;
   }
 

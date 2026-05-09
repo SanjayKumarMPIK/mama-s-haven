@@ -5,6 +5,7 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { usePregnancyProfile, type GDMStatus } from "@/hooks/usePregnancyProfile";
 import { useMaternalTestReminders } from "@/hooks/useMaternalTestReminders";
+import { shouldShowGTTPopup } from "@/lib/utils";
 import { X, CheckCircle2, Calendar, AlertCircle, Stethoscope } from "lucide-react";
 
 type GTTView = "question" | "result" | "reminder" | "confirmation";
@@ -16,17 +17,16 @@ export function GTTQuestionPopup() {
   const [slideIn, setSlideIn] = useState(false);
   const [view, setView] = useState<GTTView>("question");
 
-  // Auto-trigger condition: weeks 24-34, pregnancy mode only, gdmStatus is null AND gttQuestionCompleted is false
+  // Auto-trigger condition using centralized helper
   useEffect(() => {
-    if (
-      mode === "pregnancy" &&
-      currentWeek >= 24 &&
-      currentWeek <= 34 &&
-      profile.isSetup &&
-      !profile.gttQuestionCompleted &&
-      profile.gdmStatus === null &&
-      !isGTTPopupOpen
-    ) {
+    if (shouldShowGTTPopup(
+      mode,
+      currentWeek,
+      profile.gdmStatus,
+      profile.isSetup,
+      isGTTPopupOpen,
+      profile.gttQuestionCompleted
+    )) {
       // Small delay so it doesn't pop up instantly on first load
       const timer = setTimeout(() => {
         openGTTPopup();

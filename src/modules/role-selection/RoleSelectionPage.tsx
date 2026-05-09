@@ -9,11 +9,7 @@ export default function RoleSelectionPage() {
 
   const handleSelect = (selectedRole: "user" | "doctor") => {
     setRole(selectedRole);
-    if (selectedRole === "user") {
-      navigate("/login");
-    } else {
-      navigate("/login");
-    }
+    navigate("/login");
   };
 
   return (

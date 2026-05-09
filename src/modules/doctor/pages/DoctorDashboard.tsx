@@ -39,7 +39,7 @@ export default function DoctorDashboard() {
           const count = parsed.filter((a: { alertStatus?: string }) => a.alertStatus === "active").length;
           setActiveAlertCount(count);
         }
-      } catch {}
+      } catch { }
     }
     loadCount();
     const interval = setInterval(loadCount, 3000);

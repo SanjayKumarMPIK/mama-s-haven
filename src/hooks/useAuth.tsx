@@ -32,6 +32,10 @@ export interface StoredUserData {
     medicalConditions?: string[];
   };
   registeredAt: string;        // ISO timestamp
+  onboardingCompleted?: boolean;
+  onboardingStep?: string;
+  onboardingData?: any;
+  familyPlanningGoal?: string;
 }
 
 export interface SessionUser {
@@ -149,6 +153,10 @@ function mapDbRowToStored(row: Record<string, unknown>): StoredUserData {
         : [],
     },
     registeredAt: String(row.registered_at ?? new Date().toISOString()),
+    onboardingCompleted: row.onboarding_completed ? true : false,
+    onboardingStep: row.onboarding_step ? String(row.onboarding_step) : undefined,
+    onboardingData: row.onboarding_data ?? undefined,
+    familyPlanningGoal: row.family_planning_goal ? String(row.family_planning_goal) : undefined,
   };
 }
 
@@ -183,6 +191,10 @@ async function upsertDbProfile(userId: string, payload: StoredUserData): Promise
       known_conditions: payload.health.knownConditions || null,
       medical_conditions: payload.health.medicalConditions || [],
       registered_at: payload.registeredAt,
+      onboarding_completed: payload.onboardingCompleted ?? false,
+      onboarding_step: payload.onboardingStep || 'phase_selection',
+      onboarding_data: payload.onboardingData ?? null,
+      family_planning_goal: payload.familyPlanningGoal || null,
     },
     { onConflict: "id" },
   );

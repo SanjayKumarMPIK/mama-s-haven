@@ -145,14 +145,16 @@ export default function MissedLogReminder() {
         <ChevronRight className="w-5 h-5 text-white/60 group-hover:text-white transition-colors shrink-0" />
 
         {/* Dismiss button */}
-        <button
-          type="button"
+        <span
           onClick={handleDismiss}
-          className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:bg-white transition-colors"
+          className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-white/90 flex items-center justify-center shadow-md hover:bg-white transition-colors cursor-pointer"
+          role="button"
+          tabIndex={0}
           aria-label="Dismiss reminder"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleDismiss(e as any); }}
         >
           <X className="w-3.5 h-3.5 text-purple-700" />
-        </button>
+        </span>
       </button>
     </div>
   );

@@ -428,9 +428,9 @@ export default function PubertyGuide() {
 
   // Create puberty dashboard config
   const pubertyConfig = useMemo(() => {
-    if (!userData) return null;
-    return createPubertyDashboardConfig(userData.pubertyStage, userData.hormonalCondition);
-  }, [userData]);
+    if (!profile) return null;
+    return createPubertyDashboardConfig(profile.dob, profile.menarcheDate, userData?.hormonalCondition);
+  }, [profile, userData?.hormonalCondition]);
 
   if (!pubertyConfig) {
     return (

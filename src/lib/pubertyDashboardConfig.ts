@@ -44,12 +44,22 @@ export interface PubertyDashboardConfig {
 
 // ─── Puberty Classification Logic ───────────────────────────────────
 
-export function classifyPuberty(dateOfBirth?: Date, menarcheDate?: Date): {
+function toDate(value: unknown): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  const d = new Date(value as any);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+export function classifyPuberty(dateOfBirth?: Date | string, menarcheDate?: Date | string): {
   pubertyStatus: PubertyStatus;
   ageAtMenarche?: number;
   hasMenarche: boolean;
 } {
-  if (!dateOfBirth || !menarcheDate) {
+  const dob = toDate(dateOfBirth);
+  const menarche = toDate(menarcheDate);
+
+  if (!dob || !menarche) {
     return {
       pubertyStatus: PubertyStatus.normal,
       hasMenarche: false,
@@ -57,7 +67,7 @@ export function classifyPuberty(dateOfBirth?: Date, menarcheDate?: Date): {
   }
 
   const MS_PER_YEAR = 1000 * 60 * 60 * 24 * 365.25;
-  const ageAtMenarcheMs = menarcheDate.getTime() - dateOfBirth.getTime();
+  const ageAtMenarcheMs = menarche.getTime() - dob.getTime();
   const ageAtMenarche = ageAtMenarcheMs / MS_PER_YEAR;
 
   let pubertyStatus: PubertyStatus;
@@ -259,8 +269,8 @@ function getNormalPubertyTips(): NutritionTip[] {
 // ─── Dashboard Configuration Generator ───────────────────────────────
 
 export function createPubertyDashboardConfig(
-  dateOfBirth?: Date,
-  menarcheDate?: Date,
+  dateOfBirth?: Date | string,
+  menarcheDate?: Date | string,
   hormonalCondition: HormonalCondition = HormonalCondition.none,
   logs: any[] = []
 ): PubertyDashboardConfig {

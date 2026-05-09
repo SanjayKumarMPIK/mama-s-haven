@@ -5,6 +5,7 @@ import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useMedicineReminder } from "@/hooks/useMedicineReminder";
 import { ArrowLeft, Layers, ShieldAlert, Droplets, Sun, Pill, ChevronRight, CheckCircle2, Clock, AlertTriangle, Hourglass, Timer, Stethoscope } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
+import SOSButton from "@/components/emergency/SOSButton";
 
 // ─── Trimester content lookup ─────────────────────────────────────────────────
 
@@ -272,6 +273,8 @@ function WarningSigns() {
         </div>
       </div>
 
+      <SOSButton />
+
       <div className="grid sm:grid-cols-2 gap-3">
         {WARNING_SIGNS.map((sign, i) => (
           <div
@@ -284,7 +287,7 @@ function WarningSigns() {
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-3">
         <a
           href="tel:104"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold shadow hover:bg-red-700 transition-all active:scale-[0.97]"

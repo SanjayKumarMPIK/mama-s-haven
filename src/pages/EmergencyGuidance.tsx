@@ -1,6 +1,7 @@
 import { useLanguage } from "@/hooks/useLanguage";
 import ScrollReveal from "@/components/ScrollReveal";
 import { Phone, MapPin, AlertTriangle, Heart, Ambulance, ShieldAlert } from "lucide-react";
+import SOSButton from "@/components/emergency/SOSButton";
 
 const emergencySigns = [
   { emoji: "🩸", en: "Heavy vaginal bleeding", hi: "भारी योनि रक्तस्राव", ta: "அதிக இரத்தப்போக்கு" },
@@ -67,6 +68,13 @@ export default function EmergencyGuidance() {
               </div>
             </a>
           </div>
+        </ScrollReveal>
+      </div>
+
+      {/* SOS Action */}
+      <div className="container py-4">
+        <ScrollReveal>
+          <SOSButton />
         </ScrollReveal>
       </div>
 

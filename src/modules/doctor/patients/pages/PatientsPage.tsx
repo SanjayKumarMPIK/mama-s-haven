@@ -1,8 +1,10 @@
-import { useState } from "react";
-import { Search, Users, AlertTriangle, Activity, Baby, X, Clock, Calendar, ChevronRight } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Search, Users, AlertTriangle, Activity, Baby, X, Clock, Calendar, ChevronRight, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { usePatientsData, type Patient } from "../hooks/usePatientsData";
+import { getOrCreateHealthUserId, getAllRequests } from "@/lib/connectionStore";
+import MonthlyReportPreview from "@/components/connect/MonthlyReportPreview";
 
 const riskBadge: Record<string, string> = {
   Low: "bg-green-100 text-green-700",
@@ -21,8 +23,33 @@ const phaseStage = (p: Patient) => {
 };
 
 export default function PatientsPage() {
-  const { patients, stats, search, setSearch, phaseFilter, setPhaseFilter, riskFilter, setRiskFilter } = usePatientsData();
+  const { patients, stats, totalPatients, search, setSearch, phaseFilter, setPhaseFilter, riskFilter, setRiskFilter } = usePatientsData();
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const doctorInfo = (() => {
+    try {
+      const raw = localStorage.getItem("ss-doctor-profile");
+      if (raw) {
+        const p = JSON.parse(raw);
+        return { name: p.name || "Your Doctor", code: p.doctorCode || "" };
+      }
+    } catch { /* ignore */ }
+    return { name: "Your Doctor", code: "" };
+  })();
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportMonth, setReportMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [lastGenerated, setLastGenerated] = useState<string | null>(null);
+
+  const patientHealthId = useMemo(() => {
+    if (!selectedPatient) return null;
+    const requests = getAllRequests();
+    const req = requests.find((r) => r.id === selectedPatient.id);
+    const doctorCode = req?.doctorCode || doctorInfo.code;
+    if (!doctorCode) return null;
+    return getOrCreateHealthUserId(doctorCode, selectedPatient.phase);
+  }, [selectedPatient]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -128,7 +155,7 @@ export default function PatientsPage() {
         {patients.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <Users className="h-12 w-12 mx-auto mb-3 text-slate-300" />
-            <p className="text-sm font-medium">No patients match your filters</p>
+            <p className="text-sm font-medium">{totalPatients === 0 ? "No connected patients yet." : "No patients match your filters"}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -249,9 +276,19 @@ export default function PatientsPage() {
                   Quick Actions
                 </h4>
                 <div className="flex flex-col gap-2">
-                  <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white border border-teal-200 text-sm text-teal-700 font-medium hover:bg-teal-50 transition-colors">
-                    <span>View Health Log</span>
-                    <ChevronRight className="w-4 h-4" />
+                  <button
+                    onClick={() => {
+                      const now = new Date();
+                      setLastGenerated(now.toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" }));
+                      setShowReportModal(true);
+                    }}
+                    className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white border border-teal-200 text-sm text-teal-700 font-medium hover:bg-teal-50 transition-colors"
+                  >
+                    <div className="flex flex-col items-start">
+                      <span>View Monthly Report</span>
+                      <span className="text-[11px] text-teal-500 font-normal">View patient monthly health summary</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 shrink-0" />
                   </button>
                   <button className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-white border border-teal-200 text-sm text-teal-700 font-medium hover:bg-teal-50 transition-colors">
                     <span>View Appointments</span>
@@ -262,6 +299,18 @@ export default function PatientsPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showReportModal && selectedPatient && (
+        <MonthlyReportPreview
+          patientName={selectedPatient.name}
+          phase={selectedPatient.phase}
+          healthId={patientHealthId}
+          doctorName={doctorInfo.name}
+          selectedMonth={reportMonth}
+          onClose={() => setShowReportModal(false)}
+          lastGenerated={lastGenerated}
+        />
       )}
     </div>
   );

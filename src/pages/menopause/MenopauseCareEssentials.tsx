@@ -1,5 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { ShieldCheck, Heart, AlertTriangle, FileText, Download, Bone, Droplets, Sparkles, Activity } from "lucide-react";
+import SOSButton from "@/components/emergency/SOSButton";
 import { cn } from "@/lib/utils";
 import { useMenopause, getStageLabel } from "@/hooks/useMenopause";
 
@@ -283,7 +284,8 @@ export default function MenopauseCareEssentials() {
             <p className="text-xs text-red-700 leading-relaxed mb-3 font-medium">
               While most menopause symptoms are normal, some signs require immediate medical attention:
             </p>
-            <div className="space-y-2">
+            <SOSButton />
+            <div className="space-y-2 mt-4">
               {[
                 { symptom: "Chest pain or pressure", desc: "Could indicate a heart issue" },
                 { symptom: "Severe or unexpected vaginal bleeding", desc: "Especially after 12+ months without periods" },

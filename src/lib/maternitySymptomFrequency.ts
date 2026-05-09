@@ -4,11 +4,12 @@ export interface SymptomWarning {
   symptomId: string;
   symptomName: string;
   emoji: string;
-  triggerType: "consecutive-3" | "within-7d-4" | "within-30d-10";
+  triggerType: "consecutive-3" | "within-7d-4" | "within-30d-10" | "consecutive-4" | "weekly-5" | "monthly-15" | "high-risk-25";
   count: number;
   windowDays: number;
   details: string;
   warningId: string;
+  isHighRisk?: boolean;
 }
 
 const SYMPTOM_LABELS: Record<string, string> = {
@@ -214,6 +215,139 @@ function checkTimeWindow(
   return null;
 }
 
+function checkConsecutive4(
+  symptomId: string,
+  dates: string[],
+  seen: Set<string>
+): SymptomWarning | null {
+  if (dates.length < 4) return null;
+
+  for (let i = 0; i <= dates.length - 4; i++) {
+    const d1 = parseDate(dates[i]);
+    const d2 = parseDate(dates[i + 1]);
+    const d3 = parseDate(dates[i + 2]);
+    const d4 = parseDate(dates[i + 3]);
+
+    const diff1 = Math.round((d2.getTime() - d1.getTime()) / MS_PER_DAY);
+    const diff2 = Math.round((d3.getTime() - d2.getTime()) / MS_PER_DAY);
+    const diff3 = Math.round((d4.getTime() - d3.getTime()) / MS_PER_DAY);
+
+    if (diff1 === 1 && diff2 === 1 && diff3 === 1) {
+      const warningId = `consecutive-4-${symptomId}`;
+      if (seen.has(warningId)) continue;
+
+      return {
+        symptomId,
+        symptomName: getSymptomName(symptomId),
+        emoji: getSymptomEmoji(symptomId),
+        triggerType: "consecutive-4",
+        count: 4,
+        windowDays: 4,
+        details: `${getSymptomName(symptomId)} has been logged 4 consecutive days in a row.`,
+        warningId,
+      };
+    }
+  }
+
+  return null;
+}
+
+function getDatesWithAnySymptom(logs: HealthLogs): string[] {
+  const dates: string[] = [];
+  for (const [dateISO, entry] of Object.entries(logs)) {
+    if (entry.phase !== "maternity") continue;
+    const symptoms = (entry as MaternityEntry).symptoms;
+    if (!symptoms) continue;
+    const hasAny = Object.values(symptoms).some(Boolean);
+    if (hasAny) dates.push(dateISO);
+  }
+  return dates.sort();
+}
+
+function countInWindow(dates: string[], windowDays: number): number {
+  const cutoff = new Date(Date.now() - windowDays * MS_PER_DAY);
+  return dates.filter((d) => new Date(d + "T12:00:00") >= cutoff).length;
+}
+
+function countTotalSymptomEntriesInWindow(logs: HealthLogs, windowDays: number): number {
+  const cutoff = new Date(Date.now() - windowDays * MS_PER_DAY);
+  let total = 0;
+  for (const [dateISO, entry] of Object.entries(logs)) {
+    if (entry.phase !== "maternity") continue;
+    const d = new Date(dateISO + "T12:00:00");
+    if (d < cutoff) continue;
+    const symptoms = (entry as MaternityEntry).symptoms;
+    if (!symptoms) continue;
+    for (const present of Object.values(symptoms)) {
+      if (present) total++;
+    }
+  }
+  return total;
+}
+
+function checkWeeklyFrequency(logs: HealthLogs, seen: Set<string>): SymptomWarning | null {
+  if (seen.has("weekly-5")) return null;
+  const symptomDates = getDatesWithAnySymptom(logs);
+  const count = countInWindow(symptomDates, 7);
+  if (count >= 5) {
+    const warning: SymptomWarning = {
+      symptomId: "_overall",
+      symptomName: "Frequent Symptoms",
+      emoji: "⚠️",
+      triggerType: "weekly-5",
+      count,
+      windowDays: 7,
+      details: "Frequent symptom activity detected this week.",
+      warningId: "weekly-5",
+    };
+    seen.add("weekly-5");
+    return warning;
+  }
+  return null;
+}
+
+function checkMonthlyFrequency(logs: HealthLogs, seen: Set<string>): SymptomWarning | null {
+  if (seen.has("monthly-15")) return null;
+  const symptomDates = getDatesWithAnySymptom(logs);
+  const count = countInWindow(symptomDates, 30);
+  if (count >= 15) {
+    const warning: SymptomWarning = {
+      symptomId: "_overall",
+      symptomName: "High Symptom Frequency",
+      emoji: "⚠️",
+      triggerType: "monthly-15",
+      count,
+      windowDays: 30,
+      details: "High symptom frequency detected this month.",
+      warningId: "monthly-15",
+    };
+    seen.add("monthly-15");
+    return warning;
+  }
+  return null;
+}
+
+function checkHighRiskMonthly(logs: HealthLogs, seen: Set<string>): SymptomWarning | null {
+  if (seen.has("high-risk-25")) return null;
+  const total = countTotalSymptomEntriesInWindow(logs, 30);
+  if (total >= 25) {
+    const warning: SymptomWarning = {
+      symptomId: "_overall",
+      symptomName: "Critical Symptom Activity",
+      emoji: "🚨",
+      triggerType: "high-risk-25",
+      count: total,
+      windowDays: 30,
+      details: "Critical symptom frequency detected. Consider immediate medical attention.",
+      warningId: "high-risk-25",
+      isHighRisk: true,
+    };
+    seen.add("high-risk-25");
+    return warning;
+  }
+  return null;
+}
+
 export function evaluateMaternitySymptomFrequency(
   logs: HealthLogs
 ): SymptomWarning[] {
@@ -221,8 +355,23 @@ export function evaluateMaternitySymptomFrequency(
   const seen = new Set<string>();
   const warnings: SymptomWarning[] = [];
 
+  const highRisk = checkHighRiskMonthly(logs, seen);
+  if (highRisk) warnings.push(highRisk);
+
+  const monthly = checkMonthlyFrequency(logs, seen);
+  if (monthly) warnings.push(monthly);
+
+  const weekly = checkWeeklyFrequency(logs, seen);
+  if (weekly) warnings.push(weekly);
+
   for (const [symptomId, dates] of symptomDates) {
     if (dates.length < 3) continue;
+
+    const consecutive4 = checkConsecutive4(symptomId, dates, seen);
+    if (consecutive4) {
+      warnings.push(consecutive4);
+      seen.add(consecutive4.warningId);
+    }
 
     const consecutive = checkConsecutive(symptomId, dates, seen);
     if (consecutive) {
@@ -244,7 +393,15 @@ export function evaluateMaternitySymptomFrequency(
   }
 
   return warnings.sort((a, b) => {
-    const order: Record<string, number> = { "consecutive-3": 0, "within-7d-4": 1, "within-30d-10": 2 };
+    const order: Record<string, number> = {
+      "high-risk-25": 0,
+      "consecutive-4": 1,
+      "monthly-15": 2,
+      "weekly-5": 3,
+      "consecutive-3": 4,
+      "within-7d-4": 5,
+      "within-30d-10": 6,
+    };
     return (order[a.triggerType] ?? 99) - (order[b.triggerType] ?? 99);
   });
 }

@@ -134,12 +134,17 @@ import RoleEntry from "./modules/role-selection/RoleEntry";
 
 import DoctorDashboard from "./modules/doctor/pages/DoctorDashboard";
 
+import DoctorAlerts from "./modules/doctor/pages/DoctorAlerts";
+import DoctorQuestions from "./modules/doctor/pages/DoctorNotifications";
 import DoctorSchedules from "./modules/doctor/pages/DoctorSchedules";
 import DoctorCalendar from "./modules/doctor/pages/DoctorCalendar";
 import DoctorProfile from "./modules/doctor/pages/DoctorProfile";
 import DoctorRequests from "./modules/doctor/pages/DoctorRequests";
 import PatientsPage from "./modules/doctor/patients/pages/PatientsPage";
 import ConnectPage from "./pages/ConnectPage";
+import RequestSchedulePage from "./pages/RequestSchedulePage";
+import AskDoctorPage from "./pages/AskDoctorPage";
+import ConnectionStatusPage from "./pages/ConnectionStatusPage";
 
 import PubertyNutritionGuide from "./modules/puberty/nutrition-guide/pages/PubertyNutritionGuide";
 
@@ -227,6 +232,10 @@ const App = () => (
 
                           <Route path="/doctor/patients" element={<PatientsPage />} />
 
+                          <Route path="/doctor/questions" element={<DoctorQuestions />} />
+
+                          <Route path="/doctor/alerts" element={<DoctorAlerts />} />
+
                           <Route path="/doctor/*" element={<DoctorDashboard />} />
 
                           <Route path="/login" element={<Login />} />
@@ -270,6 +279,12 @@ const App = () => (
                           <Route path="/vaccine-tracker" element={<VaccineTracker />} />
 
                           <Route path="/connect" element={<ConnectPage />} />
+
+                          <Route path="/request-schedule" element={<RequestSchedulePage />} />
+
+                          <Route path="/ask-doctor" element={<AskDoctorPage />} />
+
+                          <Route path="/connection-status" element={<ConnectionStatusPage />} />
 
                           <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
 

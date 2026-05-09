@@ -1,6 +1,9 @@
+import { useState, useEffect } from "react";
 import { Users, Calendar, FileText, AlertCircle, Search, Clock, ChevronRight, Bell, Stethoscope } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
+
+const DOCTOR_ALERTS_KEY = "ss-maternity-doctor-alerts";
 
 const mockPatients = [
   { id: 1, name: "Priya Sharma", age: 28, phase: "Maternity", lastVisit: "2025-05-02", status: "Active", avatar: "PS" },
@@ -25,6 +28,27 @@ const statusColors: Record<string, string> = {
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
+  const [activeAlertCount, setActiveAlertCount] = useState(0);
+
+  useEffect(() => {
+    function loadCount() {
+      try {
+        const raw = localStorage.getItem(DOCTOR_ALERTS_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          const count = parsed.filter((a: { alertStatus?: string }) => a.alertStatus === "active").length;
+          setActiveAlertCount(count);
+        }
+      } catch {}
+    }
+    loadCount();
+    const interval = setInterval(loadCount, 3000);
+    window.addEventListener("storage", loadCount);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", loadCount);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -61,7 +85,7 @@ export default function DoctorDashboard() {
           <StatCard icon={Users} label="Total Patients" value="248" color="teal" trend="+12 this month" />
           <StatCard icon={Calendar} label="Today's Appointments" value="8" color="blue" trend="4 remaining" />
           <StatCard icon={FileText} label="Pending Reports" value="5" color="amber" trend="2 due today" />
-          <StatCard icon={AlertCircle} label="Active Alerts" value="3" color="red" trend="Requires attention" />
+          <StatCard icon={AlertCircle} label="Active Alerts" value={String(activeAlertCount)} color="red" trend={activeAlertCount > 0 ? "Requires attention" : "No active alerts"} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -102,7 +126,9 @@ export default function DoctorDashboard() {
               <QuickAction icon={Users} label="View All Patients" description="Browse patient records" />
               <QuickAction icon={Calendar} label="Schedule Appointment" description="Book new consultations" />
               <QuickAction icon={FileText} label="Generate Reports" description="Create health summaries" />
-              <QuickAction icon={AlertCircle} label="Review Alerts" description="Pending notifications" />
+              <Link to="/doctor/alerts" className="block">
+                <QuickAction icon={AlertCircle} label="Review Alerts" description={activeAlertCount > 0 ? `${activeAlertCount} pending alerts` : "No pending alerts"} />
+              </Link>
             </div>
           </div>
         </div>
@@ -183,7 +209,7 @@ function StatCard({ icon: Icon, label, value, color, trend }: { icon: React.Comp
 
 function QuickAction({ icon: Icon, label, description }: { icon: React.ComponentType<{ className?: string }>; label: string; description: string }) {
   return (
-    <button className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-teal-300 hover:bg-teal-50 transition-all text-left group">
+    <div className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:border-teal-300 hover:bg-teal-50 transition-all text-left group cursor-pointer">
       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-teal-100 group-hover:text-teal-600 transition-colors">
         <Icon className="h-5 w-5" />
       </div>
@@ -191,6 +217,8 @@ function QuickAction({ icon: Icon, label, description }: { icon: React.Component
         <p className="font-semibold text-slate-900 text-sm">{label}</p>
         <p className="text-xs text-slate-500">{description}</p>
       </div>
-    </button>
+    </div>
   );
 }
+
+

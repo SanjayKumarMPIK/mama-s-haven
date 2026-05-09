@@ -464,58 +464,80 @@ function DashboardView({
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
       <DueDateChecker />
-      {/* ─── Hero Header ──────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-br from-purple-50/80 via-white to-pink-50/50 border-b border-border shadow-sm">
-        <div className="container py-8 sm:py-10">
+        {/* ─── Top Navigation ──────────────────────────────────────────── */}
+        <div className="container pt-6 pb-2">
+          <div className="flex items-center justify-between">
+            <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" /> Home
+            </Link>
+            <button
+              onClick={clearProfile}
+              title="Clear pregnancy data"
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" /> Clear Data
+            </button>
+          </div>
+        </div>
+
+        <div className="container py-8 space-y-8">
+          {/* ─── Medium-Sized Guide Card: Pregnancy Guide + Recovery Timeline ── */}
           <ScrollReveal>
-            <div className="flex items-center justify-between mb-4">
-              <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-                <ArrowLeft className="w-3.5 h-3.5" /> Home
-              </Link>
-              <button
-                onClick={clearProfile}
-                title="Clear pregnancy data"
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500 transition-colors"
-              >
-                <RotateCcw className="w-3.5 h-3.5" /> Clear Data
-              </button>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={`text-xs font-semibold uppercase tracking-wider ${trimesterColor}`}>{trimesterLabel}</span>
-                  <span className="text-xs text-muted-foreground">•</span>
-                  <span className="text-xs text-muted-foreground">Week {currentWeek} of 40</span>
+            <div className="max-w-3xl mx-auto">
+              <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
+                {/* Card Header */}
+                <div className="p-5 sm:p-6 pb-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className={`text-xs font-semibold uppercase tracking-wider ${trimesterColor}`}>{trimesterLabel}</span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground">Week {currentWeek} of 40</span>
+                      </div>
+                      <h1 className="text-xl sm:text-2xl font-bold">Pregnancy Guide</h1>
+                      {profileName && <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Welcome, {profileName}</p>}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <p className="text-xl sm:text-2xl font-bold text-primary">{daysLeft}</p>
+                        <p className="text-[10px] text-muted-foreground font-medium">days left</p>
+                      </div>
+                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0">
+                        <svg className="w-14 h-14 sm:w-16 sm:h-16 -rotate-90" viewBox="0 0 36 36">
+                          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
+                          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--primary))" strokeWidth="3" strokeDasharray={`${progress}, 100`} strokeLinecap="round" />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">{progress}%</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <h1 className="text-2xl sm:text-3xl font-bold">
-                  Maternity Guide
-                </h1>
-                {profileName && <p className="text-sm text-muted-foreground mt-0.5">Welcome, {profileName} 🤰</p>}
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">{daysLeft}</p>
-                  <p className="text-[10px] text-muted-foreground font-medium">days left</p>
-                </div>
-                {/* Progress ring */}
-                <div className="relative w-16 h-16 shrink-0">
-                  <svg className="w-16 h-16 -rotate-90" viewBox="0 0 36 36">
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
-                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--primary))" strokeWidth="3" strokeDasharray={`${progress}, 100`} strokeLinecap="round" />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">{progress}%</div>
-                </div>
-              </div>
-            </div>
 
-            {/* EDD Override Card */}
-            <div className="mt-4">
-              <EDDOverrideCard />
-            </div>
+                <div className="border-t border-border/50" />
 
-            {/* Persistent GDM Follow-Up Card */}
-            {showGDMRcard && (
-              <div className="mt-3">
+                {/* Card Body - Recovery Timeline */}
+                <div>
+                  <TimelineOverview 
+                    currentWeek={currentWeek} 
+                    selectedWeek={selectedWeek} 
+                    onSelectWeek={setSelectedWeek} 
+                  />
+                </div>
+
+                <div className="border-t border-border/50" />
+
+                {/* Card Footer - EDD */}
+                <div className="p-5 sm:p-6 pt-4">
+                  <EDDOverrideCard />
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Persistent GDM Follow-Up Card */}
+          {showGDMRcard && (
+            <ScrollReveal>
+              <div className="max-w-3xl mx-auto">
                 <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
@@ -538,26 +560,17 @@ function DashboardView({
                   </button>
                 </div>
               </div>
-            )}
+            </ScrollReveal>
+          )}
 
-            {/* Delivery Arrival Prompt */}
-            {currentWeek >= 28 && !profile.delivery.isDelivered && (
-              <div className="mt-3">
+          {/* Delivery Arrival Prompt */}
+          {currentWeek >= 28 && !profile.delivery.isDelivered && (
+            <ScrollReveal>
+              <div className="max-w-3xl mx-auto">
                 <DeliveryArrivalCard />
               </div>
-            )}
-
-            {/* Timeline Overview Component */}
-            <TimelineOverview 
-              currentWeek={currentWeek} 
-              selectedWeek={selectedWeek} 
-              onSelectWeek={setSelectedWeek} 
-            />
-          </ScrollReveal>
-        </div>
-      </div>
-
-      <div className="container py-8 space-y-8">
+            </ScrollReveal>
+          )}
         {/* ─── Section 1: Baby Development & Today's Tip ─────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Baby Development (Left - 2 columns) */}

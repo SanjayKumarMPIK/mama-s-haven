@@ -1,4 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { getRequestsByDoctor, type ConnectionRequest } from "@/lib/connectionStore";
+
+const DOCTOR_ID = "doctor-demo-123";
 
 export interface Patient {
   id: string;
@@ -13,35 +16,87 @@ export interface Patient {
   age: number;
 }
 
-const mockPatients: Patient[] = [
-  { id: "P-001", name: "Priya Sharma", phase: "Maternity", trimester: 3, pregnancyWeek: 32, riskLevel: "Low", recentSymptoms: ["Mild backache", "Fatigue"], warningCount: 0, lastActivity: "2 hours ago", age: 28 },
-  { id: "P-002", name: "Anita Devi", phase: "Postpartum", pregnancyWeek: 6, riskLevel: "Moderate", recentSymptoms: ["Postpartum blues", "Breast engorgement"], warningCount: 2, lastActivity: "30 mins ago", age: 31 },
-  { id: "P-003", name: "Meera Kumari", phase: "Maternity", trimester: 2, pregnancyWeek: 18, riskLevel: "High", recentSymptoms: ["Severe headaches", "Blurred vision", "Swelling"], warningCount: 4, lastActivity: "15 mins ago", age: 26 },
-  { id: "P-004", name: "Sunita Patel", phase: "Menopause", riskLevel: "Low", recentSymptoms: ["Hot flashes", "Mood swings"], warningCount: 0, lastActivity: "1 day ago", age: 48 },
-  { id: "P-005", name: "Rekha Singh", phase: "Maternity", trimester: 1, pregnancyWeek: 10, riskLevel: "Low", recentSymptoms: ["Morning sickness"], warningCount: 0, lastActivity: "3 hours ago", age: 24 },
-  { id: "P-006", name: "Lakshmi Nair", phase: "Postpartum", pregnancyWeek: 12, riskLevel: "Moderate", recentSymptoms: ["Incision pain", "Difficulty breastfeeding"], warningCount: 1, lastActivity: "1 hour ago", age: 34 },
-  { id: "P-007", name: "Kavya Reddy", phase: "Maternity", trimester: 3, pregnancyWeek: 36, riskLevel: "High", recentSymptoms: ["Preterm contractions", "Lower back pain"], warningCount: 5, lastActivity: "10 mins ago", age: 29 },
-  { id: "P-008", name: "Deepa Joshi", phase: "Family Planning", riskLevel: "Low", recentSymptoms: ["Irregular cycles"], warningCount: 0, lastActivity: "2 days ago", age: 33 },
-  { id: "P-009", name: "Maya Gupta", phase: "Maternity", trimester: 2, pregnancyWeek: 22, riskLevel: "Moderate", recentSymptoms: ["Gestational diabetes", "Frequent urination"], warningCount: 2, lastActivity: "45 mins ago", age: 35 },
-  { id: "P-010", name: "Saraswati Iyer", phase: "Menopause", riskLevel: "Low", recentSymptoms: ["Sleep disturbances", "Joint pain"], warningCount: 0, lastActivity: "5 hours ago", age: 51 },
-  { id: "P-011", name: "Geeta Verma", phase: "Maternity", trimester: 1, pregnancyWeek: 8, riskLevel: "Moderate", recentSymptoms: ["Nausea", "Spotting"], warningCount: 3, lastActivity: "20 mins ago", age: 27 },
-  { id: "P-012", name: "Neha Kapoor", phase: "Postpartum", pregnancyWeek: 4, riskLevel: "High", recentSymptoms: ["Postpartum hemorrhage", "Severe anxiety"], warningCount: 6, lastActivity: "5 mins ago", age: 30 },
-];
+const PHASE_MAP: Record<string, Patient["phase"]> = {
+  maternity: "Maternity",
+  postpartum: "Postpartum",
+  menopause: "Menopause",
+  "family-planning": "Family Planning",
+  puberty: "Puberty",
+};
+
+function mapPhase(lifeStage: string): Patient["phase"] {
+  return PHASE_MAP[lifeStage.toLowerCase()] ?? "Maternity";
+}
+
+function mapRisk(risk?: string): Patient["riskLevel"] {
+  if (risk === "High" || risk === "Moderate") return risk;
+  return "Low";
+}
+
+function formatLastActivity(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} min ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  return `${diffDays}d ago`;
+}
+
+function mapRequestToPatient(req: ConnectionRequest): Patient {
+  const prof = req.patientProfile;
+  return {
+    id: req.id,
+    name: prof?.fullName ?? req.patientName,
+    phase: prof ? mapPhase(prof.lifeStage) : (req.patientPhase as Patient["phase"] ?? "Maternity"),
+    trimester: prof?.trimester,
+    pregnancyWeek: prof?.pregnancyWeek ?? req.pregnancyWeek,
+    riskLevel: mapRisk(req.riskLevel),
+    recentSymptoms: [],
+    warningCount: 0,
+    lastActivity: formatLastActivity(req.createdAt),
+    age: prof?.age ?? 0,
+  };
+}
 
 export function usePatientsData() {
   const [search, setSearch] = useState("");
   const [phaseFilter, setPhaseFilter] = useState<string>("all");
   const [riskFilter, setRiskFilter] = useState<string>("all");
+  const [accepted, setAccepted] = useState<ConnectionRequest[]>(() =>
+    getRequestsByDoctor(DOCTOR_ID).filter((r) => r.status === "accepted"),
+  );
+  const mountedRef = useRef(true);
+
+  const refresh = useCallback(() => {
+    if (mountedRef.current) {
+      setAccepted(getRequestsByDoctor(DOCTOR_ID).filter((r) => r.status === "accepted"));
+    }
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const interval = setInterval(refresh, 5000);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(interval);
+    };
+  }, [refresh]);
+
+  const patients = useMemo(() => accepted.map(mapRequestToPatient), [accepted]);
 
   const stats = useMemo(() => ({
-    total: mockPatients.length,
-    highRisk: mockPatients.filter((p) => p.riskLevel === "High").length,
-    moderateRisk: mockPatients.filter((p) => p.riskLevel === "Moderate").length,
-    maternity: mockPatients.filter((p) => p.phase === "Maternity").length,
-  }), []);
+    total: patients.length,
+    highRisk: patients.filter((p) => p.riskLevel === "High").length,
+    moderateRisk: patients.filter((p) => p.riskLevel === "Moderate").length,
+    maternity: patients.filter((p) => p.phase === "Maternity").length,
+  }), [patients]);
 
   const filteredPatients = useMemo(() => {
-    let result = [...mockPatients];
+    let result = patients;
 
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -57,10 +112,11 @@ export function usePatientsData() {
     }
 
     return result;
-  }, [search, phaseFilter, riskFilter]);
+  }, [patients, search, phaseFilter, riskFilter]);
 
   return {
     patients: filteredPatients,
+    totalPatients: patients.length,
     stats,
     search,
     setSearch,

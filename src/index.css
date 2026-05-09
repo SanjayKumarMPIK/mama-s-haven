@@ -1395,3 +1395,9 @@
   color: hsl(263, 40%, 55%);
   white-space: nowrap;
 }
+
+@keyframes sos-ring {
+  0% { transform: scale(1); opacity: 0.5; }
+  100% { transform: scale(1.3); opacity: 0; }
+}
+.animate-sos-ring { animation: sos-ring 1.5s ease-out infinite; }

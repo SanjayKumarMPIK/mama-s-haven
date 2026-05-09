@@ -8,9 +8,9 @@ import {
   type DayCompletionStatus,
   getIsoWeekKey,
   normalizeActivity,
-  profileToDatasetStage,
   weeksSinceBirth,
 } from "./SchedulerUtils";
+import { useExercisePhaseResolver } from "./useExercisePhaseResolver";
 
 function storageKey(weekKey: string, stage: DatasetMaternityStage, seed: string) {
   return `mh-exercise-scheduler-v1|${weekKey}|${stage}|${seed}`;
@@ -68,7 +68,7 @@ function buildPersistFromSchedule(
 
 export function useWeeklyScheduler() {
   const { mode, trimester, currentWeek, profile } = usePregnancyProfile();
-  const stage = useMemo(() => profileToDatasetStage(mode, trimester), [mode, trimester]);
+  const stage = useExercisePhaseResolver();
 
   const progressionWeekIndex = useMemo(
     () => resolveProgressionWeekIndex(mode, profile, currentWeek),

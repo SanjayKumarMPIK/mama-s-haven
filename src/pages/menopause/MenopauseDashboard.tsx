@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import {
   Activity, Bone, Apple, Moon, Scale, Heart, Bot, Building2,
   Target, Sparkles, TrendingUp, TrendingDown, Minus, ChevronRight,
-  Sun, Calendar, Shield,
+  Sun, Calendar, Shield, Stethoscope,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMenopause, getStageLabel, getStageDescription } from "@/hooks/useMenopause";
@@ -300,6 +300,7 @@ export default function MenopauseDashboard() {
           <ModuleCard to="/menopause/fun" icon={Sparkles} label="Fun Activity" emoji="🌟" gradient="bg-gradient-to-br from-pink-500 to-rose-400" delay={220} />
           <ModuleCard to="/menopause/ai-assistant" icon={Bot} label="AI Assistant" emoji="🤖" gradient="bg-gradient-to-br from-violet-500 to-purple-600" delay={230} />
           <ModuleCard to="/menopause/phc-support" icon={Building2} label="PHC Support" emoji="🏥" gradient="bg-gradient-to-br from-slate-600 to-slate-800" delay={240} />
+          <ModuleCard to="/menopause/connect" icon={Stethoscope} label="Connect" emoji="🔗" gradient="bg-gradient-to-br from-teal-500 to-cyan-500" delay={245} />
         </div>
 
         {/* ── Privacy Footer ────────────────────────────────────── */}

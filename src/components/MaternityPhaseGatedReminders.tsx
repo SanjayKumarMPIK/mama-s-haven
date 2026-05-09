@@ -14,6 +14,7 @@ import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import MaternalTestRecommendationPopup from "@/components/MaternalTestRecommendationPopup";
 import { GTTQuestionPopup } from "@/components/GTTQuestionPopup";
+import MaternitySymptomWarningPopup from "@/components/MaternitySymptomWarningPopup";
 
 export default function MaternityPhaseGatedReminders() {
   const { phase } = usePhase();
@@ -29,6 +30,7 @@ export default function MaternityPhaseGatedReminders() {
       <MaternalTestRecommendationPopup />
       {/* GTT popup only renders in pregnancy mode, not postpartum/premature */}
       {mode === "pregnancy" && <GTTQuestionPopup />}
+      <MaternitySymptomWarningPopup />
     </>
   );
 }

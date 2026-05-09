@@ -135,6 +135,11 @@ import RoleEntry from "./modules/role-selection/RoleEntry";
 import DoctorDashboard from "./modules/doctor/pages/DoctorDashboard";
 
 import DoctorSchedules from "./modules/doctor/pages/DoctorSchedules";
+import DoctorCalendar from "./modules/doctor/pages/DoctorCalendar";
+import DoctorProfile from "./modules/doctor/pages/DoctorProfile";
+import DoctorRequests from "./modules/doctor/pages/DoctorRequests";
+import PatientsPage from "./modules/doctor/patients/pages/PatientsPage";
+import ConnectPage from "./pages/ConnectPage";
 
 import PubertyNutritionGuide from "./modules/puberty/nutrition-guide/pages/PubertyNutritionGuide";
 
@@ -214,6 +219,14 @@ const App = () => (
 
                           <Route path="/doctor/schedules" element={<DoctorSchedules />} />
 
+                          <Route path="/doctor/calendar" element={<DoctorCalendar />} />
+
+                          <Route path="/doctor/profile" element={<DoctorProfile />} />
+
+                          <Route path="/doctor/requests" element={<DoctorRequests />} />
+
+                          <Route path="/doctor/patients" element={<PatientsPage />} />
+
                           <Route path="/doctor/*" element={<DoctorDashboard />} />
 
                           <Route path="/login" element={<Login />} />
@@ -255,6 +268,8 @@ const App = () => (
                           <Route path="/phc-nearby" element={<PhcNearby />} />
 
                           <Route path="/vaccine-tracker" element={<VaccineTracker />} />
+
+                          <Route path="/connect" element={<ConnectPage />} />
 
                           <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
 
@@ -309,6 +324,8 @@ const App = () => (
                         {/* Menopause phase routes */}
 
                         <Route path="/menopause" element={<Index />} />
+
+                        <Route path="/menopause/connect" element={<ConnectPage />} />
 
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
 

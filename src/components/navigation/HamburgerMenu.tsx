@@ -36,6 +36,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
   { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
   { to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList },
+  { to: "/connect", label: "Connect", icon: Stethoscope },
 ];
 
 
@@ -64,6 +65,7 @@ const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause/care-essentials", label: "Care Essentials", icon: Package },
   { to: "/menopause/dashboard", label: "Dashboard", icon: Calendar },
   { to: "/menopause/articles", label: "Articles", icon: BookOpen },
+  { to: "/menopause/connect", label: "Connect", icon: Stethoscope },
 ];
 
 // Doctor-specific menu items
@@ -71,11 +73,13 @@ const DOCTOR_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/doctor", label: "Dashboard", icon: LayoutDashboard },
   { to: "/doctor/schedules", label: "Schedules", icon: ClipboardList },
   { to: "/doctor/calendar", label: "Calendar", icon: Calendar },
+  { to: "/doctor/profile", label: "Profile", icon: User },
   { to: "/doctor/history", label: "History", icon: History },
   { to: "/doctor/notifications", label: "Notifications", icon: Bell },
   { to: "/doctor/alerts", label: "Alerts", icon: AlertCircle },
   { to: "/doctor/requests", label: "Requests", icon: FileText },
   { to: "/doctor/hotspots", label: "Hotspots", icon: Map },
+  { to: "/doctor/patients", label: "Patients", icon: User },
 ];
 
 export default function HamburgerMenu({

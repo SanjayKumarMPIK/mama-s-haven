@@ -2,20 +2,29 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
 import { useProfile } from "@/hooks/useProfile";
-import { ArrowLeft, Heart, Activity, Calendar, Baby, Utensils, Moon, Sun, Droplets, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Heart, Activity, Calendar, Baby, Utensils, Moon, Sun, Droplets, ShieldAlert, Stethoscope, ChevronRight } from "lucide-react";
 
 import { PostpartumGuard } from "../components/PostpartumGuard";
 import PostpartumOverviewCard from "../components/PostpartumOverviewCard";
 import RecoverySummaryCards from "../components/RecoverySummaryCards";
-import PostpartumGrid from "../components/PostpartumGrid";
-import PostpartumRecoveryTimeline from "../components/PostpartumRecoveryTimeline";
+import { PostpartumRecoveryCard } from "../recovery/PostpartumRecoveryCard";
+import { PostpartumTimeline } from "../recovery/PostpartumTimeline";
 import NutritionTipsCard from "../components/NutritionTipsCard";
 import ActiveAlertsCard from "../components/ActiveAlertsCard";
+import VisualAnalytics from "@/components/dashboard/VisualAnalytics";
 import { usePostpartumRecovery } from "../recovery/usePostpartumRecovery";
+import { useHealthLog } from "@/hooks/useHealthLog";
 
 const PostpartumDashboard = () => {
   const { profile } = useProfile();
   const { currentWeek } = usePostpartumRecovery();
+  const { getPhaseLogs } = useHealthLog();
+
+  const postpartumLogs = getPhaseLogs("postpartum");
+  const mappedLogs = Object.entries(postpartumLogs).map(([date, entry]) => ({
+    date,
+    entry: entry as any,
+  }));
 
   return (
     <PostpartumGuard>
@@ -98,41 +107,69 @@ const PostpartumDashboard = () => {
 
         {/* --- NEW PREMIUM DASHBOARD SECTION --- */}
         
-        {/* Overview Section */}
-        <ScrollReveal delay={150}>
-          <div className="mb-8">
-            <PostpartumOverviewCard />
-          </div>
-        </ScrollReveal>
-
         {/* Metrics & Recovery */}
-        <ScrollReveal delay={200}>
+        <ScrollReveal delay={150}>
           <div className="mb-8">
             <RecoverySummaryCards />
           </div>
         </ScrollReveal>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-             <ScrollReveal delay={250}>
-               <PostpartumGrid />
-             </ScrollReveal>
-             <ScrollReveal delay={300}>
-               <div className="bg-white rounded-2xl p-6 shadow-lg border border-blue-100">
-                 <h2 className="text-xl font-bold text-gray-900 mb-6">Detailed Recovery Timeline</h2>
-                 <PostpartumRecoveryTimeline currentWeek={currentWeek} />
-               </div>
+        {/* Connect with a Doctor */}
+        <ScrollReveal delay={160}>
+          <Link
+            to="/connect"
+            className="block rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50/80 via-cyan-50/60 to-sky-50/40 p-5 shadow-sm hover:shadow-md hover:border-teal-300 transition-all duration-200 group mb-8"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-md shadow-teal-200/50">
+                <Stethoscope className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900">Connect with a Doctor</h3>
+                <p className="text-sm text-gray-500">Send a connection request using your doctor's code</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-teal-600 group-hover:translate-x-1 transition-all" />
+            </div>
+          </Link>
+        </ScrollReveal>
+
+        {/* Score & Timeline */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="lg:col-span-1">
+             <ScrollReveal delay={200} className="h-full">
+               <PostpartumRecoveryCard />
              </ScrollReveal>
           </div>
-          <div className="lg:col-span-1 space-y-6">
-             <ScrollReveal delay={350}>
-               <ActiveAlertsCard />
-             </ScrollReveal>
-             <ScrollReveal delay={400}>
-               <NutritionTipsCard />
+          <div className="lg:col-span-2">
+             <ScrollReveal delay={250} className="h-full">
+               <PostpartumTimeline />
              </ScrollReveal>
           </div>
         </div>
+
+        {/* Visual Analytics */}
+        <ScrollReveal delay={300}>
+          <div className="mb-8">
+            <VisualAnalytics pubertyLogs={mappedLogs} />
+          </div>
+        </ScrollReveal>
+
+        {/* Tips & Alerts */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <ScrollReveal delay={350} className="h-full">
+             <NutritionTipsCard />
+          </ScrollReveal>
+          <ScrollReveal delay={400} className="h-full">
+             <ActiveAlertsCard />
+          </ScrollReveal>
+        </div>
+
+        {/* Status Footer */}
+        <ScrollReveal delay={450}>
+          <div className="mb-8">
+            <PostpartumOverviewCard />
+          </div>
+        </ScrollReveal>
 
       </div>
     </div>

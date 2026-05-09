@@ -23,6 +23,7 @@ import { AnalyticsCarousel } from "@/modules/maternity/analytics";
 import WeeklyProgressCard from "@/modules/maternity/dashboard/weeklyProgress/WeeklyProgressCard";
 import UpcomingAppointmentsCard from "@/modules/maternity/dashboard/upcomingAppointments/UpcomingAppointmentsCard";
 import SymptomsOverviewCard from "@/modules/maternity/dashboard/symptomsOverview/SymptomsOverviewCard";
+import GDMSuggestionsCard from "@/modules/maternity/dashboard/gdm/GDMSuggestionsCard";
 import VisualAnalyticsSplitPanel from "@/modules/maternity/dashboard/visualAnalyticsMenu/VisualAnalyticsSplitPanel";
 import HealthSummaryCards from "@/components/shared/HealthSummaryCards";
 import { phaseAccent } from "@/components/shared/StatCard";
@@ -487,7 +488,7 @@ function DashboardView({
                   <span className="text-xs text-muted-foreground">Week {currentWeek} of 40</span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl font-bold">
-                  Pregnancy Dashboard
+                  Maternity Guide
                 </h1>
                 {profileName && <p className="text-sm text-muted-foreground mt-0.5">Welcome, {profileName} 🤰</p>}
               </div>
@@ -627,7 +628,11 @@ function DashboardView({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">
             <WeeklyProgressCard />
             <UpcomingAppointmentsCard />
-            <SymptomsOverviewCard />
+            {profile.gdmStatus === "confirmed" ? (
+              <GDMSuggestionsCard />
+            ) : (
+              <SymptomsOverviewCard />
+            )}
           </div>
         </ScrollReveal>
 

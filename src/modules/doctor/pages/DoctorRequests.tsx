@@ -1,86 +1,79 @@
-import { FileText, Clock, CheckCircle2, XCircle, User, Calendar, Stethoscope, Filter } from "lucide-react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import {
+  FileText, Clock, CheckCircle2, XCircle, User, Calendar,
+  Stethoscope,
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
+import {
+  getRequestsByDoctor,
+  updateRequestStatus,
+  type ConnectionRequest,
+  type ConnectionStatus,
+} from "@/lib/connectionStore";
 
-type RequestStatus = "pending" | "approved" | "rejected";
+const DOCTOR_ID = "doctor-demo-123";
 
-interface Request {
-  id: number;
-  type: string;
-  patient: string;
-  description: string;
-  time: string;
-  status: RequestStatus;
-}
-
-const mockRequests: Request[] = [
-  {
-    id: 1,
-    type: "Appointment",
-    patient: "Priya Sharma",
-    description: "Requesting appointment reschedule from May 7th to May 9th at 11:00 AM",
-    time: "30 minutes ago",
-    status: "pending",
-  },
-  {
-    id: 2,
-    type: "Prescription Refill",
-    patient: "Anita Devi",
-    description: "Requesting refill for Iron supplements (prenatal vitamins)",
-    time: "1 hour ago",
-    status: "pending",
-  },
-  {
-    id: 3,
-    type: "Medical Record",
-    patient: "Meera Kumari",
-    description: "Requesting medical history records for consultation with specialist",
-    time: "2 hours ago",
-    status: "pending",
-  },
-  {
-    id: 4,
-    type: "Appointment",
-    patient: "Sunita Patel",
-    description: "Requesting urgent appointment for severe hot flashes and sleep issues",
-    time: "3 hours ago",
-    status: "approved",
-  },
-  {
-    id: 5,
-    type: "Lab Test",
-    patient: "Rekha Singh",
-    description: "Requesting HPV test prior to vaccination scheduled next week",
-    time: "5 hours ago",
-    status: "approved",
-  },
-  {
-    id: 6,
-    type: "Prescription",
-    patient: "Kavita Rao",
-    description: "Requesting prescription renewal for blood pressure medication",
-    time: "Yesterday",
-    status: "rejected",
-  },
-];
-
-const statusConfig: Record<RequestStatus, { color: string; bgColor: string; icon: React.ComponentType<{ className?: string }> }> = {
+const statusConfig: Record<ConnectionStatus, { color: string; bgColor: string; icon: React.ComponentType<{ className?: string }> }> = {
   pending: { color: "text-amber-700", bgColor: "bg-amber-50", icon: Clock },
-  approved: { color: "text-green-700", bgColor: "bg-green-50", icon: CheckCircle2 },
+  accepted: { color: "text-green-700", bgColor: "bg-green-50", icon: CheckCircle2 },
   rejected: { color: "text-red-700", bgColor: "bg-red-50", icon: XCircle },
 };
 
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "Yesterday";
+  return `${diffDays} days ago`;
+}
+
 export default function DoctorRequests() {
-  const [activeFilter, setActiveFilter] = useState<RequestStatus | "all">("all");
+  const [activeFilter, setActiveFilter] = useState<ConnectionStatus | "all">("all");
+  const [requests, setRequests] = useState<ConnectionRequest[]>(() =>
+    getRequestsByDoctor(DOCTOR_ID),
+  );
+  const mountedRef = useRef(true);
+
+  const refresh = useCallback(() => {
+    if (mountedRef.current) {
+      setRequests(getRequestsByDoctor(DOCTOR_ID));
+    }
+  }, []);
+
+  // Poll for new/changed requests every 5 seconds
+  useEffect(() => {
+    mountedRef.current = true;
+    const interval = setInterval(refresh, 5000);
+    return () => {
+      mountedRef.current = false;
+      clearInterval(interval);
+    };
+  }, [refresh]);
+
+  const handleAccept = useCallback((id: string) => {
+    updateRequestStatus(id, "accepted");
+    refresh();
+  }, [refresh]);
+
+  const handleReject = useCallback((id: string) => {
+    updateRequestStatus(id, "rejected");
+    refresh();
+  }, [refresh]);
+
+  const pendingCount = requests.filter((r) => r.status === "pending").length;
 
   const filteredRequests = activeFilter === "all"
-    ? mockRequests
-    : mockRequests.filter(r => r.status === activeFilter);
-
-  const pendingCount = mockRequests.filter(r => r.status === "pending").length;
+    ? requests
+    : requests.filter((r) => r.status === activeFilter);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -92,7 +85,7 @@ export default function DoctorRequests() {
               <FileText className="h-6 w-6" />
               <div>
                 <h1 className="text-2xl font-bold">Requests</h1>
-                <p className="text-teal-100 text-sm">Patient requests and approvals</p>
+                <p className="text-teal-100 text-sm">Patient connection requests</p>
               </div>
             </div>
             {pendingCount > 0 && (
@@ -114,7 +107,7 @@ export default function DoctorRequests() {
               onClick={() => setActiveFilter("all")}
               className={activeFilter === "all" ? "bg-teal-600 hover:bg-teal-700" : ""}
             >
-              All
+              All ({requests.length})
             </Button>
             <Button
               size="sm"
@@ -122,15 +115,15 @@ export default function DoctorRequests() {
               onClick={() => setActiveFilter("pending")}
               className={activeFilter === "pending" ? "bg-amber-600 hover:bg-amber-700" : ""}
             >
-              Pending
+              Pending ({pendingCount})
             </Button>
             <Button
               size="sm"
-              variant={activeFilter === "approved" ? "default" : "outline"}
-              onClick={() => setActiveFilter("approved")}
-              className={activeFilter === "approved" ? "bg-green-600 hover:bg-green-700" : ""}
+              variant={activeFilter === "accepted" ? "default" : "outline"}
+              onClick={() => setActiveFilter("accepted")}
+              className={activeFilter === "accepted" ? "bg-green-600 hover:bg-green-700" : ""}
             >
-              Approved
+              Accepted ({requests.filter((r) => r.status === "accepted").length})
             </Button>
             <Button
               size="sm"
@@ -138,7 +131,7 @@ export default function DoctorRequests() {
               onClick={() => setActiveFilter("rejected")}
               className={activeFilter === "rejected" ? "bg-red-600 hover:bg-red-700" : ""}
             >
-              Rejected
+              Rejected ({requests.filter((r) => r.status === "rejected").length})
             </Button>
           </div>
 
@@ -166,30 +159,53 @@ export default function DoctorRequests() {
                           <div className="flex items-start justify-between gap-2">
                             <div>
                               <div className="flex items-center gap-2">
-                                <h4 className="text-sm font-semibold text-slate-900">{request.type}</h4>
+                                <h4 className="text-sm font-semibold text-slate-900">Connection Request</h4>
                                 <Badge className={cn("text-xs", config.bgColor, config.color, "border-0")}>
-                                  {request.status}
+                                  {request.status === "accepted" ? "approved" : request.status}
                                 </Badge>
                               </div>
                               <div className="flex items-center gap-1 mt-0.5">
                                 <User className="h-3 w-3 text-slate-400" />
-                                <p className="text-xs text-slate-500">{request.patient}</p>
+                                <p className="text-xs text-slate-500">{request.patientName}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 text-xs text-slate-400">
+                            <div className="flex items-center gap-1 text-xs text-slate-400 whitespace-nowrap">
                               <Clock className="h-3 w-3" />
-                              {request.time}
+                              {formatDate(request.createdAt)}
                             </div>
                           </div>
-                          <p className="text-sm text-slate-600 mt-2">{request.description}</p>
+
+                          <div className="flex items-center gap-3 mt-2">
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <Stethoscope className="h-3 w-3" />
+                              {request.patientPhase}
+                            </div>
+                            <div className="flex items-center gap-1 text-xs text-slate-500">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(request.createdAt).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </div>
+                          </div>
 
                           {request.status === "pending" && (
                             <div className="flex items-center gap-2 mt-3">
-                              <Button size="sm" className="h-8 bg-green-600 hover:bg-green-700 text-xs">
+                              <Button
+                                size="sm"
+                                className="h-8 bg-green-600 hover:bg-green-700 text-xs"
+                                onClick={() => handleAccept(request.id)}
+                              >
                                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                                Approve
+                                Accept
                               </Button>
-                              <Button size="sm" variant="outline" className="h-8 text-xs">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs"
+                                onClick={() => handleReject(request.id)}
+                              >
                                 <XCircle className="h-3.5 w-3.5 mr-1" />
                                 Reject
                               </Button>

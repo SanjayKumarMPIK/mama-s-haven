@@ -3,7 +3,6 @@ import { getRequestByCode } from "@/lib/connectionStore";
 import DoctorProfileSummary from "@/components/connect/DoctorProfileSummary";
 import QuickActions from "@/components/connect/QuickActions";
 import UpcomingScheduleCard from "@/components/connect/UpcomingScheduleCard";
-import DoctorReportsSection from "@/components/connect/DoctorReportsSection";
 import DoctorActivityFeed from "@/components/connect/DoctorActivityFeed";
 
 interface Props {
@@ -68,7 +67,6 @@ export default function MyDoctorDashboard({ doctorCode, onDisconnect }: Props) {
       <DoctorProfileSummary doctor={doctor} connectedDate={connectedDate} onChangeDoctor={onDisconnect} />
       <QuickActions />
       <UpcomingScheduleCard doctorCode={doctorCode} />
-      <DoctorReportsSection doctorCode={doctorCode} doctorName={doctor?.name || "Your Doctor"} />
       <DoctorActivityFeed connectedDate={connectedDate} doctorCode={doctorCode} />
     </div>
   );

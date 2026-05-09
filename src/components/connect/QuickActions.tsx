@@ -51,10 +51,7 @@ export default function QuickActions() {
           label="Doctor Reports" 
           description="View medical records" 
           color="blue" 
-          onClick={() => {
-            const el = document.getElementById("doctor-reports-section");
-            if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
-          }}
+          to="/connect/reports"
         />
         <ActionCard icon={MessageSquareText} label="Ask Doctor" description="Send health questions and receive guidance" color="amber" to="/ask-doctor" />
         <ActionCard icon={ShieldCheck} label="Connection Status" description="Active & verified" color="purple" to="/connection-status" />

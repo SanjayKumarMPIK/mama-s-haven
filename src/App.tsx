@@ -145,6 +145,7 @@ import ConnectPage from "./pages/ConnectPage";
 import RequestSchedulePage from "./pages/RequestSchedulePage";
 import AskDoctorPage from "./pages/AskDoctorPage";
 import ConnectionStatusPage from "./pages/ConnectionStatusPage";
+import DoctorReportsPage from "./pages/DoctorReportsPage";
 
 import PubertyNutritionGuide from "./modules/puberty/nutrition-guide/pages/PubertyNutritionGuide";
 
@@ -285,6 +286,8 @@ const App = () => (
                           <Route path="/ask-doctor" element={<AskDoctorPage />} />
 
                           <Route path="/connection-status" element={<ConnectionStatusPage />} />
+
+                          <Route path="/connect/reports" element={<DoctorReportsPage />} />
 
                           <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
-import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package, History, Bell, MessageSquareText, AlertCircle, FileText, Map, Stethoscope } from "lucide-react";
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package, Bell, MessageSquareText, AlertCircle, FileText, Map, Stethoscope } from "lucide-react";
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -74,7 +74,7 @@ const DOCTOR_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/doctor/schedules", label: "Schedules", icon: ClipboardList },
   { to: "/doctor/calendar", label: "Calendar", icon: Calendar },
   { to: "/doctor/profile", label: "Profile", icon: User },
-  { to: "/doctor/history", label: "History", icon: History },
+  { to: "/doctor/history", label: "Reports", icon: FileText },
   { to: "/doctor/questions", label: "Questions", icon: MessageSquareText },
   { to: "/doctor/alerts", label: "Alerts", icon: AlertCircle },
   { to: "/doctor/requests", label: "Requests", icon: FileText },

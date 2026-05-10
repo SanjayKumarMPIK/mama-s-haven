@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import ScrollReveal from "@/components/ScrollReveal";
 import { useProfile } from "@/hooks/useProfile";
@@ -14,17 +14,20 @@ import ActiveAlertsCard from "../components/ActiveAlertsCard";
 import VisualAnalytics from "@/components/dashboard/VisualAnalytics";
 import { usePostpartumRecovery } from "../recovery/usePostpartumRecovery";
 import { useHealthLog } from "@/hooks/useHealthLog";
+import { filterLogsByPhase, buildChartDataset } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
 
 const PostpartumDashboard = () => {
   const { profile } = useProfile();
-  const { currentWeek } = usePostpartumRecovery();
-  const { getPhaseLogs } = useHealthLog();
+  const { currentWeek, deliveryDateISO } = usePostpartumRecovery();
+  const { maternityLogs } = useHealthLog();
 
-  const postpartumLogs = getPhaseLogs("postpartum");
-  const mappedLogs = Object.entries(postpartumLogs).map(([date, entry]) => ({
-    date,
-    entry: entry as any,
-  }));
+  const filteredLogs = useMemo(() => {
+    return filterLogsByPhase(maternityLogs, "postpartum", deliveryDateISO);
+  }, [maternityLogs, deliveryDateISO]);
+
+  const mappedLogs = useMemo(() => {
+    return buildChartDataset(filteredLogs);
+  }, [filteredLogs]);
 
   return (
     <PostpartumGuard>

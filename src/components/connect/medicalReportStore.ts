@@ -135,4 +135,70 @@ export function getCreditCost(severity: SeverityLevel): number {
   return severity === "High" || severity === "Emergency" ? 2 : 1;
 }
 
+export interface DoctorResponse {
+  id: string;
+  patientName?: string;
+  doctorId: string;
+  doctorCode: string;
+  doctorName: string;
+  basedOnReportId: string;
+  basedOnReportTitle?: string;
+  title: string;
+  notes: string;
+  recommendations: string;
+  severity: SeverityLevel;
+  followUpAdvice: string;
+  suggestedNutrients?: string;
+  lifestyleAdvice?: string;
+  restRecommendation?: string;
+  hydrationReminder?: string;
+  createdAt: string;
+  status: ReportStatus;
+}
+
+const DOCTOR_RESPONSES_KEY = "ss-doctor-responses";
+
+function loadDoctorResponses(): DoctorResponse[] {
+  try {
+    const raw = localStorage.getItem(DOCTOR_RESPONSES_KEY);
+    if (raw) return JSON.parse(raw) as DoctorResponse[];
+  } catch {}
+  return [];
+}
+
+function saveDoctorResponses(responses: DoctorResponse[]) {
+  try { localStorage.setItem(DOCTOR_RESPONSES_KEY, JSON.stringify(responses)); } catch {}
+}
+
+export function getDoctorResponsesByDoctor(doctorId: string): DoctorResponse[] {
+  return loadDoctorResponses()
+    .filter((r) => r.doctorId === doctorId)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export function getDoctorResponsesByCode(doctorCode: string): DoctorResponse[] {
+  return loadDoctorResponses()
+    .filter((r) => r.doctorCode === doctorCode)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export function addDoctorResponse(response: DoctorResponse): void {
+  const responses = loadDoctorResponses();
+  responses.push(response);
+  saveDoctorResponses(responses);
+}
+
+export function updateDoctorResponseStatus(responseId: string, status: ReportStatus): void {
+  const responses = loadDoctorResponses();
+  const idx = responses.findIndex((r) => r.id === responseId);
+  if (idx !== -1) {
+    responses[idx].status = status;
+    saveDoctorResponses(responses);
+  }
+}
+
+export function getDoctorResponsesCountByDoctor(doctorId: string): number {
+  return loadDoctorResponses().filter((r) => r.doctorId === doctorId).length;
+}
+
 export const DURATION_OPTIONS = ["1 day", "2 days", "3 days", "5 days", "1 week", "2 weeks"];

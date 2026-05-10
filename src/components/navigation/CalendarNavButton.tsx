@@ -16,8 +16,10 @@ export default function CalendarNavButton() {
   const location = useLocation();
   const { phase } = usePhase();
 
+  const isDoctorRoute = location.pathname.startsWith("/doctor");
+
   // Phase-aware calendar route
-  const calendarRoute = (() => {
+  const calendarRoute = isDoctorRoute ? "/doctor/calendar" : (() => {
     switch (phase) {
       case "maternity":
         return "/calendar";
@@ -33,7 +35,9 @@ export default function CalendarNavButton() {
   })();
 
   // Detect if current route is calendar
-  const isCalendarActive = location.pathname.startsWith("/calendar");
+  const isCalendarActive = isDoctorRoute
+    ? location.pathname.startsWith("/doctor/calendar")
+    : location.pathname.startsWith("/calendar");
 
   // Handle click - navigate only if not already on calendar
   const handleClick = () => {

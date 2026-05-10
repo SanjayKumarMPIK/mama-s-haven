@@ -4,6 +4,7 @@ import { ArrowLeft, Heart, ChevronDown, ChevronUp, Info, Zap, Sparkles } from "l
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { useProfile } from "@/hooks/useProfile";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import { predictPubertyDeficiencies, type PubertyDeficiencyPrediction } from "@/lib/pubertyNutritionEngine";
 import ScrollReveal from "@/components/ScrollReveal";
 
@@ -120,6 +121,7 @@ export default function PubertyNutritionalInsightsPage() {
   const { logs } = useHealthLog();
   const { profile } = useProfile();
   const { config: onboardingConfig } = useOnboarding();
+  const insights = useDeficiencyInsights();
 
   const pubertyData = useMemo(
     () => predictPubertyDeficiencies(logs, profile, onboardingConfig),

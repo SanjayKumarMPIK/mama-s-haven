@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { generateNutritionChecklist, NutritionChecklistItem } from "@/lib/nutrition/nutritionChecklistEngine";
-import { useMaternityDeficiencyPipeline } from "@/hooks/useMaternityDeficiencyPipeline";
+import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import ScrollReveal from "@/components/ScrollReveal";
 import ChecklistItem from "@/components/nutrition/ChecklistItem";
 import ChecklistSummary from "@/components/nutrition/ChecklistSummary";
@@ -20,18 +20,18 @@ interface NutritionChecklistSectionProps {
 export default function NutritionChecklistSection({ className = "", hideTodaysFocus = false }: NutritionChecklistSectionProps) {
   const { trimester, currentWeek } = usePregnancyProfile();
   const { logs } = useHealthLog();
-  const deficiencyInsights = useMaternityDeficiencyPipeline();
+  const deficiencyInsights = useDeficiencyInsights();
 
   const [items, setItems] = useState<NutritionChecklistItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NutritionChecklistItem | null>(null);
 
   const deficiencies = useMemo(() => {
-    return deficiencyInsights.topDeficiencies.map(d => d.nutrient);
+    return deficiencyInsights.topDeficiencies.map(d => d.label);
   }, [deficiencyInsights]);
 
   const symptoms = useMemo(() => {
-    return deficiencyInsights.frequentSymptoms;
+    return deficiencyInsights.summary.frequentSymptoms.map(s => s.symptom);
   }, [deficiencyInsights]);
 
   // Initialize and sync checklist

@@ -16,6 +16,7 @@ import DeficiencySummaryInline from "@/components/nutrition/DeficiencySummaryInl
 import DeficiencyInsightsSection from "@/components/nutrition/DeficiencyInsightsSection";
 import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
 import NutritionChecklistSection from "@/components/nutrition/NutritionChecklistSection";
+import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import { Apple, Calendar, ArrowRight, ArrowLeft, Utensils, Lightbulb, Activity, Clock } from "lucide-react";
 
 // ─── Phase accent map ─────────────────────────────────────────────────────
@@ -58,6 +59,7 @@ export default function NutritionIntelligencePage() {
   const { simpleMode } = useLanguage();
   const { phase, phaseName, phaseEmoji } = usePhase();
   const { result } = useNutritionIntelligence();
+  const deficiencyInsights = useDeficiencyInsights();
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
   const [activeTab, setActiveTab] = useState<'tips' | 'insights' | 'checklist'>('tips');
 
@@ -263,7 +265,7 @@ export default function NutritionIntelligencePage() {
 
                   {activeTab === 'insights' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                      <DeficiencyInsightsSection />
+                      <DeficiencyInsightsSection insights={deficiencyInsights} />
                     </div>
                   )}
 
@@ -323,7 +325,7 @@ export default function NutritionIntelligencePage() {
                 )}
 
                 <ScrollReveal>
-                  <DeficiencyInsightsSection />
+                  <DeficiencyInsightsSection insights={deficiencyInsights} />
                 </ScrollReveal>
               </>
             )}

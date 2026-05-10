@@ -2,7 +2,7 @@ export type Nutrient = "Iron" | "Vitamin D" | "Magnesium" | "Calcium" | "Protein
 
 export type HealthPhase = "puberty" | "maternity" | "postpartum" | "menopause" | "family-planning" | "familyPlanning";
 
-export type Severity = "Low" | "Moderate" | "High" | "Critical";
+export type Severity = "Low" | "Moderate" | "Elevated" | "High" | "Critical";
 
 export interface NutrientRisk {
   nutrient: Nutrient;
@@ -11,17 +11,17 @@ export interface NutrientRisk {
   matchedSymptoms: string[];
   confidenceScore: number; // 0-1
   phaseBoost: number;
-  recommendations: string[]; // Dynamic recommendations
+  recommendations: string[];
 }
 
 export interface DeficiencyInsightInput {
   phase: HealthPhase;
   age: number;
   gender: "male" | "female";
-  pregnancyWeek?: number; // For maternity phase
-  trimester?: number; // For maternity phase
+  pregnancyWeek?: number;
+  trimester?: number;
   symptoms: {
-    fatigue: number; // 0-1 frequency
+    fatigue: number;
     headaches: number;
     dizziness: number;
     hairFall: number;
@@ -43,12 +43,13 @@ export interface DeficiencyInsightInput {
 }
 
 export interface DeficiencyInsightOutput {
-  overallRiskScore: number; // 0-100
+  overallRiskScore: number;
   overallSeverity: Severity;
   nutrientRisks: NutrientRisk[];
   topDeficiencies: NutrientRisk[];
   riskCounts: {
     high: number;
+    elevated: number;
     moderate: number;
     low: number;
     good: number;
@@ -60,74 +61,110 @@ export interface DeficiencyInsightOutput {
 interface NutrientSymptomMapping {
   nutrient: Nutrient;
   symptoms: (keyof DeficiencyInsightInput["symptoms"])[];
-  baseScore: number;
   phaseMultipliers: Partial<Record<HealthPhase, number>>;
 }
+
+const SYMPTOM_WEIGHTS: Partial<Record<keyof DeficiencyInsightInput["symptoms"], number>> = {
+  fatigue: 10,
+  dizziness: 13,
+  paleSkin: 16,
+  lowEnergy: 10,
+  hairFall: 11,
+  brittleNails: 12,
+  weakness: 9,
+  headaches: 7,
+  heavyPeriod: 16,
+  poorSleep: 8,
+  bonePain: 12,
+  moodSwings: 8,
+  cramps: 9,
+  muscleWeakness: 9,
+  brainFog: 8,
+  cravings: 6,
+  drySkin: 7,
+  lowOutdoorActivity: 5,
+};
+
+const FREQ_MULTIPLIERS = [
+  { threshold: 0, mult: 0 },
+  { threshold: 0.1, mult: 0.3 },
+  { threshold: 0.2, mult: 0.5 },
+  { threshold: 0.3, mult: 0.7 },
+  { threshold: 0.5, mult: 0.85 },
+  { threshold: 0.7, mult: 1.0 },
+  { threshold: 0.9, mult: 1.1 },
+];
+
+function getFrequencyMultiplier(frequency: number): number {
+  for (let i = FREQ_MULTIPLIERS.length - 1; i >= 0; i--) {
+    if (frequency >= FREQ_MULTIPLIERS[i].threshold) return FREQ_MULTIPLIERS[i].mult;
+  }
+  return 0;
+}
+
+function getCombinationMultiplier(symptomCount: number): number {
+  if (symptomCount <= 1) return 0.7;
+  if (symptomCount === 2) return 1.0;
+  if (symptomCount === 3) return 1.15;
+  if (symptomCount === 4) return 1.3;
+  return 1.4;
+}
+
+const PHASE_MULTIPLIER_CAP = 1.35;
 
 const NUTRIENT_MAPPINGS: NutrientSymptomMapping[] = [
   {
     nutrient: "Iron",
     symptoms: ["fatigue", "dizziness", "paleSkin", "lowEnergy", "hairFall", "brittleNails", "weakness", "headaches", "heavyPeriod"],
-    baseScore: 30,
-    phaseMultipliers: { puberty: 1.2, maternity: 1.5, postpartum: 1.4, menopause: 1.1 },
+    phaseMultipliers: { puberty: 1.15, maternity: 1.25, postpartum: 1.2, menopause: 1.1 },
   },
   {
     nutrient: "Vitamin D",
     symptoms: ["poorSleep", "lowEnergy", "bonePain", "moodSwings", "weakness", "fatigue", "lowOutdoorActivity"],
-    baseScore: 25,
-    phaseMultipliers: { puberty: 1.3, maternity: 1.2, postpartum: 1.1, menopause: 1.4 },
+    phaseMultipliers: { puberty: 1.15, maternity: 1.1, postpartum: 1.1, menopause: 1.2 },
   },
   {
     nutrient: "Magnesium",
     symptoms: ["cramps", "moodSwings", "poorSleep", "headaches", "fatigue", "muscleWeakness", "brainFog"],
-    baseScore: 25,
-    phaseMultipliers: { maternity: 1.2, postpartum: 1.3, menopause: 1.2 },
+    phaseMultipliers: { maternity: 1.1, postpartum: 1.15, menopause: 1.1 },
   },
   {
     nutrient: "Calcium",
     symptoms: ["weakness", "bonePain", "cramps", "fatigue", "brittleNails"],
-    baseScore: 25,
-    phaseMultipliers: { puberty: 1.3, maternity: 1.4, postpartum: 1.3, menopause: 1.5 },
+    phaseMultipliers: { puberty: 1.15, maternity: 1.2, postpartum: 1.15, menopause: 1.25 },
   },
   {
     nutrient: "Protein",
     symptoms: ["lowEnergy", "fatigue", "muscleWeakness", "weakness", "hairFall", "brittleNails"],
-    baseScore: 20,
-    phaseMultipliers: { puberty: 1.2, maternity: 1.3, postpartum: 1.4 },
+    phaseMultipliers: { puberty: 1.1, maternity: 1.15, postpartum: 1.2 },
   },
   {
     nutrient: "Folate",
     symptoms: ["fatigue", "weakness", "headaches", "paleSkin"],
-    baseScore: 20,
-    phaseMultipliers: { maternity: 1.6, familyPlanning: 1.5 },
+    phaseMultipliers: { maternity: 1.25, familyPlanning: 1.2 },
   },
   {
     nutrient: "B12",
     symptoms: ["fatigue", "weakness", "brainFog", "paleSkin", "moodSwings", "lowEnergy"],
-    baseScore: 20,
-    phaseMultipliers: { maternity: 1.2, postpartum: 1.3, menopause: 1.2 },
+    phaseMultipliers: { maternity: 1.1, postpartum: 1.15, menopause: 1.1 },
   },
   {
     nutrient: "DHA",
     symptoms: ["brainFog", "moodSwings", "lowEnergy", "weakness"],
-    baseScore: 15,
-    phaseMultipliers: { maternity: 1.5, postpartum: 1.4 },
+    phaseMultipliers: { maternity: 1.2, postpartum: 1.15 },
   },
   {
     nutrient: "Fiber",
     symptoms: ["cramps", "fatigue", "lowEnergy", "weakness"],
-    baseScore: 15,
     phaseMultipliers: {},
   },
   {
     nutrient: "Zinc",
     symptoms: ["hairFall", "brittleNails", "weakness", "fatigue", "cravings"],
-    baseScore: 15,
-    phaseMultipliers: { maternity: 1.2, postpartum: 1.1 },
+    phaseMultipliers: { maternity: 1.1, postpartum: 1.05 },
   },
 ];
 
-// Dynamic recommendations for each nutrient based on pregnancy stage
 const NUTRIENT_RECOMMENDATIONS: Record<Nutrient, { general: string[]; firstTrimester?: string[]; secondTrimester?: string[]; thirdTrimester?: string[] }> = {
   Iron: {
     general: ["Spinach and dark leafy greens", "Lentils and legumes", "Dates and dried fruits", "Red meat or fortified cereals", "Pair iron-rich foods with vitamin C"],
@@ -194,37 +231,69 @@ const NUTRIENT_RECOMMENDATIONS: Record<Nutrient, { general: string[]; firstTrime
   },
 };
 
+function getIndexWeight(symptom: keyof DeficiencyInsightInput["symptoms"]): number {
+  return SYMPTOM_WEIGHTS[symptom] ?? 6;
+}
+
 function calculateSeverity(probability: number): Severity {
-  if (probability >= 75) return "Critical";
-  if (probability >= 60) return "High";
-  if (probability >= 40) return "Moderate";
-  if (probability >= 25) return "Low";
+  if (probability >= 90) return "Critical";
+  if (probability >= 75) return "High";
+  if (probability >= 55) return "Elevated";
+  if (probability >= 30) return "Moderate";
   return "Low";
 }
 
-function calculateNutrientRisk(mapping: NutrientSymptomMapping, input: DeficiencyInsightInput): NutrientRisk {
-  const phaseMultiplier = mapping.phaseMultipliers[input.phase] || 1;
+function calculateConfidenceScore(
+  matchedSymptoms: string[],
+  inputSymptoms: DeficiencyInsightInput["symptoms"],
+  totalPossibleSymptoms: number,
+): number {
+  if (matchedSymptoms.length === 0) return 0;
 
-  let symptomScore = 0;
+  const matchedRatio = matchedSymptoms.length / Math.max(1, totalPossibleSymptoms);
+
+  let frequencySum = 0;
+  for (const sym of matchedSymptoms) {
+    frequencySum += inputSymptoms[sym as keyof typeof inputSymptoms] ?? 0;
+  }
+  const avgFrequency = frequencySum / matchedSymptoms.length;
+
+  const proportionScore = Math.min(1, matchedRatio * 2.5);
+  const frequencyScore = Math.min(1, avgFrequency * 1.5);
+  const countScore = Math.min(1, matchedSymptoms.length / 5);
+
+  const combined = proportionScore * 0.35 + frequencyScore * 0.35 + countScore * 0.3;
+  return Number(combined.toFixed(2));
+}
+
+function calculateNutrientRisk(mapping: NutrientSymptomMapping, input: DeficiencyInsightInput): NutrientRisk {
+  const rawPhaseMult = mapping.phaseMultipliers[input.phase] || 1;
+  const phaseMultiplier = Math.min(rawPhaseMult, PHASE_MULTIPLIER_CAP);
+
+  const BASE_CONTRIBUTION = 10;
+  const MAX_PROBABILITY = 95;
+
+  let weightedSum = 0;
   const matchedSymptoms: string[] = [];
 
   for (const symptom of mapping.symptoms) {
     const value = input.symptoms[symptom];
     if (value > 0) {
-      symptomScore += value * 10;
+      const weight = getIndexWeight(symptom);
+      const freqMult = getFrequencyMultiplier(value);
+      weightedSum += weight * freqMult;
       matchedSymptoms.push(symptom);
     }
   }
 
-  const baseProbability = Math.min(95, mapping.baseScore + symptomScore);
-  const adjustedProbability = Math.min(95, baseProbability * phaseMultiplier);
-  const probability = Math.round(adjustedProbability);
+  const comboMult = getCombinationMultiplier(matchedSymptoms.length);
+  const phaseAdjustedMult = 1 + (phaseMultiplier - 1) * 0.6;
 
-  const matchedCount = mapping.symptoms.filter(s => input.symptoms[s] > 0).length;
-  const totalSymptoms = mapping.symptoms.length;
-  const confidenceScore = Math.min(1, matchedCount / Math.max(1, totalSymptoms * 0.5));
+  let rawScore = weightedSum * comboMult * phaseAdjustedMult + BASE_CONTRIBUTION;
+  const probability = Math.min(MAX_PROBABILITY, Math.round(rawScore));
 
-  // Generate dynamic recommendations based on trimester
+  const confidenceScore = calculateConfidenceScore(matchedSymptoms, input.symptoms, mapping.symptoms.length);
+
   const recConfig = NUTRIENT_RECOMMENDATIONS[mapping.nutrient];
   let recommendations: string[] = [];
 
@@ -247,7 +316,7 @@ function calculateNutrientRisk(mapping: NutrientSymptomMapping, input: Deficienc
     probability,
     severity: calculateSeverity(probability),
     matchedSymptoms,
-    confidenceScore: Number(confidenceScore.toFixed(2)),
+    confidenceScore,
     phaseBoost: phaseMultiplier,
     recommendations,
   };
@@ -255,57 +324,61 @@ function calculateNutrientRisk(mapping: NutrientSymptomMapping, input: Deficienc
 
 function calculateOverallRisk(risks: NutrientRisk[]): { score: number; severity: Severity } {
   if (risks.length === 0) return { score: 0, severity: "Low" };
-  
+
   const avgProbability = risks.reduce((sum, r) => sum + r.probability, 0) / risks.length;
-  const highRiskCount = risks.filter(r => r.severity === "High" || r.severity === "Critical").length;
-  const moderateRiskCount = risks.filter(r => r.severity === "Moderate").length;
-  
+  const elevatedOrHigher = risks.filter(r =>
+    r.severity === "Elevated" || r.severity === "High" || r.severity === "Critical"
+  ).length;
+  const moderateCount = risks.filter(r => r.severity === "Moderate").length;
+
   let score = avgProbability;
-  score += highRiskCount * 5;
-  score += moderateRiskCount * 2;
+  score += elevatedOrHigher * 4;
+  score += moderateCount * 1.5;
   score = Math.min(100, Math.round(score));
-  
+
   let severity: Severity = "Low";
-  if (score >= 70) severity = "Critical";
-  else if (score >= 55) severity = "High";
-  else if (score >= 40) severity = "Moderate";
-  
+  if (score >= 80) severity = "Critical";
+  else if (score >= 60) severity = "High";
+  else if (score >= 40) severity = "Elevated";
+  else if (score >= 25) severity = "Moderate";
+
   return { score, severity };
 }
 
 function calculateEnergyImpact(risks: NutrientRisk[]): "Low" | "Medium" | "High" {
-  const highEnergyImpactNutrients = risks.filter(r => 
+  const highEnergyImpactNutrients = risks.filter(r =>
     r.nutrient === "Iron" || r.nutrient === "Vitamin D" || r.nutrient === "Protein"
   );
-  
+
   const avgProbability = highEnergyImpactNutrients.length > 0
     ? highEnergyImpactNutrients.reduce((sum, r) => sum + r.probability, 0) / highEnergyImpactNutrients.length
     : 0;
-  
-  if (avgProbability >= 60) return "High";
+
+  if (avgProbability >= 65) return "High";
   if (avgProbability >= 40) return "Medium";
   return "Low";
 }
 
 export function calculateDeficiencyInsights(input: DeficiencyInsightInput): DeficiencyInsightOutput {
-  const nutrientRisks = NUTRIENT_MAPPINGS.map(mapping => 
+  const nutrientRisks = NUTRIENT_MAPPINGS.map(mapping =>
     calculateNutrientRisk(mapping, input)
   );
-  
+
   const sortedRisks = [...nutrientRisks].sort((a, b) => b.probability - a.probability);
   const topDeficiencies = sortedRisks.slice(0, 3);
-  
+
   const riskCounts = {
     high: nutrientRisks.filter(r => r.severity === "High" || r.severity === "Critical").length,
+    elevated: nutrientRisks.filter(r => r.severity === "Elevated").length,
     moderate: nutrientRisks.filter(r => r.severity === "Moderate").length,
     low: nutrientRisks.filter(r => r.severity === "Low").length,
     good: nutrientRisks.filter(r => r.probability < 25).length,
   };
-  
+
   const { score: overallRiskScore, severity: overallSeverity } = calculateOverallRisk(nutrientRisks);
   const priorityNutrient = topDeficiencies.length > 0 ? topDeficiencies[0].nutrient : null;
   const energyImpact = calculateEnergyImpact(nutrientRisks);
-  
+
   return {
     overallRiskScore,
     overallSeverity,

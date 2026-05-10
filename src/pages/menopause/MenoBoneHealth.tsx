@@ -35,11 +35,11 @@ export default function MenoBoneHealth() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/30 to-emerald-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-[#f8fffc] via-[#f3fbfa] to-[#f7fffb] font-[Poppins,sans-serif]">
       <div className="container max-w-3xl py-6 space-y-6">
         <div className="flex items-center gap-3">
-          <Link to="/menopause/dashboard" className="w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50"><ArrowLeft className="w-4 h-4 text-slate-600" /></Link>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-md"><Bone className="w-5 h-5 text-white" /></div>
+          <Link to="/menopause/tools" className="w-9 h-9 rounded-xl border border-slate-200 bg-white/90 flex items-center justify-center hover:bg-slate-50 transition-colors"><ArrowLeft className="w-4 h-4 text-slate-600" /></Link>
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-md"><Bone className="w-5 h-5 text-white" /></div>
           <div><h1 className="text-xl font-bold text-slate-800">Bone Health</h1><p className="text-xs text-slate-500">Calcium, Vitamin D & bone protection</p></div>
         </div>
 
@@ -47,7 +47,7 @@ export default function MenoBoneHealth() {
           <div key={i} className="rounded-xl border border-amber-200 bg-amber-50 p-3 flex items-start gap-2.5"><AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" /><p className="text-xs font-medium text-amber-800">{a}</p></div>
         ))}
 
-        <div className="rounded-2xl border border-teal-200/60 bg-white/80 p-5 shadow-sm">
+        <div className="rounded-3xl border border-teal-200/60 bg-white/85 p-5 shadow-sm">
           <h2 className="text-sm font-bold text-slate-700 mb-1">🥛 Today's Calcium</h2>
           <p className="text-xs text-slate-500 mb-4">Target: 1200mg/day</p>
           <div className="flex items-center justify-between mb-1.5">
@@ -62,7 +62,7 @@ export default function MenoBoneHealth() {
               const sel = selectedFoods.includes(src.name);
               return (
                 <button key={src.name} onClick={() => setSelectedFoods(p => sel ? p.filter(n => n !== src.name) : [...p, src.name])}
-                  className={cn("flex items-center gap-2 p-3 rounded-xl border-2 text-left transition-all", sel ? "border-teal-400 bg-teal-50" : "border-slate-200 hover:border-teal-200")}>
+                  className={cn("flex items-center gap-2 p-3 rounded-2xl border-2 text-left transition-all hover:-translate-y-0.5", sel ? "border-teal-400 bg-teal-50" : "border-slate-200 hover:border-teal-200")}>
                   <span className="text-lg">{src.emoji}</span>
                   <div className="min-w-0 flex-1"><p className="text-xs font-semibold text-slate-700 truncate">{src.name}</p><p className="text-[10px] text-teal-600">{src.mg}mg</p></div>
                   {sel && <Check className="w-4 h-4 text-teal-600" />}
@@ -72,10 +72,10 @@ export default function MenoBoneHealth() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-amber-200/60 bg-white/80 p-5 shadow-sm">
+        <div className="rounded-3xl border border-amber-200/60 bg-white/85 p-5 shadow-sm">
           <h2 className="text-sm font-bold text-slate-700 mb-4">☀️ Vitamin D</h2>
           <div className="grid grid-cols-2 gap-4">
-            <button onClick={() => setVitDTaken(!vitDTaken)} className={cn("p-4 rounded-xl border-2 text-center transition-all", vitDTaken ? "border-amber-400 bg-amber-50" : "border-slate-200")}>
+            <button onClick={() => setVitDTaken(!vitDTaken)} className={cn("p-4 rounded-xl border-2 text-center transition-all hover:-translate-y-0.5", vitDTaken ? "border-amber-400 bg-amber-50" : "border-slate-200")}>
               <Sun className="w-6 h-6 mx-auto mb-2 text-amber-500" /><p className="text-xs font-semibold">{vitDTaken ? "✓ Taken" : "Supplement / Sun"}</p>
             </button>
             <div className="p-4 rounded-xl border border-slate-200">
@@ -88,7 +88,7 @@ export default function MenoBoneHealth() {
 
         <button onClick={handleSave} className="w-full py-3.5 rounded-xl bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-semibold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]">Save Bone Health Log</button>
 
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm">
+        <div className="rounded-3xl border border-slate-200/80 bg-white/85 p-5 shadow-sm">
           <h2 className="text-sm font-bold text-slate-700 mb-4">🦴 Bone Health Tips</h2>
           <div className="space-y-2">{status.tips.map((t, i) => (
             <div key={i} className="flex items-start gap-2 p-3 rounded-xl bg-teal-50/60 border border-teal-100/60"><span className="text-teal-500 mt-0.5">•</span><p className="text-xs text-slate-700">{t}</p></div>

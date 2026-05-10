@@ -372,7 +372,7 @@ const translations: Record<Language, Record<TranslationKeys, string>> = {
     personalizedJourney: "Personalised journey",
     currentPhase: "Current phase",
     pickLifeStage: "Pick one life stage",
-    lifeStageSubtitle: "The rest of the app uses it for tools, nutrition, articles, and AI guidance.",
+    lifeStageSubtitle: "The rest of the app uses it for tools, nutrition, and AI guidance.",
   },
   hi: {
     appName: "स्वास्थ्यसखी",

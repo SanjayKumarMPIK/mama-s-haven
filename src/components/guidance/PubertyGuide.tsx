@@ -374,32 +374,27 @@ export default function PubertyGuide() {
     
     // Extract hormonal condition
     let hormonalCondition: HormonalCondition = HormonalCondition.none;
-    console.log("DEBUG: Full profile object:", profile);
-    console.log("DEBUG: Profile medical conditions:", profile.medicalConditions);
-    console.log("DEBUG: Profile known conditions:", profile.knownConditions);
-    console.log("DEBUG: Medical conditions type:", typeof profile.medicalConditions);
-    console.log("DEBUG: Medical conditions length:", profile.medicalConditions?.length);
-    
-    if (profile.medicalConditions && profile.medicalConditions.length > 0) {
-      const conditions = profile.medicalConditions.join(' ').toLowerCase();
-      console.log("DEBUG: Medical conditions string:", conditions);
+    const medicalConditionsRaw = (profile as any).medicalConditions;
+    const medicalConditions = Array.isArray(medicalConditionsRaw)
+      ? medicalConditionsRaw.join(" ").toLowerCase()
+      : typeof medicalConditionsRaw === "string"
+        ? medicalConditionsRaw.toLowerCase()
+        : "";
+
+    if (medicalConditions) {
+      const conditions = medicalConditions;
       if (conditions.includes('pcos') || conditions.includes('pcod/pcos')) {
         hormonalCondition = HormonalCondition.PCOS;
-        console.log("DEBUG: Detected PCOS condition");
       } else if (conditions.includes('pcod')) {
         hormonalCondition = HormonalCondition.PCOD;
-        console.log("DEBUG: Detected PCOD condition");
       }
-    } else if (profile.knownConditions) {
+    } else if (typeof profile.knownConditions === "string" && profile.knownConditions.trim()) {
       // Fallback to knownConditions string
       const conditions = profile.knownConditions.toLowerCase();
-      console.log("DEBUG: Known conditions string:", conditions);
       if (conditions.includes('pcos')) {
         hormonalCondition = HormonalCondition.PCOS;
-        console.log("DEBUG: Detected PCOS from known conditions");
       } else if (conditions.includes('pcod')) {
         hormonalCondition = HormonalCondition.PCOD;
-        console.log("DEBUG: Detected PCOD from known conditions");
       }
     }
     

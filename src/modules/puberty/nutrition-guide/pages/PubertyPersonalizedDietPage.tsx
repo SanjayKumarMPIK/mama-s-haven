@@ -207,6 +207,153 @@ export default function PubertyPersonalizedDietPage() {
         {/* ─── SEGMENT 2: Food Guidance ────────────────────────────── */}
         {activeDietSegment === "foodGuidance" && (
           <div className="space-y-6">
+            {/* PCOD/PCOS Comprehensive Meal Plan */}
+            {personalizedDiet.healthConditionSummary.toLowerCase().includes('pcod') || personalizedDiet.healthConditionSummary.toLowerCase().includes('pcos') ? (
+              <ScrollReveal delay={150}>
+                <div className="rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 p-6 shadow-sm border border-pink-200">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-100 to-pink-200 flex items-center justify-center shadow-md">
+                      <Utensils className="w-6 h-6 text-pink-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900">PCOD/PCOS Meal Plan</h2>
+                      <p className="text-sm text-gray-600">Insulin-resistance-friendly nutrition plan for hormonal balance</p>
+                    </div>
+                  </div>
+
+                  {/* Meal Plan Grid */}
+                  <div className="grid md:grid-cols-2 gap-6 mb-6">
+                    {/* Breakfast */}
+                    <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Clock className="w-4 h-4 text-yellow-500" />
+                        <h3 className="font-semibold text-gray-900">Breakfast (Never Skip!)</h3>
+                      </div>
+                      <ul className="space-y-2 text-sm text-gray-600">
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Protein-rich: Eggs, paneer, Greek yogurt
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Complex carbs: Oats, millets, quinoa
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Add berries for antioxidants
+                        </li>
+                      </ul>
+                    </div>
+
+                    {/* Lunch */}
+                    <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Clock className="w-4 h-4 text-orange-500" />
+                        <h3 className="font-semibold text-gray-900">Lunch</h3>
+                      </div>
+                      <ul className="space-y-2 text-sm text-gray-600">
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Lean protein: Chicken, fish, legumes
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Brown rice + lots of vegetables
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Olive oil dressing
+                        </li>
+                      </ul>
+                    </div>
+
+                    {/* Snack */}
+                    <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Clock className="w-4 h-4 text-purple-500" />
+                        <h3 className="font-semibold text-gray-900">Snack (Every 3-4 hours)</h3>
+                      </div>
+                      <ul className="space-y-2 text-sm text-gray-600">
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Handful of nuts & seeds
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Low-sugar fruit: Apple, pear, berries
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Greek yogurt or paneer cubes
+                        </li>
+                      </ul>
+                    </div>
+
+                    {/* Dinner */}
+                    <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Clock className="w-4 h-4 text-indigo-500" />
+                        <h3 className="font-semibold text-gray-900">Dinner (Light & Early)</h3>
+                      </div>
+                      <ul className="space-y-2 text-sm text-gray-600">
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Vegetable soup + salad
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Small portion of quinoa/millets
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
+                          Light protein: Fish or legumes
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {/* Key Rules */}
+                  <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Info className="w-4 h-4 text-red-500" />
+                      <h3 className="font-semibold text-gray-900">Key Rules to Follow</h3>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4 text-sm">
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-green-500">✅</span>
+                          <span className="text-gray-600">Small frequent meals every 3-4 hours</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-green-500">✅</span>
+                          <span className="text-gray-600">35% protein, 35% complex carbs, 30% healthy fats</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-green-500">✅</span>
+                          <span className="text-gray-600">6-8 glasses of water daily</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-start gap-2">
+                          <span className="text-red-500">❌</span>
+                          <span className="text-gray-600">No white rice, maida, refined sugar</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-red-500">❌</span>
+                          <span className="text-gray-600">No junk food, bakery items, fried food</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-red-500">❌</span>
+                          <span className="text-gray-600">Limit caffeine and processed foods</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ScrollReveal>
+            ) : null}
+
+            {/* Dynamic Food Recommendations from Nutrition Intelligence */}
             {/* Dynamic Food Recommendations from Nutrition Intelligence */}
             {result.foodRecommendations.length > 0 && (
               <ScrollReveal delay={160}>

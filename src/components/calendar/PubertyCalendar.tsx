@@ -19,6 +19,7 @@ import { analyzePatterns } from "@/lib/pubertyPatternEngine";
 import { cn } from "@/lib/utils";
 import MaternityCalendar from "@/components/calendar/MaternityCalendar";
 import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
+import { PubertySymptomCard, type SeverityLabel } from "@/components/calendar/PubertySymptomCard";
 
 type CalendarMode = "year" | "month";
 type SymptomTime = "morning" | "afternoon" | "evening";
@@ -28,20 +29,6 @@ const SLEEP_CHECKPOINTS: Checkpoint[] = [
   { value: 6, label: "6h (Min)", priority: "medium" },
   { value: 8, label: "8h (Optimal)", priority: "high" },
   { value: 10, label: "10h+ (High)", priority: "medium" },
-];
-
-/** Intensity slider checkpoints (1–10) for symptom severity */
-const INTENSITY_CHECKPOINTS: Checkpoint[] = [
-  { value: 1, label: "1", priority: "low" },
-  { value: 2, label: "2", priority: "low" },
-  { value: 3, label: "3 · Mild", priority: "low" },
-  { value: 4, label: "4", priority: "medium" },
-  { value: 5, label: "5", priority: "medium" },
-  { value: 6, label: "6 · Moderate", priority: "medium" },
-  { value: 7, label: "7", priority: "high" },
-  { value: 8, label: "8 · Severe", priority: "high" },
-  { value: 9, label: "9", priority: "high" },
-  { value: 10, label: "10 · Very Severe", priority: "high" },
 ];
 
 interface CalendarSymptomEntry {
@@ -770,21 +757,13 @@ function SymptomLogPanel({
     }
     return {};
   });
-  const [expandedIntensityId, setExpandedIntensityId] = useState<string | null>(null);
-
-  function getIntensityLabel(val: number): string {
-    if (val <= 3) return "Mild";
-    if (val <= 6) return "Moderate";
-    if (val <= 8) return "Severe";
-    return "Very Severe";
-  }
-
-  function getIntensityColor(val: number): string {
-    if (val <= 3) return "#22c55e";   // green
-    if (val <= 6) return "#f59e0b";   // amber
-    if (val <= 8) return "#ef4444";   // red
-    return "#991b1b";                 // dark red
-  }
+  // ── Severity Label Pill State (Puberty only) ──────────────────────────────
+  const [severityLabels, setSeverityLabels] = useState<Record<string, SeverityLabel>>(() => {
+    if (existingEntry?.phase === "puberty") {
+      return { ...((existingEntry as PubertyEntry).symptomSeverityLabels ?? {}) };
+    }
+    return {};
+  });
 
   // Determine if this date is already within an existing period range
   const existingPeriodRange = useMemo(() => findPeriodRangeForDate(dateISO, logs), [dateISO, logs]);
@@ -817,18 +796,11 @@ function SymptomLogPanel({
   selectedSymptomsRef.current = selectedSymptoms;
 
   const toggleSymptom = useCallback((id: string) => {
-    const currentlyActive = !!selectedSymptomsRef.current[id];
-    const willBeActive = !currentlyActive;
     setSelectedSymptoms((prev) => ({ ...prev, [id]: !prev[id] }));
-    if (willBeActive) {
-      setExpandedIntensityId(id);
-    } else {
-      setExpandedIntensityId((cur) => (cur === id ? null : cur));
-    }
   }, []);
 
-  function handleIntensityChange(id: string, val: number) {
-    setSymptomIntensities((prev) => ({ ...prev, [id]: val }));
+  function handleSeverityLabelChange(id: string, severity: SeverityLabel) {
+    setSeverityLabels((prev) => ({ ...prev, [id]: severity }));
   }
 
   // Compute analytics for selected symptom
@@ -860,14 +832,13 @@ function SymptomLogPanel({
       return;
     }
 
-    // ⚠️ PUBERTY-ONLY: Require intensity for every active symptom
+    // ⚠️ PUBERTY-ONLY: Require severity label for every active symptom
     if (phase === "puberty" && hasSymptoms) {
-      const activeWithoutIntensity = activeSymptomIds.filter(
-        (id) => symptomIntensities[id] === undefined
+      const activeWithoutSeverity = activeSymptomIds.filter(
+        (id) => severityLabels[id] === undefined
       );
-      if (activeWithoutIntensity.length > 0) {
-        toast.error("Please select intensity for all symptoms before saving.");
-        setExpandedIntensityId(activeWithoutIntensity[0]);
+      if (activeWithoutSeverity.length > 0) {
+        toast.error("Please select severity for all symptoms before saving.");
         return;
       }
     }
@@ -881,6 +852,16 @@ function SymptomLogPanel({
     const sleepQualityValue = sleepQuality !== "" ? (sleepQuality as "Good" | "Okay" | "Poor") : null;
 
     if (phase === "puberty") {
+      const numericIntensities: Record<string, number> = { ...symptomIntensities };
+      const SEVERITY_MAP: Record<SeverityLabel, number> = {
+        Mild: 3,
+        Moderate: 6,
+        Severe: 9,
+      };
+      for (const [id, sev] of Object.entries(severityLabels)) {
+        numericIntensities[id] = SEVERITY_MAP[sev];
+      }
+
       entry = {
         phase: "puberty",
         periodStarted: periodStarted,
@@ -894,7 +875,8 @@ function SymptomLogPanel({
           acne: !!selectedSymptoms.acne,
           breastTenderness: !!selectedSymptoms.breastTenderness,
         },
-        symptomIntensities: { ...symptomIntensities },
+        symptomIntensities: numericIntensities,
+        symptomSeverityLabels: { ...severityLabels },
         mood: moodValue,
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
@@ -1139,7 +1121,7 @@ function SymptomLogPanel({
                 <Activity className="w-4 h-4 text-primary" />
                 Symptoms
                 <span className="text-[10px] text-muted-foreground font-normal ml-auto">
-                  {phase === "puberty" ? "Tap to set intensity" : ""}
+                  {phase === "puberty" ? "Tap to set severity" : ""}
                 </span>
               </h3>
               <button
@@ -1151,29 +1133,40 @@ function SymptomLogPanel({
                 Customize
               </button>
             </div>
-            <div className="space-y-2">
-              {symptomOptions.map((opt) => {
-                const isActive = !!selectedSymptoms[opt.id];
-                const isExpanded = phase === "puberty" && isActive && expandedIntensityId === opt.id;
-                const hasIntensity = symptomIntensities[opt.id] !== undefined;
-                const intensity = symptomIntensities[opt.id] ?? null;
-                const intensityLabel = intensity !== null ? getIntensityLabel(intensity) : null;
-                const intensityColor = intensity !== null ? getIntensityColor(intensity) : null;
-
-                return (
-                  <div key={opt.id} className="w-full">
-                    {/* Symptom Button - full width */}
-                    <button
-                      type="button"
-                      onClick={() => toggleSymptom(opt.id)}
-                      className={cn(
-                        "w-full px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
-                        isActive
-                          ? "bg-primary/15 border-primary/50 text-primary shadow-sm"
-                          : "bg-card border-border hover:bg-muted/50 text-foreground"
-                      )}
-                    >
-                      <span className="flex items-center justify-between">
+            {phase === "puberty" ? (
+              <div className="grid grid-cols-2 gap-3">
+                {symptomOptions.map((opt) => {
+                  const isActive = !!selectedSymptoms[opt.id];
+                  const severity = severityLabels[opt.id] ?? null;
+                  return (
+                    <PubertySymptomCard
+                      key={opt.id}
+                      id={opt.id}
+                      label={opt.label}
+                      isActive={isActive}
+                      severity={severity}
+                      onToggle={() => toggleSymptom(opt.id)}
+                      onSeverityChange={handleSeverityLabelChange}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {symptomOptions.map((opt) => {
+                  const isActive = !!selectedSymptoms[opt.id];
+                  return (
+                    <div key={opt.id} className="w-full">
+                      <button
+                        type="button"
+                        onClick={() => toggleSymptom(opt.id)}
+                        className={cn(
+                          "w-full px-3 py-2.5 rounded-xl border text-sm font-medium transition-all text-left",
+                          isActive
+                            ? "bg-primary/15 border-primary/50 text-primary shadow-sm"
+                            : "bg-card border-border hover:bg-muted/50 text-foreground"
+                        )}
+                      >
                         <span className="flex items-center gap-2">
                           <span className={cn(
                             "w-3 h-3 rounded-full border-2 shrink-0 transition-colors",
@@ -1181,73 +1174,12 @@ function SymptomLogPanel({
                           )} />
                           {opt.label}
                         </span>
-                        {isActive && phase === "puberty" && (
-                          hasIntensity && intensity !== null && intensityColor ? (
-                            <span
-                              className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0"
-                              style={{ color: intensityColor, background: `${intensityColor}20` }}
-                            >
-                              {intensityLabel} {intensity}/10
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full shrink-0 animate-pulse">
-                              Set intensity ⚠
-                            </span>
-                          )
-                        )}
-                      </span>
-                    </button>
-
-                    {/* Inline Intensity Panel — EnhancedSlider dragger with checkpoints */}
-                    {isExpanded && (
-                      <div className="mt-1 mx-1 rounded-xl bg-muted/40 border border-border/60 px-4 pt-3 pb-5 animate-in slide-in-from-top-2 fade-in duration-200">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Select Intensity (1–10)</span>
-                          {intensity !== null && intensityColor ? (
-                            <span
-                              className="text-xs font-bold px-2.5 py-1 rounded-full transition-all"
-                              style={{ color: intensityColor, background: `${intensityColor}18` }}
-                            >
-                              {intensityLabel} — {intensity}/10
-                            </span>
-                          ) : (
-                            <span className="text-[11px] text-amber-600 font-semibold">
-                              Drag to set ↓
-                            </span>
-                          )}
-                        </div>
-                        <EnhancedSlider
-                          phase="puberty"
-                          checkpoints={INTENSITY_CHECKPOINTS}
-                          min={1}
-                          max={10}
-                          step={1}
-                          value={intensity ?? 1}
-                          onChange={(val) => handleIntensityChange(opt.id, val)}
-                          className="w-full"
-                        />
-                      </div>
-                    )}
-
-                    {/* "Set intensity" link shown when active but different symptom is expanded, or intensity not yet set */}
-                    {isActive && phase === "puberty" && !isExpanded && (
-                      <button
-                        type="button"
-                        onClick={() => setExpandedIntensityId(opt.id)}
-                        className={cn(
-                          "mt-0.5 ml-3 text-[10px] underline underline-offset-2 transition-colors",
-                          hasIntensity
-                            ? "text-primary/60 hover:text-primary"
-                            : "text-amber-600 hover:text-amber-700 font-semibold"
-                        )}
-                      >
-                        {hasIntensity ? "Adjust intensity ›" : "⚠ Set intensity (required) ›"}
                       </button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           {/* Mood */}

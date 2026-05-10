@@ -20,6 +20,7 @@ import MaternityCalendar from "@/components/calendar/MaternityCalendar";
 import { GlobalSymptomCustomizer } from "@/shared/symptoms/components/GlobalSymptomCustomizer";
 import { useDateSymptomLayout } from "@/hooks/useDateSymptomLayout";
 import { DateSymptomCustomizer } from "@/components/calendar/DateSymptomCustomizer";
+import { PubertySymptomCard, type SeverityLabel } from "@/components/calendar/PubertySymptomCard";
 
 // Smart Symptom Management System with Usage Frequency Tracking
 const USAGE_FREQUENCY_KEY = "ss-puberty-symptom-usage";
@@ -531,6 +532,74 @@ function CollapsibleViewMoreSymptoms({
               Showing 9 of {additionalSymptomIds.length} symptoms
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Puberty Additional Symptoms (uses PubertySymptomCard) ───────────────────
+
+interface PubertyAdditionalSymptomsProps {
+  additionalSymptomIds: string[];
+  getSymptom: (id: string) => { id: string; label: string };
+  selectedSymptoms: Record<string, boolean>;
+  severityLabels: Record<string, SeverityLabel>;
+  toggleSymptom: (id: string) => void;
+  onSeverityChange: (id: string, severity: SeverityLabel) => void;
+}
+
+function PubertyAdditionalSymptoms({
+  additionalSymptomIds,
+  getSymptom,
+  selectedSymptoms,
+  severityLabels,
+  toggleSymptom,
+  onSeverityChange,
+}: PubertyAdditionalSymptomsProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  if (additionalSymptomIds.length === 0) return null;
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="flex items-center justify-between w-full px-3 py-2 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <ChevronDown className={cn(
+            "w-4 h-4 text-muted-foreground transition-transform duration-200",
+            isExpanded && "rotate-180"
+          )} />
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            View More Symptoms
+          </span>
+        </div>
+        <span className="text-[9px] text-muted-foreground">
+          {additionalSymptomIds.length} available
+        </span>
+      </button>
+
+      {isExpanded && (
+        <div className="grid grid-cols-2 gap-3 animate-in slide-in-from-top-2 fade-in duration-200">
+          {additionalSymptomIds.slice(0, 10).map((symptomId) => {
+            const symptom = getSymptom(symptomId);
+            const isActive = !!selectedSymptoms[symptomId];
+            const severity = severityLabels[symptomId] ?? null;
+            return (
+              <PubertySymptomCard
+                key={symptomId}
+                id={symptomId}
+                label={symptom.label}
+                isActive={isActive}
+                severity={severity}
+                onToggle={() => toggleSymptom(symptomId)}
+                onSeverityChange={onSeverityChange}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -1057,6 +1126,15 @@ function SymptomLogPanel({
   });
   const [selectedAnalyticsId, setSelectedAnalyticsId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // ── Severity Label Pill State (Puberty only) ──────────────────────────────
+  const [severityLabels, setSeverityLabels] = useState<Record<string, SeverityLabel>>(() => {
+    if (existingEntry?.phase === "puberty") {
+      return { ...((existingEntry as PubertyEntry).symptomSeverityLabels ?? {}) };
+    }
+    return {};
+  });
+
   const periodEntry = logs[dateISO];
   // Determine if this date is already within an existing period range
   const existingPeriodRange = useMemo(() => findPeriodRangeForDate(dateISO, logs), [dateISO, logs]);
@@ -1144,6 +1222,10 @@ function SymptomLogPanel({
     setSelectedSymptoms((prev) => ({ ...prev, [id]: !prev[id] }));
   }, [phase, smartSymptoms, selectedSymptoms]);
 
+  function handleSeverityLabelChange(id: string, severity: SeverityLabel) {
+    setSeverityLabels((prev) => ({ ...prev, [id]: severity }));
+  }
+
   // Compute analytics for selected symptom
   const analyticsResult = useMemo(() => {
     if (!selectedAnalyticsId) return null;
@@ -1185,7 +1267,29 @@ function SymptomLogPanel({
     const sleepQualityValue = sleepQuality !== "" ? (sleepQuality as "Good" | "Okay" | "Poor") : null;
     const periodSymptomsHasAny = Object.values(periodInfectionSymptoms).some(Boolean);
 
+    // ⚠️ PUBERTY-ONLY: Require severity label for every active symptom
+    if (phase === "puberty" && hasSymptoms) {
+      const activeWithoutSeverity = activeSymptomIds.filter(
+        (id) => severityLabels[id] === undefined
+      );
+      if (activeWithoutSeverity.length > 0) {
+        toast.error("Please select severity for all symptoms before saving.");
+        setSaving(false);
+        return;
+      }
+    }
+
     if (phase === "puberty") {
+      const numericIntensities: Record<string, number> = {};
+      const SEVERITY_MAP: Record<SeverityLabel, number> = {
+        Mild: 3,
+        Moderate: 6,
+        Severe: 9,
+      };
+      for (const [id, sev] of Object.entries(severityLabels)) {
+        numericIntensities[id] = SEVERITY_MAP[sev];
+      }
+
       entry = {
         phase: "puberty",
         periodStarted: periodStarted,
@@ -1194,6 +1298,8 @@ function SymptomLogPanel({
         bloodColor: bloodColor !== "" ? bloodColor : undefined,
         periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
         symptoms: { ...selectedSymptoms },
+        symptomIntensities: numericIntensities,
+        symptomSeverityLabels: { ...severityLabels },
         mood: moodValue,
         sleepHours: sleepHoursValue,
         sleepQuality: sleepQualityValue,
@@ -1665,65 +1771,38 @@ function SymptomLogPanel({
             <section className="space-y-4">
               <div className="flex items-center">
                 <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-pink-600" />
-                  Active Symptoms
+                  <Activity className="w-4 h-4 text-primary" />
+                  Symptoms
                   <span className="text-[10px] text-muted-foreground font-normal ml-4">
-                    Tap to select • Manual reorder from View More
+                    Tap to set severity
                   </span>
                 </h3>
               </div>
 
-              {/* Active Symptoms Grid (6 symptoms) */}
               <div className="grid grid-cols-2 gap-3">
                 {smartSymptoms.activeSymptomIds.map((symptomId) => {
                   const symptom = smartSymptoms.getSymptom(symptomId);
                   const isActive = !!selectedSymptoms[symptomId];
-                  const isHighlighted = smartSymptoms.highlightedId === symptomId;
-                  const isAnimating = smartSymptoms.animatingId === symptomId;
-
+                  const severity = severityLabels[symptomId] ?? null;
                   return (
-                    <div key={symptomId} className={cn(
-                      "w-full transition-all duration-300",
-                      isAnimating && "scale-95 opacity-70",
-                      isHighlighted && "ring-2 ring-primary/50 ring-offset-2"
-                    )}>
-                      <button
-                        type="button"
-                        onClick={() => toggleSymptom(symptomId)}
-                        className={cn(
-                          "w-full px-3 py-3 rounded-xl border text-sm font-medium transition-all text-left",
-                          isActive
-                            ? "bg-pink-100 border-pink-300 text-pink-700 shadow-sm"
-                            : "bg-card border-border hover:bg-muted/50 text-foreground"
-                        )}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="flex items-center gap-2">
-                            <span className={cn(
-                              "w-3 h-3 rounded-full border-2 shrink-0 transition-colors",
-                              isActive ? "bg-pink-500 border-pink-500" : "border-muted-foreground/40"
-                            )} />
-                            {symptom.label}
-                          </span>
-                          {isActive && (
-                            <span className="text-[9px] font-medium text-pink-700 bg-pink-100 px-2 py-0.5 rounded-full shrink-0">
-                              Selected
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    </div>
+                    <PubertySymptomCard
+                      key={symptomId}
+                      id={symptomId}
+                      label={symptom.label}
+                      isActive={isActive}
+                      severity={severity}
+                      onToggle={() => toggleSymptom(symptomId)}
+                      onSeverityChange={handleSeverityLabelChange}
+                    />
                   );
                 })}
-              </div>
-
-              {/* Collapsible View More Symptoms Section */}
-              <div className="space-y-2">
-                <CollapsibleViewMoreSymptoms 
+                <PubertyAdditionalSymptoms
                   additionalSymptomIds={smartSymptoms.additionalSymptomIds}
                   getSymptom={smartSymptoms.getSymptom}
                   selectedSymptoms={selectedSymptoms}
+                  severityLabels={severityLabels}
                   toggleSymptom={toggleSymptom}
+                  onSeverityChange={handleSeverityLabelChange}
                 />
               </div>
             </section>

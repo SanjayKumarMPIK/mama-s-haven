@@ -24,10 +24,10 @@ export function usePubertyNutritionIntelligence(): UseNutritionIntelligenceRetur
   const { phase, phaseName } = usePhase();
   const { profile } = useProfile();
 
-  // Main computation — memoized on logs + phase
+  // Main computation — memoized on logs + phase + profile
   const result = useMemo<NutritionIntelligenceResult>(
-    () => computeNutritionIntelligence(logs, phase),
-    [logs, phase],
+    () => computeNutritionIntelligence(logs, phase, profile),
+    [logs, phase, profile],
   );
 
   // Suggested symptoms for the current phase

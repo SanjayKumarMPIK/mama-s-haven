@@ -1,5 +1,6 @@
 import type { Phase } from "@/hooks/usePhase";
 import type { HealthLogs } from "@/hooks/useHealthLog";
+import type { ProfileData } from "@/hooks/useProfile";
 import type {
   NutritionIntelligenceResult, NutrientNeedResult, DetectedSymptom,
   SafetyWarning, SymptomAnalysisResult, NutrientFoodEntry,
@@ -7,44 +8,103 @@ import type {
 import { CORE_SYMPTOMS, PHASE_SYMPTOMS, SYMPTOM_NUTRIENT_MAP } from "@/lib/nutrition/nutritionSymptomRegistry";
 import { NUTRIENT_FOOD_MAP, PHASE_CONFIGS, CRITICAL_SYMPTOMS } from "@/lib/nutrition/nutritionFoodRegistry";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────
+// ─── Severity weights ─────────────────────────────────────────────────────
+const SEVERITY_WEIGHT: Record<string, number> = {
+  Mild: 0.7,
+  Moderate: 1.0,
+  Severe: 1.5,
+};
+
+// ─── Condition → nutrient boosts ──────────────────────────────────────────
+const CONDITION_NUTRIENT_BOOSTS: Record<string, Record<string, { multiplier: number; reason: string }>> = {
+  anemia: {
+    iron: { multiplier: 1.5, reason: "Anemia increases iron demand — prioritize iron-rich foods" },
+    vitC: { multiplier: 1.2, reason: "Vitamin C enhances iron absorption, important for anemia management" },
+  },
+  pcos: {
+    fiber: { multiplier: 1.3, reason: "PCOS benefits from high-fiber foods for hormonal balance" },
+    omega3: { multiplier: 1.2, reason: "Omega-3s help manage PCOS-related inflammation" },
+    magnesium: { multiplier: 1.1, reason: "Magnesium supports hormonal balance in PCOS" },
+  },
+  pcod: {
+    fiber: { multiplier: 1.3, reason: "PCOD benefits from high-fiber foods for insulin balance" },
+    omega3: { multiplier: 1.2, reason: "Omega-3s help manage PCOD-related inflammation" },
+  },
+  diabetes: {
+    fiber: { multiplier: 1.3, reason: "Diabetes requires high-fiber foods for blood sugar control" },
+  },
+  hypothyroidism: {
+    zinc: { multiplier: 1.2, reason: "Hypothyroidism may require additional zinc for thyroid function" },
+  },
+  hyperthyroidism: {
+    calcium: { multiplier: 1.3, reason: "Hyperthyroidism increases calcium needs" },
+    vitD: { multiplier: 1.2, reason: "Vitamin D supports calcium absorption in hyperthyroidism" },
+  },
+  osteoporosis: {
+    calcium: { multiplier: 1.4, reason: "Osteoporosis risk requires increased calcium intake" },
+    vitD: { multiplier: 1.3, reason: "Vitamin D is critical for bone health in osteoporosis" },
+  },
+};
+
+// ─── Severity-aware symptom extraction ────────────────────────────────────
+
+interface SymptomData {
+  dates: string[];
+  severities: Record<string, "Mild" | "Moderate" | "Severe">;
+}
+
+function extractSymptomsWithSeverity(logs: [string, any][]): Map<string, SymptomData> {
+  const symptomData = new Map<string, SymptomData>();
+  for (const [date, entry] of logs) {
+    const symptoms = entry.symptoms;
+    const severityLabels: Record<string, string> = entry.symptomSeverityLabels ?? {};
+    if (!symptoms) continue;
+    for (const [key, val] of Object.entries(symptoms)) {
+      if (val === true) {
+        const existing = symptomData.get(key) ?? { dates: [], severities: {} };
+        existing.dates.push(date);
+        if (severityLabels[key]) {
+          existing.severities[date] = severityLabels[key] as "Mild" | "Moderate" | "Severe";
+        }
+        symptomData.set(key, existing);
+      }
+    }
+    // Also check fatigue via fatigueLevel
+    if (entry.fatigueLevel && entry.fatigueLevel !== "Low") {
+      const existing = symptomData.get("fatigue") ?? { dates: [], severities: {} };
+      if (!existing.dates.includes(date)) {
+        existing.dates.push(date);
+        existing.severities[date] = entry.fatigueLevel === "High" ? "Severe" : "Moderate";
+        symptomData.set("fatigue", existing);
+      }
+    }
+    // Check mood for mood-related symptoms
+    if (entry.mood === "Low") {
+      const existing = symptomData.get("moodSwings") ?? { dates: [], severities: {} };
+      if (!existing.dates.includes(date)) {
+        existing.dates.push(date);
+        existing.severities[date] = "Moderate";
+        symptomData.set("moodSwings", existing);
+      }
+    }
+    // Check sleep
+    if (entry.sleepQuality === "Poor" || (entry.sleepHours !== null && entry.sleepHours < 6)) {
+      const existing = symptomData.get("sleepIssues") ?? { dates: [], severities: {} };
+      if (!existing.dates.includes(date)) {
+        existing.dates.push(date);
+        existing.severities[date] = entry.sleepQuality === "Poor" ? "Severe" : "Moderate";
+        symptomData.set("sleepIssues", existing);
+      }
+    }
+  }
+  return symptomData;
+}
 
 function getRecentLogs(logs: HealthLogs, days: number = 30): [string, any][] {
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
   const cutoffISO = cutoff.toISOString().slice(0, 10);
   return Object.entries(logs).filter(([date]) => date >= cutoffISO).sort((a, b) => b[0].localeCompare(a[0]));
-}
-
-function extractSymptoms(logs: [string, any][]): Map<string, string[]> {
-  const symptomDates = new Map<string, string[]>();
-  for (const [date, entry] of logs) {
-    const symptoms = entry.symptoms;
-    if (!symptoms) continue;
-    for (const [key, val] of Object.entries(symptoms)) {
-      if (val === true) {
-        const existing = symptomDates.get(key) ?? [];
-        existing.push(date);
-        symptomDates.set(key, existing);
-      }
-    }
-    // Also check fatigue via fatigueLevel
-    if (entry.fatigueLevel && entry.fatigueLevel !== "Low") {
-      const existing = symptomDates.get("fatigue") ?? [];
-      if (!existing.includes(date)) { existing.push(date); symptomDates.set("fatigue", existing); }
-    }
-    // Check mood for mood-related symptoms
-    if (entry.mood === "Low") {
-      const existing = symptomDates.get("moodSwings") ?? [];
-      if (!existing.includes(date)) { existing.push(date); symptomDates.set("moodSwings", existing); }
-    }
-    // Check sleep
-    if (entry.sleepQuality === "Poor" || (entry.sleepHours !== null && entry.sleepHours < 6)) {
-      const existing = symptomDates.get("sleepIssues") ?? [];
-      if (!existing.includes(date)) { existing.push(date); symptomDates.set("sleepIssues", existing); }
-    }
-  }
-  return symptomDates;
 }
 
 function getAllSymptomDefs(phase: Phase) {
@@ -60,12 +120,13 @@ function findSymptomDef(id: string, phase: Phase) {
 export function computeNutritionIntelligence(
   logs: HealthLogs,
   phase: Phase,
+  profile?: ProfileData,
 ): NutritionIntelligenceResult {
   const recentLogs = getRecentLogs(logs, 30);
-  const symptomMap = extractSymptoms(recentLogs);
+  const symptomData = extractSymptomsWithSeverity(recentLogs);
   const phaseConfig = PHASE_CONFIGS[phase];
 
-  if (recentLogs.length === 0 || symptomMap.size === 0) {
+  if (recentLogs.length === 0 || symptomData.size === 0) {
     return {
       hasData: false,
       detectedSymptoms: [],
@@ -79,10 +140,10 @@ export function computeNutritionIntelligence(
     };
   }
 
-  // 1. Detected Symptoms
+  // 1. Detected Symptoms (with severity info)
   const phaseSymptomIds = new Set(phaseConfig.symptoms);
   const detectedSymptoms: DetectedSymptom[] = [];
-  for (const [symptomId, dates] of symptomMap.entries()) {
+  for (const [symptomId, data] of symptomData.entries()) {
     if (!phaseSymptomIds.has(symptomId)) continue;
     const def = findSymptomDef(symptomId, phase);
     if (!def) continue;
@@ -90,21 +151,31 @@ export function computeNutritionIntelligence(
       id: symptomId,
       label: def.label,
       emoji: def.emoji,
-      count: dates.length,
-      recentDates: dates.slice(0, 5),
+      count: data.dates.length,
+      recentDates: data.dates.slice(0, 5),
     });
   }
   detectedSymptoms.sort((a, b) => b.count - a.count);
 
-  // 2. Nutrient Scoring
+  // 2. Nutrient Scoring (severity-weighted)
   const nutrientScores = new Map<string, { score: number; reasons: string[]; symptomSources: string[] }>();
   for (const detected of detectedSymptoms) {
     const mappings = SYMPTOM_NUTRIENT_MAP[detected.id] ?? [];
     const frequency = Math.min(detected.count / recentLogs.length, 1);
+    const symData = symptomData.get(detected.id);
+    // Compute average severity multiplier for this symptom
+    let severityMultiplier = 1.0;
+    if (symData) {
+      const sevValues = Object.values(symData.severities);
+      if (sevValues.length > 0) {
+        const avg = sevValues.reduce((sum, s) => sum + (SEVERITY_WEIGHT[s] ?? 1.0), 0) / sevValues.length;
+        severityMultiplier = avg;
+      }
+    }
     for (const mapping of mappings) {
       const reason = mapping.reason[phase] ?? mapping.reason.default;
       const phaseBoost = phaseConfig.nutrientPriorities[mapping.nutrientId] ?? 1.0;
-      const rawScore = mapping.weight * frequency * phaseBoost;
+      const rawScore = mapping.weight * frequency * phaseBoost * severityMultiplier;
       const existing = nutrientScores.get(mapping.nutrientId) ?? { score: 0, reasons: [], symptomSources: [] };
       existing.score += rawScore;
       if (!existing.reasons.includes(reason)) existing.reasons.push(reason);
@@ -113,7 +184,32 @@ export function computeNutritionIntelligence(
     }
   }
 
-  // 3. Priority Detection (2+ symptoms → same nutrient)
+  // 3. Medical condition nutrient boosts
+  const conditions = (profile?.medicalConditions ?? [])
+    .map((c: string) => c.trim().toLowerCase())
+    .filter(Boolean);
+
+  for (const cond of conditions) {
+    const boosts = CONDITION_NUTRIENT_BOOSTS[cond];
+    if (!boosts) continue;
+    for (const [nutrientId, boost] of Object.entries(boosts)) {
+      const existing = nutrientScores.get(nutrientId);
+      if (existing) {
+        existing.score *= boost.multiplier;
+        if (!existing.reasons.includes(boost.reason)) existing.reasons.push(boost.reason);
+        if (!existing.symptomSources.includes(`Medical: ${cond}`)) existing.symptomSources.push(`Medical: ${cond}`);
+        nutrientScores.set(nutrientId, existing);
+      } else {
+        nutrientScores.set(nutrientId, {
+          score: 0.2 * boost.multiplier,
+          reasons: [boost.reason],
+          symptomSources: [`Medical: ${cond}`],
+        });
+      }
+    }
+  }
+
+  // 4. Priority Detection (2+ symptom sources → same nutrient)
   const nutrientNeeds: NutrientNeedResult[] = [];
   for (const [nutrientId, data] of nutrientScores.entries()) {
     const nutrientDef = NUTRIENT_FOOD_MAP[nutrientId];
@@ -133,7 +229,7 @@ export function computeNutritionIntelligence(
   }
   nutrientNeeds.sort((a, b) => b.score - a.score);
 
-  // 4. Food Recommendations (deduplicated from top nutrients)
+  // 5. Food Recommendations (deduplicated from top nutrients)
   const foodSet = new Set<string>();
   const foodRecommendations: NutrientFoodEntry[] = [];
   for (const need of nutrientNeeds.slice(0, 5)) {
@@ -145,7 +241,7 @@ export function computeNutritionIntelligence(
     }
   }
 
-  // 5. Deficiency Score
+  // 6. Deficiency Score
   const maxPossible = nutrientNeeds.length * 1.5;
   const totalScore = nutrientNeeds.reduce((s, n) => s + n.score, 0);
   const deficiencyScore = maxPossible > 0 ? Math.min(100, Math.round((totalScore / maxPossible) * 100)) : 0;
@@ -153,7 +249,7 @@ export function computeNutritionIntelligence(
   const deficiencySeverity: NutritionIntelligenceResult["deficiencySeverity"] =
     deficiencyScore >= 75 ? "Critical" : deficiencyScore >= 55 ? "High" : deficiencyScore >= 35 ? "Moderate" : deficiencyScore >= 15 ? "Mild" : "Good";
 
-  // 6. Risk Counts
+  // 7. Risk Counts
   const riskCounts = { high: 0, moderate: 0, low: 0, good: 0 };
   for (const need of nutrientNeeds) {
     if (need.score >= 0.7) riskCounts.high++;
@@ -162,10 +258,10 @@ export function computeNutritionIntelligence(
     else riskCounts.good++;
   }
 
-  // 7. Safety Warnings
+  // 8. Safety Warnings
   const safetyWarnings: SafetyWarning[] = detectCriticalSymptoms(detectedSymptoms, phase);
 
-  // 8. Priority Nutrient
+  // 9. Priority Nutrient
   const priorityNutrient = nutrientNeeds.length > 0 ? nutrientNeeds[0].label : null;
 
   return {

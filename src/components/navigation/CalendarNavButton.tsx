@@ -10,7 +10,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { Calendar } from "lucide-react";
 import { usePhase } from "@/hooks/usePhase";
-
 export default function CalendarNavButton() {
   const navigate = useNavigate();
   const location = useLocation();

@@ -13,13 +13,7 @@ import NutrientCard from "@/components/nutrition/NutrientCard";
 import FoodRecommendationCard from "@/components/nutrition/FoodRecommendationCard";
 import DeficiencySummaryInline from "@/components/nutrition/DeficiencySummaryInline";
 import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
-<<<<<<< Updated upstream
-import NutritionChecklistSection from "@/components/nutrition/NutritionChecklistSection";
-import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
-import { Apple, Calendar, ArrowRight, ArrowLeft, Utensils, Lightbulb, Activity, Clock } from "lucide-react";
-=======
 import { Apple, Calendar, ArrowRight, ArrowLeft, Utensils, Lightbulb, Activity, Clock, Check, Moon, Flame, Leaf, Shield, Sparkles, Sun } from "lucide-react";
->>>>>>> Stashed changes
 
 // ─── Phase accent map ─────────────────────────────────────────────────────
 const phaseAccent: Record<string, {
@@ -336,16 +330,14 @@ function PubertyChecklistSection({
             {checklistItems.map((item, idx) => (
               <div
                 key={idx}
-                className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${
-                  checked[idx] ? "bg-muted/30 border-muted" : "bg-card border-border hover:bg-muted/10"
-                }`}
+                className={`flex items-start gap-3 p-3 rounded-xl border transition-all cursor-pointer ${checked[idx] ? "bg-muted/30 border-muted" : "bg-card border-border hover:bg-muted/10"
+                  }`}
                 onClick={() => toggle(idx)}
               >
-                <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${
-                  checked[idx]
+                <div className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${checked[idx]
                     ? `bg-gradient-to-br ${accent.gradient} border-transparent`
                     : "border-muted-foreground/30"
-                }`}>
+                  }`}>
                   {checked[idx] && <Check className="w-3 h-3 text-white" />}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -474,33 +466,30 @@ export default function PubertyNutritionIntelligencePage() {
               <div className="flex bg-muted/40 p-1.5 rounded-[20px] mb-8 mt-6">
                 <button
                   onClick={() => setActiveTab('tips')}
-                  className={`flex-1 flex justify-center items-center gap-2 py-3.5 px-4 rounded-[16px] text-sm font-semibold transition-all duration-300 ${
-                    activeTab === 'tips'
+                  className={`flex-1 flex justify-center items-center gap-2 py-3.5 px-4 rounded-[16px] text-sm font-semibold transition-all duration-300 ${activeTab === 'tips'
                       ? `bg-white shadow-sm ${accent.text} border-b-2 border-current`
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-b-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   <Lightbulb className="w-[18px] h-[18px]" />
                   Nutrition Tips
                 </button>
                 <button
                   onClick={() => setActiveTab('insights')}
-                  className={`flex-1 flex justify-center items-center gap-2 py-3.5 px-4 rounded-[16px] text-sm font-semibold transition-all duration-300 ${
-                    activeTab === 'insights'
+                  className={`flex-1 flex justify-center items-center gap-2 py-3.5 px-4 rounded-[16px] text-sm font-semibold transition-all duration-300 ${activeTab === 'insights'
                       ? `bg-white shadow-sm ${accent.text} border-b-2 border-current`
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-b-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   <Activity className="w-[18px] h-[18px]" />
                   Deficiency Insights
                 </button>
                 <button
                   onClick={() => setActiveTab('checklist')}
-                  className={`flex-1 flex justify-center items-center gap-2 py-3.5 px-4 rounded-[16px] text-sm font-semibold transition-all duration-300 ${
-                    activeTab === 'checklist'
+                  className={`flex-1 flex justify-center items-center gap-2 py-3.5 px-4 rounded-[16px] text-sm font-semibold transition-all duration-300 ${activeTab === 'checklist'
                       ? `bg-white shadow-sm ${accent.text} border-b-2 border-current`
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-b-2 border-transparent'
-                  }`}
+                    }`}
                 >
                   <Clock className="w-[18px] h-[18px]" />
                   Checklist
@@ -567,11 +556,6 @@ export default function PubertyNutritionIntelligencePage() {
               )}
 
               {activeTab === 'insights' && (
-<<<<<<< Updated upstream
-                <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <DeficiencyInsightsSection insights={deficiencyInsights} />
-                </div>
-=======
                 <PubertyDeficiencyInsights
                   detectedSymptoms={result.detectedSymptoms}
                   nutrientNeeds={result.nutrientNeeds}
@@ -582,7 +566,6 @@ export default function PubertyNutritionIntelligencePage() {
                   medicalConditions={profile?.medicalConditions ?? []}
                   accent={accent}
                 />
->>>>>>> Stashed changes
               )}
 
               {activeTab === 'checklist' && (

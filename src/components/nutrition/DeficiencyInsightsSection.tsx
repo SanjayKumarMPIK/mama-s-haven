@@ -1,6 +1,6 @@
 import { type ReactNode } from "react";
 import { Flame, Leaf, Moon, Shield, Sparkles, Sun } from "lucide-react";
-import { useMaternityDeficiencyPipeline } from "@/hooks/useMaternityDeficiencyPipeline";
+import type { ComputedDeficiencyInsights } from "@/services/deficiency/types";
 
 function Badge({ text }: { text: string }) {
   return (
@@ -79,13 +79,17 @@ function DeficiencyItem({
 const severityTone: Record<string, string> = {
   Low: "text-[#41a25f]",
   Moderate: "text-[#bc8b32]",
+  Elevated: "text-[#c97d2e]",
   High: "text-[#dc4f6f]",
   Critical: "text-[#dc4f6f]",
 };
 
 const severityColor: Record<string, string> = {
+  Good: "text-[#41a25f]",
+  Mild: "text-[#bc8b32]",
   Low: "text-[#c9862f]",
   Moderate: "text-[#c9862f]",
+  Elevated: "text-[#c97d2e]",
   High: "text-[#d85386]",
   Critical: "text-[#d85386]",
 };
@@ -120,12 +124,29 @@ const nutrientBarColor: Record<string, string> = {
   "Vitamin C": "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
 };
 
-export default function DeficiencyInsightsSection() {
-  const insights = useMaternityDeficiencyPipeline();
+const severityToneMap: Record<string, string> = {
+  high: "text-[#dc4f6f]",
+  moderate: "text-[#bc8b32]",
+  low: "text-[#41a25f]",
+  good: "text-[#3b8ed0]",
+};
 
+function getEnergyImpact(insights: ComputedDeficiencyInsights): string {
+  const hasFatigue = insights.summary.activeSymptoms.some((s) => s.canonicalId === "fatigue");
+  const hasSleepIssues = insights.summary.activeSymptoms.some((s) => s.canonicalId === "sleepIssues");
+  const highScore = insights.overallScore >= 50;
+  if (hasFatigue && hasSleepIssues && highScore) return "High";
+  if (hasFatigue || hasSleepIssues) return "Medium";
+  if (highScore) return "Low";
+  return "Low";
+}
+
+export default function DeficiencyInsightsSection({ insights }: { insights: ComputedDeficiencyInsights }) {
   if (!insights.hasData) return null;
 
-  const likelyDeficiencies = insights.summary.likelyDeficiencies;
+  const likelyCount = insights.deficiencies.filter(
+    (d) => d.severity === "high" || d.severity === "moderate"
+  ).length;
 
   return (
     <div className="space-y-4">
@@ -140,7 +161,7 @@ export default function DeficiencyInsightsSection() {
             <div className="rounded-2xl border border-[#f0e7f5] bg-[#fffafd] p-4 text-center">
               <p className="text-xs font-semibold text-muted-foreground">Your Nutrition Risk Score</p>
               <div className="mx-auto mt-4 grid h-24 w-24 place-content-center rounded-full border-[8px] border-[#f4d9e9] bg-white">
-                <p className="text-4xl font-bold leading-none text-foreground">{insights.deficiencyScore}</p>
+                <p className="text-4xl font-bold leading-none text-foreground">{insights.overallScore}</p>
                 <p className="text-[11px] text-muted-foreground">/100</p>
               </div>
               <p className={`mt-2 text-sm font-semibold ${severityColor[insights.overallSeverity]}`}>{insights.overallSeverity} Risk</p>
@@ -148,15 +169,15 @@ export default function DeficiencyInsightsSection() {
             <div className="space-y-2">
               <div className="flex items-center justify-between rounded-xl border border-[#f2ebf6] bg-[#fefcff] p-3">
                 <p className="text-sm text-foreground">Likely Deficiencies</p>
-                <p className="text-sm font-semibold">{likelyDeficiencies}</p>
+                <p className="text-sm font-semibold">{likelyCount}</p>
               </div>
               <div className="flex items-center justify-between rounded-xl border border-[#f2ebf6] bg-[#fefcff] p-3">
                 <p className="text-sm text-foreground">Priority Nutrient</p>
-                <p className={`text-sm font-semibold ${severityColor[insights.overallSeverity]}`}>{insights.priorityNutrient || "N/A"}</p>
+                <p className={`text-sm font-semibold ${severityColor[insights.overallSeverity]}`}>{insights.priorityNutrient?.label || "N/A"}</p>
               </div>
               <div className="flex items-center justify-between rounded-xl border border-[#f2ebf6] bg-[#fefcff] p-3">
                 <p className="text-sm text-foreground">Energy Impact</p>
-                <p className="text-sm font-semibold text-[#ba8a35]">{insights.energyImpact}</p>
+                <p className="text-sm font-semibold text-[#ba8a35]">{getEnergyImpact(insights)}</p>
               </div>
             </div>
           </div>
@@ -180,9 +201,9 @@ export default function DeficiencyInsightsSection() {
             <p className="text-xs text-muted-foreground">Symptoms detected from your health logs</p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {insights.frequentSymptoms.length > 0 ? (
-              insights.frequentSymptoms.map((symptom) => (
-                <Badge key={symptom} text={symptom} />
+            {insights.summary.frequentSymptoms.length > 0 ? (
+              insights.summary.frequentSymptoms.map((s) => (
+                <Badge key={s.symptom} text={s.symptom} />
               ))
             ) : (
               <p className="col-span-full text-xs text-muted-foreground">No frequent symptoms detected</p>
@@ -192,9 +213,9 @@ export default function DeficiencyInsightsSection() {
             <p className="text-sm font-semibold">Possible Deficiencies</p>
             <p className="text-xs text-muted-foreground">Based on your symptoms</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {insights.topDeficiencies.slice(0, 3).map((deficiency) => (
-                <span key={deficiency.nutrient} className="rounded-lg bg-[#ffeef4] px-2.5 py-1 text-xs font-medium text-[#c85888]">
-                  {deficiency.nutrient}
+              {insights.topDeficiencies.slice(0, 3).map((d) => (
+                <span key={d.nutrientId} className="rounded-lg bg-[#ffeef4] px-2.5 py-1 text-xs font-medium text-[#c85888]">
+                  {d.label}
                 </span>
               ))}
             </div>
@@ -206,18 +227,18 @@ export default function DeficiencyInsightsSection() {
             <h2 className="text-base font-semibold">Top Deficiency Insights</h2>
             <button type="button" className="text-xs font-semibold text-[#b26d95]">View All</button>
           </div>
-          {insights.topDeficiencies.map((deficiency) => (
+          {insights.topDeficiencies.map((d) => (
             <DeficiencyItem
-              key={deficiency.nutrient}
-              icon={nutrientIcon[deficiency.nutrient] || <Sparkles className="h-5 w-5 text-[#8d73c7]" />}
-              title={`${deficiency.nutrient} Deficiency`}
-              risk={`${deficiency.severity} Risk`}
-              probability={`${deficiency.probability}%`}
-              symptoms={deficiency.matchedSymptoms.slice(0, 4).join(", ")}
-              why={`Based on your symptoms and phase context. Confidence: ${(deficiency.confidenceScore * 100).toFixed(0)}%`}
-              bar={nutrientBarColor[deficiency.nutrient] || "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]"}
-              tone={severityTone[deficiency.severity]}
-              recommendations={deficiency.recommendations || []}
+              key={d.nutrientId}
+              icon={nutrientIcon[d.label] || <Sparkles className="h-5 w-5 text-[#8d73c7]" />}
+              title={`${d.label} Deficiency`}
+              risk={`${d.severity.charAt(0).toUpperCase() + d.severity.slice(1)} Risk`}
+              probability={`${d.score}%`}
+              symptoms={d.symptomSources.slice(0, 4).join(", ")}
+              why={`Based on your symptoms and phase context. Confidence: ${Math.min(d.score, 95)}%`}
+              bar={nutrientBarColor[d.label] || "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]"}
+              tone={severityToneMap[d.severity] || "text-[#41a25f]"}
+              recommendations={d.recommendedFoods.map((f) => `${f.emoji} ${f.name}`)}
             />
           ))}
         </div>

@@ -183,7 +183,7 @@ export default function VisualAnalytics({ pubertyLogs }: { pubertyLogs: PubertyL
       {/* Chart or empty state */}
       {hasEnoughData ? (
         <>
-          <div className="h-[200px] w-full">
+          <div className="h-[280px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               {tab === "mood" ? (
                 <LineChart data={chartData} margin={{ top: 10, right: 5, left: -15, bottom: 0 }}>
@@ -261,7 +261,7 @@ export default function VisualAnalytics({ pubertyLogs }: { pubertyLogs: PubertyL
           </p>
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center h-[200px] text-center">
+        <div className="flex flex-col items-center justify-center h-[280px] text-center">
           <p className="text-sm text-slate-400 font-medium">
             No symptom data yet.
           </p>

@@ -1,9 +1,10 @@
 import { useState, useCallback, useMemo } from "react";
-import { Send, FileText, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Clock, Eye } from "lucide-react";
+import { Send, FileText, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Clock, Eye, Stethoscope, User } from "lucide-react";
 import { KEY_SYMPTOMS_BY_PHASE } from "@/lib/symptomAnalysis";
 import {
   addReport, getAllReports, getAvailableCredits, deductCredits, getCreditCost,
-  DURATION_OPTIONS, type SeverityLevel,
+  getDoctorResponsesByCode, updateDoctorResponseStatus,
+  DURATION_OPTIONS, type SeverityLevel, type DoctorResponse,
 } from "./medicalReportStore";
 
 interface Props {
@@ -138,6 +139,88 @@ function ReportCard({ report, onClose }: { report: { id: string; title: string; 
           <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
             <Eye className="w-3 h-3" />
             Sent to <strong>{report.doctorName}</strong>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DoctorResponseCard({ response }: { response: DoctorResponse }) {
+  const [expanded, setExpanded] = useState(false);
+  const sv = severityBadge[response.severity] || "bg-slate-100 text-slate-700";
+
+  const handleToggle = useCallback(() => {
+    setExpanded((prev) => !prev);
+    if (response.status === "Sent") {
+      updateDoctorResponseStatus(response.id, "Viewed");
+    }
+  }, [response.id, response.status]);
+
+  return (
+    <div className={`rounded-xl border border-slate-100 border-l-4 ${response.severity === "Emergency" ? "border-l-red-500" : response.severity === "High" ? "border-l-orange-400" : response.severity === "Moderate" ? "border-l-amber-400" : "border-l-emerald-400"} bg-gradient-to-r from-teal-50/30 to-white shadow-sm`}>
+      <button
+        onClick={handleToggle}
+        className="w-full flex items-start gap-3 p-4 text-left"
+      >
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-600/10 shrink-0 mt-0.5">
+          <Stethoscope className="h-4 w-4 text-teal-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-sm font-semibold text-gray-900 truncate">{response.title}</p>
+                <span className="text-[10px] font-medium text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-full border border-teal-200 shrink-0">Doctor</span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${sv}`}>{response.severity}</span>
+                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{response.status}</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 text-[11px] text-slate-400 whitespace-nowrap shrink-0">
+              <Clock className="w-3 h-3" />
+              {formatTime(response.createdAt)}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 mt-1.5">
+            <User className="w-3 h-3 text-slate-400" />
+            <span className="text-[11px] text-slate-500">{response.doctorName}</span>
+          </div>
+          {response.basedOnReportTitle && (
+            <div className="flex items-center gap-1 mt-1">
+              <Eye className="w-3 h-3 text-slate-400" />
+              <span className="text-[10px] text-slate-400">Based on: <span className="font-medium text-slate-500">{response.basedOnReportTitle}</span></span>
+            </div>
+          )}
+        </div>
+        {expanded ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0 mt-1" /> : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0 mt-1" />}
+      </button>
+      {expanded && (
+        <div className="px-4 pb-4 pt-0 border-t border-slate-50">
+          {response.notes && (
+            <div className="mt-3">
+              <p className="text-[11px] font-semibold text-slate-500 mb-1">Doctor Notes</p>
+              <div className="p-3 rounded-lg bg-white border border-slate-100">
+                <p className="text-xs text-slate-600">{response.notes}</p>
+              </div>
+            </div>
+          )}
+          {response.recommendations && (
+            <div className="mt-2">
+              <p className="text-[11px] font-semibold text-slate-500 mb-1">Recommendations</p>
+              <div className="p-3 rounded-lg bg-teal-50 border border-teal-100">
+                <p className="text-xs text-teal-700">{response.recommendations}</p>
+              </div>
+            </div>
+          )}
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            {response.followUpAdvice && <div className="col-span-2"><span className="text-slate-500">Follow-up:</span> <span className="font-medium text-slate-700">{response.followUpAdvice}</span></div>}
+            {response.suggestedNutrients && <div><span className="text-slate-500">Nutrients:</span> <span className="font-medium text-slate-700">{response.suggestedNutrients}</span></div>}
+            {response.lifestyleAdvice && <div><span className="text-slate-500">Lifestyle:</span> <span className="font-medium text-slate-700">{response.lifestyleAdvice}</span></div>}
+            {response.restRecommendation && <div><span className="text-slate-500">Rest:</span> <span className="font-medium text-slate-700">{response.restRecommendation}</span></div>}
+            {response.hydrationReminder && <div><span className="text-slate-500">Hydration:</span> <span className="font-medium text-slate-700">{response.hydrationReminder}</span></div>}
+            <div className="col-span-2"><span className="text-slate-500">Received:</span> <span className="font-medium text-slate-700">{formatDate(response.createdAt)}</span></div>
           </div>
         </div>
       )}
@@ -316,20 +399,37 @@ function SendReportTab({ doctorCode, doctorName, onSent }: { doctorCode: string;
 
 function DoctorReportTab({ doctorCode }: { doctorCode: string }) {
   const [filter, setFilter] = useState<"all" | SeverityLevel>("all");
-  const reports = useMemo(() => getAllReports().filter((r) => r.doctorCode === doctorCode), [doctorCode]);
+  const [activeTab, setActiveTab] = useState<"all" | "sent" | "doctor">("all");
 
-  const filtered = useMemo(() => {
-    if (filter === "all") return reports;
-    return reports.filter((r) => r.severity === filter);
-  }, [reports, filter]);
+  const patientReports = useMemo(() => getAllReports().filter((r) => r.doctorCode === doctorCode), [doctorCode]);
+  const doctorResponses = useMemo(() => getDoctorResponsesByCode(doctorCode), [doctorCode]);
 
-  if (reports.length === 0) {
+  const allItems = useMemo(() => {
+    const items: Array<{ type: "patient" | "doctor"; data: unknown; timestamp: string; severity: SeverityLevel }> = [
+      ...patientReports.map((r) => ({ type: "patient" as const, data: r, timestamp: r.timestamp, severity: r.severity })),
+      ...doctorResponses.map((r) => ({ type: "doctor" as const, data: r, timestamp: r.createdAt, severity: r.severity })),
+    ];
+    items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return items;
+  }, [patientReports, doctorResponses]);
+
+  const filteredItems = useMemo(() => {
+    let items = allItems;
+    if (activeTab === "sent") items = items.filter((i) => i.type === "patient");
+    else if (activeTab === "doctor") items = items.filter((i) => i.type === "doctor");
+    if (filter !== "all") items = items.filter((i) => i.severity === filter);
+    return items;
+  }, [allItems, filter, activeTab]);
+
+  const hasAny = patientReports.length > 0 || doctorResponses.length > 0;
+
+  if (!hasAny) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
         <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mb-2">
           <FileText className="w-5 h-5 text-slate-400" />
         </div>
-        <p className="text-sm font-medium text-gray-500">No reports sent yet</p>
+        <p className="text-sm font-medium text-gray-500">No reports yet</p>
       </div>
     );
   }
@@ -337,6 +437,31 @@ function DoctorReportTab({ doctorCode }: { doctorCode: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+        <button
+          onClick={() => setActiveTab("all")}
+          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${
+            activeTab === "all" ? "bg-teal-500 text-white border-teal-500" : "bg-white text-slate-500 border-slate-200 hover:border-teal-300 hover:text-teal-600"
+          }`}
+        >
+          All ({allItems.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("sent")}
+          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${
+            activeTab === "sent" ? "bg-teal-500 text-white border-teal-500" : "bg-white text-slate-500 border-slate-200 hover:border-teal-300 hover:text-teal-600"
+          }`}
+        >
+          Sent ({patientReports.length})
+        </button>
+        <button
+          onClick={() => setActiveTab("doctor")}
+          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${
+            activeTab === "doctor" ? "bg-teal-500 text-white border-teal-500" : "bg-white text-slate-500 border-slate-200 hover:border-teal-300 hover:text-teal-600"
+          }`}
+        >
+          Doctor ({doctorResponses.length})
+        </button>
+        <div className="w-px h-5 bg-slate-200 mx-1" />
         {(["all", "Low", "Moderate", "High", "Emergency"] as const).map((f) => (
           <button
             key={f}
@@ -349,14 +474,20 @@ function DoctorReportTab({ doctorCode }: { doctorCode: string }) {
           </button>
         ))}
       </div>
-      {filtered.length === 0 ? (
+      {filteredItems.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-6 text-center">
           <AlertTriangle className="w-5 h-5 text-slate-300 mb-1" />
-          <p className="text-xs text-slate-400">No reports match this filter</p>
+          <p className="text-xs text-slate-400">No items match this filter</p>
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((report) => <ReportCard key={report.id} report={report} />)}
+          {filteredItems.map((item) =>
+            item.type === "patient" ? (
+              <ReportCard key={(item.data as { id: string }).id} report={item.data as Parameters<typeof ReportCard>[0]["report"]} />
+            ) : (
+              <DoctorResponseCard key={(item.data as DoctorResponse).id} response={item.data as DoctorResponse} />
+            ),
+          )}
         </div>
       )}
     </div>

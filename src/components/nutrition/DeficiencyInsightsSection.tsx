@@ -1,7 +1,6 @@
 import { type ReactNode } from "react";
 import { Flame, Leaf, Moon, Shield, Sparkles, Sun } from "lucide-react";
-import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
-import { useSymptomDerivedRisks } from "@/hooks/useSymptomDerivedRisks";
+import { useMaternityDeficiencyPipeline } from "@/hooks/useMaternityDeficiencyPipeline";
 
 function Badge({ text }: { text: string }) {
   return (
@@ -77,60 +76,56 @@ function DeficiencyItem({
   );
 }
 
+const severityTone: Record<string, string> = {
+  Low: "text-[#41a25f]",
+  Moderate: "text-[#bc8b32]",
+  High: "text-[#dc4f6f]",
+  Critical: "text-[#dc4f6f]",
+};
+
+const severityColor: Record<string, string> = {
+  Low: "text-[#c9862f]",
+  Moderate: "text-[#c9862f]",
+  High: "text-[#d85386]",
+  Critical: "text-[#d85386]",
+};
+
+const nutrientIcon: Record<string, ReactNode> = {
+  Iron: <Flame className="h-5 w-5 text-[#ea527b]" />,
+  "Vitamin D": <Sun className="h-5 w-5 text-[#df9a2c]" />,
+  Magnesium: <Leaf className="h-5 w-5 text-[#4fb069]" />,
+  Calcium: <Shield className="h-5 w-5 text-[#639ac5]" />,
+  Protein: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+  Folate: <Leaf className="h-5 w-5 text-[#4fb069]" />,
+  B12: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+  DHA: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+  Fiber: <Leaf className="h-5 w-5 text-[#4fb069]" />,
+  Zinc: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+  Potassium: <Leaf className="h-5 w-5 text-[#4fb069]" />,
+  "Vitamin C": <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
+};
+
+const nutrientBarColor: Record<string, string> = {
+  Iron: "bg-gradient-to-r from-[#f25b83] to-[#f896b0]",
+  "Vitamin D": "bg-gradient-to-r from-[#eeb34e] to-[#f5d498]",
+  Magnesium: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
+  Calcium: "bg-gradient-to-r from-[#5a9bc4] to-[#9bc4e8]",
+  Protein: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+  Folate: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
+  B12: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+  DHA: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+  Fiber: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
+  Zinc: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+  Potassium: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
+  "Vitamin C": "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
+};
+
 export default function DeficiencyInsightsSection() {
-  const insights = useDeficiencyInsights();
-  const symptomPatterns = useSymptomDerivedRisks();
+  const insights = useMaternityDeficiencyPipeline();
 
-  const severityTone: Record<string, string> = {
-    Low: "text-[#41a25f]",
-    Moderate: "text-[#bc8b32]",
-    High: "text-[#dc4f6f]",
-    Critical: "text-[#dc4f6f]",
-  };
+  if (!insights.hasData) return null;
 
-  const severityColor: Record<string, string> = {
-    Low: "text-[#c9862f]",
-    Moderate: "text-[#c9862f]",
-    High: "text-[#d85386]",
-    Critical: "text-[#d85386]",
-  };
-
-  const nutrientIcon: Record<string, ReactNode> = {
-    Iron: <Flame className="h-5 w-5 text-[#ea527b]" />,
-    "Vitamin D": <Sun className="h-5 w-5 text-[#df9a2c]" />,
-    Magnesium: <Leaf className="h-5 w-5 text-[#4fb069]" />,
-    Calcium: <Shield className="h-5 w-5 text-[#639ac5]" />,
-    Protein: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
-    Folate: <Leaf className="h-5 w-5 text-[#4fb069]" />,
-    B12: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
-    DHA: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
-    Fiber: <Leaf className="h-5 w-5 text-[#4fb069]" />,
-    Zinc: <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
-    Potassium: <Leaf className="h-5 w-5 text-[#4fb069]" />,
-    "Vitamin C": <Sparkles className="h-5 w-5 text-[#8d73c7]" />,
-  };
-
-  const nutrientBarColor: Record<string, string> = {
-    Iron: "bg-gradient-to-r from-[#f25b83] to-[#f896b0]",
-    "Vitamin D": "bg-gradient-to-r from-[#eeb34e] to-[#f5d498]",
-    Magnesium: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
-    Calcium: "bg-gradient-to-r from-[#5a9bc4] to-[#9bc4e8]",
-    Protein: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
-    Folate: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
-    B12: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
-    DHA: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
-    Fiber: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
-    Zinc: "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
-    Potassium: "bg-gradient-to-r from-[#56ba72] to-[#9dd7af]",
-    "Vitamin C": "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]",
-  };
-
-  const likelyDeficiencies = insights.nutrientRisks.filter(r => r.probability >= 40).length;
-  const hasInsufficientData = symptomPatterns.frequentSymptoms.length === 0 && insights.overallRiskScore < 30;
-
-  if (hasInsufficientData) {
-    return null; // Will just return nothing if no insights, or could return a small empty state
-  }
+  const likelyDeficiencies = insights.summary.likelyDeficiencies;
 
   return (
     <div className="space-y-4">
@@ -145,7 +140,7 @@ export default function DeficiencyInsightsSection() {
             <div className="rounded-2xl border border-[#f0e7f5] bg-[#fffafd] p-4 text-center">
               <p className="text-xs font-semibold text-muted-foreground">Your Nutrition Risk Score</p>
               <div className="mx-auto mt-4 grid h-24 w-24 place-content-center rounded-full border-[8px] border-[#f4d9e9] bg-white">
-                <p className="text-4xl font-bold leading-none text-foreground">{insights.overallRiskScore}</p>
+                <p className="text-4xl font-bold leading-none text-foreground">{insights.deficiencyScore}</p>
                 <p className="text-[11px] text-muted-foreground">/100</p>
               </div>
               <p className={`mt-2 text-sm font-semibold ${severityColor[insights.overallSeverity]}`}>{insights.overallSeverity} Risk</p>
@@ -185,8 +180,8 @@ export default function DeficiencyInsightsSection() {
             <p className="text-xs text-muted-foreground">Symptoms detected from your health logs</p>
           </div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {symptomPatterns.frequentSymptoms.length > 0 ? (
-              symptomPatterns.frequentSymptoms.map((symptom) => (
+            {insights.frequentSymptoms.length > 0 ? (
+              insights.frequentSymptoms.map((symptom) => (
                 <Badge key={symptom} text={symptom} />
               ))
             ) : (

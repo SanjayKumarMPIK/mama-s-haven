@@ -19,7 +19,7 @@ import { DiabetesDashboardWidget } from "@/components/dashboard/DiabetesDashboar
 import { DueDateChecker } from "@/components/dashboard/due-date/DueDateChecker";
 import { CelebrationFlow } from "@/components/dashboard/due-date/CelebrationFlow";
 import TodayTipCard from "@/modules/maternity/dashboard/todayTip/TodayTipCard";
-import { AnalyticsCarousel } from "@/modules/maternity/analytics";
+
 import WeeklyProgressCard from "@/modules/maternity/dashboard/weeklyProgress/WeeklyProgressCard";
 import UpcomingAppointmentsCard from "@/modules/maternity/dashboard/upcomingAppointments/UpcomingAppointmentsCard";
 import SymptomsOverviewCard from "@/modules/maternity/dashboard/symptomsOverview/SymptomsOverviewCard";
@@ -483,7 +483,7 @@ function DashboardView({
         <div className="container py-8 space-y-8">
           {/* ─── Medium-Sized Guide Card: Pregnancy Guide + Recovery Timeline ── */}
           <ScrollReveal>
-            <div className="max-w-3xl mx-auto">
+            <div className="max-w-4xl mx-auto">
               <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
                 {/* Card Header */}
                 <div className="p-5 sm:p-6 pb-4">
@@ -537,7 +537,7 @@ function DashboardView({
           {/* Persistent GDM Follow-Up Card */}
           {showGDMRcard && (
             <ScrollReveal>
-              <div className="max-w-3xl mx-auto">
+              <div className="max-w-4xl mx-auto">
                 <div className="rounded-xl border border-violet-200 bg-violet-50 p-4 shadow-sm flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
@@ -566,7 +566,7 @@ function DashboardView({
           {/* Delivery Arrival Prompt */}
           {currentWeek >= 28 && !profile.delivery.isDelivered && (
             <ScrollReveal>
-              <div className="max-w-3xl mx-auto">
+              <div className="max-w-4xl mx-auto">
                 <DeliveryArrivalCard />
               </div>
             </ScrollReveal>

@@ -19,7 +19,7 @@ function BreathingExercise() {
       return;
     }
 
-    let elapsed = 0;
+    const elapsed = 0;
     const phaseDurations = { inhale: 4, hold: 7, exhale: 8 };
     const phases: ("inhale" | "hold" | "exhale")[] = ["inhale", "hold", "exhale"];
     let phaseIdx = 0;

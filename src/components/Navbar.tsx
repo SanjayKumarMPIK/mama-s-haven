@@ -39,10 +39,12 @@ export default function Navbar() {
         </Link>
 
         {/* Desktop mandatory items */}
-        <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
-          <NavItem to="/phc-nearby" label="PHC" icon={Building2} active={location.pathname === "/phc-nearby"} compact />
-          <NavItem to="/vaccine-tracker" label="Vaccine Tracker" icon={Siren} active={location.pathname === "/vaccine-tracker"} compact />
-        </nav>
+        {!location.pathname.startsWith("/doctor") && (
+          <nav className="ml-2 hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
+            <NavItem to="/phc-nearby" label="PHC" icon={Building2} active={location.pathname === "/phc-nearby"} compact />
+            <NavItem to="/vaccine-tracker" label="Vaccine Tracker" icon={Siren} active={location.pathname === "/vaccine-tracker"} compact />
+          </nav>
+        )}
 
         <div className="ml-auto hidden items-center gap-2 lg:flex">
           <LanguageSwitcher />
@@ -57,7 +59,7 @@ export default function Navbar() {
                 {user.name}
               </Link>
               <CalendarNavButton />
-              <NotificationBell />
+              {!location.pathname.startsWith("/doctor") && <NotificationBell />}
             </div>
           ) : (
             <div className="flex items-center gap-2 border-l pl-2 border-border/50">
@@ -78,13 +80,15 @@ export default function Navbar() {
             </div>
           )}
 
-          <Link
-            to="/emergency"
-            className="inline-flex h-9 items-center rounded-md bg-red-600 px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-            aria-label="Open emergency guidance"
-          >
-            {t("emergency")}
-          </Link>
+          {!location.pathname.startsWith("/doctor") && (
+            <Link
+              to="/emergency"
+              className="inline-flex h-9 items-center rounded-md bg-red-600 px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+              aria-label="Open emergency guidance"
+            >
+              {t("emergency")}
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
@@ -98,13 +102,15 @@ export default function Navbar() {
         {/* Mobile: emergency + hamburger */}
         <div className="ml-auto flex items-center gap-2 lg:hidden">
           <CalendarNavButton />
-          <Link
-            to="/emergency"
-            className="inline-flex h-9 items-center rounded-md bg-red-600 px-3 text-xs font-semibold text-white shadow-sm"
-            aria-label="Open emergency guidance"
-          >
-            {t("emergency")}
-          </Link>
+          {!location.pathname.startsWith("/doctor") && (
+            <Link
+              to="/emergency"
+              className="inline-flex h-9 items-center rounded-md bg-red-600 px-3 text-xs font-semibold text-white shadow-sm"
+              aria-label="Open emergency guidance"
+            >
+              {t("emergency")}
+            </Link>
+          )}
           <button
             type="button"
             onClick={() => setMenuOpen(true)}

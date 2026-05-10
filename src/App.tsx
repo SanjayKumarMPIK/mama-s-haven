@@ -36,7 +36,7 @@ import Shopping from "./pages/Shopping";
 
 import StressRelief from "./pages/StressRelief";
 
-import Articles from "./pages/Articles";
+
 
 import Postpartum from "./pages/Postpartum";
 
@@ -115,8 +115,13 @@ const MenoWeightMetabolism = lazy(() => import("./pages/menopause/MenoWeightMeta
 const MenoHeartHealth = lazy(() => import("./pages/menopause/MenoHeartHealth"));
 
 const MenoPHCSupport = lazy(() => import("./pages/menopause/MenoPHCSupport"));
+const MenoTools = lazy(() => import("./pages/menopause/MenoTools"));
+const MenoHotFlashTracker = lazy(() => import("./pages/menopause/MenoHotFlashTracker"));
 
 import BabySupportiveHelper from "./pages/BabySupportiveHelper";
+import MaternalGuideHub from "./pages/MaternalGuideHub";
+import PregnancyGuide from "./pages/PregnancyGuide";
+import PrematureCare from "./pages/PrematureCare";
 
 import FPToolPage from "./pages/FPToolPage";
 
@@ -140,6 +145,8 @@ import DoctorSchedules from "./modules/doctor/pages/DoctorSchedules";
 import DoctorCalendar from "./modules/doctor/pages/DoctorCalendar";
 import DoctorProfile from "./modules/doctor/pages/DoctorProfile";
 import DoctorRequests from "./modules/doctor/pages/DoctorRequests";
+import DoctorHistory from "./modules/doctor/pages/DoctorHistory";
+import DoctorHotspots from "./modules/doctor/pages/DoctorHotspots";
 import PatientsPage from "./modules/doctor/patients/pages/PatientsPage";
 import ConnectPage from "./pages/ConnectPage";
 import RequestSchedulePage from "./pages/RequestSchedulePage";
@@ -233,9 +240,12 @@ const App = () => (
 
                           <Route path="/doctor/patients" element={<PatientsPage />} />
 
+                          <Route path="/doctor/history" element={<DoctorHistory />} />
                           <Route path="/doctor/questions" element={<DoctorQuestions />} />
 
                           <Route path="/doctor/alerts" element={<DoctorAlerts />} />
+
+                          <Route path="/doctor/hotspots" element={<DoctorHotspots />} />
 
                           <Route path="/doctor/*" element={<DoctorDashboard />} />
 
@@ -251,13 +261,19 @@ const App = () => (
 
                           <Route path="/stress-relief" element={<StressRelief />} />
 
-                          <Route path="/articles" element={<Articles />} />
+
 
                           <Route path="/postpartum-guide" element={<Postpartum />} />
 
                           <Route path="/assistant" element={<Assistant />} />
 
                           <Route path="/dashboard" element={<WeeklyGuide />} />
+
+                          <Route path="/maternal-guide" element={<MaternalGuideHub />} />
+
+                          <Route path="/maternal-guide/pregnancy" element={<PregnancyGuide />} />
+
+                          <Route path="/maternal-guide/premature" element={<PrematureCare />} />
 
                           <Route path="/nutrition" element={<NutritionGuide />} />
 
@@ -368,10 +384,12 @@ const App = () => (
                         <Route path="/menopause/analytics" element={<SymptomAnalytics />} />
 
                         <Route path="/menopause/wellness" element={<WellnessDashboard />} />
+                        <Route path="/menopause/tools" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoTools /></Suspense>} />
+                        <Route path="/menopause/hot-flash-tracker" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoHotFlashTracker /></Suspense>} />
 
-                        <Route path="/menopause/tools" element={<Tools />} />
 
-                        <Route path="/menopause/articles" element={<Articles />} />
+
+
 
                         <Route path="/menopause/goals" element={<DailyGoals />} />
 

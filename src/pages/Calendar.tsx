@@ -311,47 +311,60 @@ function isIrregularPeriodDay(entry: HealthLogEntry | undefined): boolean {
  *
  * A date is irregular if:
  * 1. It already has auto-marked period data on it, OR
- * 2. It falls within an existing predicted/auto-marked period range, OR
- * 3. It occurs within `thresholdDays` of ANY genuine (non-auto, non-irregular) period start
+ * 2. It falls within an existing predicted/auto-marked period range (by consecutive days or by _periodGroupId), OR
+ * 3. It occurs within `cycleLengthDays` of ANY period start (manual OR predicted)
  */
 function detectIrregularEntry(
   dateISO: string,
   logs: HealthLogs,
   cycleLengthDays: number = DEFAULT_CYCLE_LENGTH
-): { irregular: boolean; reason?: string } {
+): { irregular: boolean; reason?: string; existingCycleId?: string } {
   const dateMs = new Date(dateISO + "T12:00:00").getTime();
 
   // 0. Check if this date already has auto-marked period data
   const existingEntry = logs[dateISO];
   if (existingEntry && (existingEntry.phase === "puberty" || existingEntry.phase === "family-planning")) {
     if ((existingEntry as any)._periodAutoMarked) {
-      return { irregular: true, reason: "This date is already part of a predicted period range." };
+      return {
+        irregular: true,
+        reason: "This date is already part of a predicted period range.",
+        existingCycleId: (existingEntry as any)._periodGroupId,
+      };
     }
   }
 
-  // 1. Check if within an existing predicted period range
+  // 1. Check if within an existing predicted period range (by consecutive days or group ID)
   const rangeStart = findPeriodRangeForDate(dateISO, logs);
   if (rangeStart !== null && rangeStart !== dateISO) {
-    return { irregular: true, reason: "This date falls within an already predicted period range." };
+    const rangeEntry = logs[rangeStart];
+    return {
+      irregular: true,
+      reason: "This date falls within an already predicted period range.",
+      existingCycleId: (rangeEntry as any)?._periodGroupId,
+    };
   }
 
-  // 2. Check if too close to ANY genuine manual period start (exclude auto-generated and irregular)
-  const genuineStarts = Object.entries(logs)
+  // 2. Check if too close to ANY period start — including both manual AND predicted/auto-generated.
+  //    Only irregular entries are excluded from this proximity check.
+  const allStarts = Object.entries(logs)
     .filter(([d, e]) => {
       if (d === dateISO) return false;
       if (e.phase !== "puberty" && e.phase !== "family-planning") return false;
       if (!(e as any).periodStarted) return false;
       if ((e as any)._irregular) return false;       // don't count irregular entries
-      if ((e as any)._periodAutoMarked) return false; // don't count auto-generated predicted starts
-      return true;
+      return true; // include BOTH manual starts AND auto-generated predicted starts
     })
-    .map(([d]) => d);
+    .map(([d, e]) => ({ date: d, cycleId: (e as any)._periodGroupId as string | undefined }));
 
-  for (const startDate of genuineStarts) {
-    const startMs = new Date(startDate + "T12:00:00").getTime();
+  for (const start of allStarts) {
+    const startMs = new Date(start.date + "T12:00:00").getTime();
     const dayGap = Math.round(Math.abs(dateMs - startMs) / (1000 * 60 * 60 * 24));
     if (dayGap > 0 && dayGap < cycleLengthDays) {
-      return { irregular: true, reason: `Only ${dayGap} days since your period on ${startDate} — within your ${cycleLengthDays}-day cycle.` };
+      return {
+        irregular: true,
+        reason: `Only ${dayGap} days since ${(logs[start.date] as any)?._periodAutoMarked ? "predicted" : "your"} period on ${start.date} — within your ${cycleLengthDays}-day cycle.`,
+        existingCycleId: start.cycleId,
+      };
     }
   }
 
@@ -361,9 +374,31 @@ function detectIrregularEntry(
 /**
  * Check if a date falls within any existing period range in logs.
  * Returns the start date ISO of the range it belongs to, or null.
+ *
+ * Checks two methods:
+ * 1. Consecutive auto-marked days from a period start (original check)
+ * 2. Same _periodGroupId as any existing period day (catches membership even if not adjacent)
  */
 function findPeriodRangeForDate(dateISO: string, logs: HealthLogs): string | null {
-  // Find all period start dates
+  // Method 1: Check by _periodGroupId — if the date itself has one, find the matching start
+  const dateEntry = logs[dateISO];
+  if (dateEntry && (dateEntry.phase === "puberty" || dateEntry.phase === "family-planning")) {
+    const groupId = (dateEntry as any)._periodGroupId;
+    if (groupId) {
+      // Find the start date of this group
+      const groupStart = Object.entries(logs)
+        .filter(([, e]) =>
+          (e.phase === "puberty" || e.phase === "family-planning") &&
+          (e as any).periodStarted &&
+          (e as any)._periodGroupId === groupId
+        )
+        .map(([d]) => d)
+        .sort();
+      if (groupStart.length > 0) return groupStart[0];
+    }
+  }
+
+  // Method 2: Find all period start dates and check consecutive ranges
   const periodStarts = Object.entries(logs)
     .filter(([, e]) => (e.phase === "puberty" || e.phase === "family-planning") && (e as any).periodStarted)
     .map(([d]) => d)
@@ -388,6 +423,12 @@ function findPeriodRangeForDate(dateISO: string, logs: HealthLogs): string | nul
         }
       }
       if (inRange) return startISO;
+    }
+
+    // Also check if dateISO shares the same _periodGroupId as this start
+    const startGroupId = (logs[startISO] as any)?._periodGroupId;
+    if (startGroupId && dateEntry && (dateEntry as any)._periodGroupId === startGroupId) {
+      return startISO;
     }
   }
   return null;
@@ -1461,7 +1502,12 @@ function SymptomLogPanel({
         irregularEntry.periodStarted = true;
         irregularEntry._irregular = true;
         delete irregularEntry._periodAutoMarked;
-        delete irregularEntry._periodGroupId;
+        // Link to the existing cycle if detected within one
+        if (irregularDetection.existingCycleId) {
+          irregularEntry._periodGroupId = irregularDetection.existingCycleId;
+        } else {
+          delete irregularEntry._periodGroupId;
+        }
         onSave(dateISO, irregularEntry as HealthLogEntry);
 
         toast.info("Marked as irregular entry", {

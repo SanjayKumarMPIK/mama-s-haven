@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { generateNutritionChecklist, NutritionChecklistItem } from "@/lib/nutrition/nutritionChecklistEngine";
-import { predictMaternityDeficiencies } from "@/lib/maternityNutritionEngine";
+import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import ScrollReveal from "@/components/ScrollReveal";
 import ChecklistItem from "@/components/nutrition/ChecklistItem";
 import ChecklistSummary from "@/components/nutrition/ChecklistSummary";
@@ -20,32 +20,24 @@ interface NutritionChecklistSectionProps {
 export default function NutritionChecklistSection({ className = "", hideTodaysFocus = false }: NutritionChecklistSectionProps) {
   const { trimester, currentWeek } = usePregnancyProfile();
   const { logs } = useHealthLog();
+  const deficiencyInsights = useDeficiencyInsights();
 
   const [items, setItems] = useState<NutritionChecklistItem[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NutritionChecklistItem | null>(null);
 
+  const deficiencies = useMemo(() => {
+    return deficiencyInsights.topDeficiencies.map(d => d.label);
+  }, [deficiencyInsights]);
+
+  const symptoms = useMemo(() => {
+    return deficiencyInsights.summary.frequentSymptoms.map(s => s.symptom);
+  }, [deficiencyInsights]);
+
   // Initialize and sync checklist
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    let currentItems: NutritionChecklistItem[] = saved ? JSON.parse(saved) : [];
-
-    // Extract symptoms from logs
-    const today = new Date().toISOString().split("T")[0];
-    const recentLogs = Object.entries(logs)
-      .filter(([date]) => new Date(date) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
-      .map(([date, entry]) => entry);
-      
-    const symptoms = recentLogs.flatMap(log => {
-      if (log.phase !== "maternity" || !log.symptoms) return [];
-      // log.symptoms is Record<string, boolean> for maternity
-      return Object.entries(log.symptoms)
-        .filter(([_, isActive]) => isActive)
-        .map(([key]) => key);
-    });
-    // Get deficiencies
-    const maternityData = predictMaternityDeficiencies(logs, trimester);
-    const deficiencies = maternityData.predictions.map(p => p.nutrient);
+    const currentItems: NutritionChecklistItem[] = saved ? JSON.parse(saved) : [];
 
     // Generate new suggestions
     const generated = generateNutritionChecklist(trimester, symptoms, deficiencies);
@@ -60,7 +52,7 @@ export default function NutritionChecklistSection({ className = "", hideTodaysFo
     });
 
     setItems(newItems);
-  }, [trimester, logs]);
+  }, [trimester, deficiencies, symptoms]);
 
   // Save to local storage whenever items change
   useEffect(() => {

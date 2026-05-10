@@ -165,7 +165,7 @@ export function useMedicineReminder() {
   const ensureTodayLogs = useCallback(() => {
     const today = todayStr();
     const currentMeds = medsRef.current.filter((m) => m.isActive);
-    let currentLogs = [...logsRef.current];
+    const currentLogs = [...logsRef.current];
     let changed = false;
 
     for (const med of currentMeds) {

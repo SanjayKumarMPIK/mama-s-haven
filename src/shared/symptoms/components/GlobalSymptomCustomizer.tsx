@@ -47,15 +47,14 @@ export function GlobalSymptomCustomizer({
   onClose,
   phase
 }: GlobalSymptomCustomizerProps) {
-  if (!isOpen) return null;
-
   const ctx = useGlobalSymptoms(phase as any);
-
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
   const [selectedLibrarySymptom, setSelectedLibrarySymptom] = useState<PredefinedSymptom | null>(null);
   const [showCustomForm, setShowCustomForm] = useState(false);
   const [customName, setCustomName] = useState("");
   const [customCategory, setCustomCategory] = useState<SymptomCategory>("physical");
+
+  if (!isOpen) return null;
 
   const handleSlotClick = (index: number) => {
     setSelectedSlotIndex(index);

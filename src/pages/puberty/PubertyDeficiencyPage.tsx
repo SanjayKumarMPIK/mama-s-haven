@@ -2,9 +2,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Zap, Sparkles, AlertTriangle, ShieldCheck } from "lucide-react";
 import { useHealthLog } from "@/hooks/useHealthLog";
-import { useProfile } from "@/hooks/useProfile";
-import { useOnboarding } from "@/hooks/useOnboarding";
-import { computeIntelligentNutrition } from "@/lib/pubertyIntelligentNutritionEngine";
+import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import ScrollReveal from "@/components/ScrollReveal";
 
 const PRIORITY_STYLE = {
@@ -35,11 +33,20 @@ export default function PubertyDeficiencyPage() {
   const { logs } = useHealthLog();
   const { profile } = useProfile();
   const { config: onboardingConfig } = useOnboarding();
+  const insights = useDeficiencyInsights();
 
-  const data = useMemo(
-    () => computeIntelligentNutrition(logs, profile, onboardingConfig),
-    [logs, profile, onboardingConfig]
-  );
+  const analyzedDays = useMemo(() => Object.keys(logs).length, [logs]);
+
+  const deficiencyList = useMemo(() => {
+    return insights.deficiencies
+      .filter(d => d.severity === "high" || d.severity === "moderate" || d.severity === "low")
+      .map(d => ({
+        nutrient: d.label,
+        emoji: d.emoji,
+        priority: d.severity === "high" ? "High" as const : d.severity === "moderate" ? "Medium" as const : "Low" as const,
+        reason: d.reasons[0] || `${d.label} may need attention based on your symptoms.`,
+      }));
+  }, [insights]);
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-[#fff8fb] via-[#fdfbff] to-[#f9f9ff] py-6">
@@ -83,7 +90,7 @@ export default function PubertyDeficiencyPage() {
           </div>
         </ScrollReveal>
 
-        {!data.hasData ? (
+        {!insights.hasData && deficiencyList.length === 0 ? (
           <ScrollReveal delay={20}>
             <div className="flex flex-col items-center justify-center text-center py-20 rounded-2xl border-2 border-dashed border-border/60 bg-muted/10">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-5 shadow-lg opacity-40">
@@ -102,7 +109,7 @@ export default function PubertyDeficiencyPage() {
               </Link>
             </div>
           </ScrollReveal>
-        ) : data.deficiencyList.length === 0 ? (
+        ) : deficiencyList.length === 0 ? (
           <ScrollReveal delay={20}>
             <div className="flex flex-col items-center justify-center text-center py-16 rounded-2xl border border-green-200 bg-green-50/50">
               <ShieldCheck className="w-12 h-12 text-green-500 mb-4" />
@@ -121,19 +128,19 @@ export default function PubertyDeficiencyPage() {
                 {[
                   {
                     label: "High Priority",
-                    count: data.deficiencyList.filter((d) => d.priority === "High").length,
+                    count: deficiencyList.filter((d) => d.priority === "High").length,
                     color: "text-amber-700",
                     bg: "bg-amber-50 border-amber-200",
                   },
                   {
                     label: "Medium Priority",
-                    count: data.deficiencyList.filter((d) => d.priority === "Medium").length,
+                    count: deficiencyList.filter((d) => d.priority === "Medium").length,
                     color: "text-blue-700",
                     bg: "bg-blue-50 border-blue-200",
                   },
                   {
                     label: "Low Priority",
-                    count: data.deficiencyList.filter((d) => d.priority === "Low").length,
+                    count: deficiencyList.filter((d) => d.priority === "Low").length,
                     color: "text-slate-600",
                     bg: "bg-slate-50 border-slate-200",
                   },
@@ -150,7 +157,7 @@ export default function PubertyDeficiencyPage() {
 
             {/* Deficiency Cards */}
             <div className="grid gap-4 md:grid-cols-2">
-              {data.deficiencyList.map((d, i) => {
+              {deficiencyList.map((d, i) => {
                 const style = PRIORITY_STYLE[d.priority];
                 return (
                   <ScrollReveal key={d.nutrient} delay={30 + i * 10}>
@@ -206,45 +213,11 @@ export default function PubertyDeficiencyPage() {
               })}
             </div>
 
-            {/* Special Notes */}
-            {data.specialNotes.length > 0 && (
-              <ScrollReveal delay={80}>
-                <div className="space-y-3">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-500" />
-                    Personalized Notes
-                  </h2>
-                  {data.specialNotes.map((note, i) => (
-                    <div
-                      key={i}
-                      className={`rounded-xl border p-4 ${
-                        note.type === "medical"
-                          ? "border-rose-200/60 bg-rose-50/40"
-                          : "border-violet-200/60 bg-violet-50/40"
-                      }`}
-                    >
-                      <div className="flex items-start gap-2.5">
-                        <span className="text-xl shrink-0">{note.icon}</span>
-                        <div>
-                          <p className="text-sm font-bold text-foreground">{note.title}</p>
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                            {note.advice}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </ScrollReveal>
-            )}
-
             {/* Context Footer */}
             <ScrollReveal delay={100}>
               <div className="rounded-xl border border-border/40 bg-card p-4 text-xs text-muted-foreground">
-                Analysis based on <strong>{data.analyzedDays} days</strong> of logged data •{" "}
-                <strong>{data.pubertyTiming} Puberty</strong> •{" "}
-                <strong>{data.dietPreference}</strong> diet •{" "}
-                <strong>{data.regionLabel}</strong> region
+                Analysis based on <strong>{analyzedDays} days</strong> of logged data •
+                Phase: <strong>Puberty</strong>
               </div>
             </ScrollReveal>
           </>

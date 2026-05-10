@@ -4,10 +4,10 @@ import { useHealthLog } from "@/hooks/useHealthLog";
 import { useProfile } from "@/hooks/useProfile";
 import { useFamilyPlanningProfile } from "@/hooks/useFamilyPlanningProfile";
 import {
-  predictFamilyPlanningDeficiencies,
   analyzeSymptomFrequency,
   computeRiskScore,
 } from "@/lib/familyPlanningNutritionEngine";
+import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import {
@@ -21,7 +21,7 @@ export default function FPDeficiencyInsightsPage() {
   const { profile: fpProfile } = useFamilyPlanningProfile();
   const intent = fpProfile?.intent ?? "tracking";
 
-  const predictions = useMemo(() => predictFamilyPlanningDeficiencies(logs, intent), [logs, intent]);
+  const insights = useDeficiencyInsights();
   const frequency = useMemo(() => analyzeSymptomFrequency(logs, 30), [logs]);
   const risk = useMemo(() => computeRiskScore(logs, intent), [logs, intent]);
 
@@ -62,29 +62,29 @@ export default function FPDeficiencyInsightsPage() {
         {/* Overall Risk Score */}
         <ScrollReveal>
           <div className={`rounded-2xl border-2 p-6 ${
-            risk.color === "red" ? "border-red-200 bg-red-50/50"
-            : risk.color === "amber" ? "border-amber-200 bg-amber-50/50"
+            insights.overallSeverity === "Critical" || insights.overallSeverity === "High" ? "border-red-200 bg-red-50/50"
+            : insights.overallSeverity === "Moderate" ? "border-amber-200 bg-amber-50/50"
             : "border-emerald-200 bg-emerald-50/50"
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-1">Nutrition Risk Score</p>
-                <h2 className="text-3xl font-bold">{risk.overallScore}<span className="text-lg text-muted-foreground">/100</span></h2>
+                <h2 className="text-3xl font-bold">{insights.overallScore}<span className="text-lg text-muted-foreground">/100</span></h2>
               </div>
               <span className={`px-3 py-1.5 rounded-full text-sm font-bold ${
-                risk.color === "red" ? "bg-red-100 text-red-700"
-                : risk.color === "amber" ? "bg-amber-100 text-amber-700"
+                insights.overallSeverity === "Critical" || insights.overallSeverity === "High" ? "bg-red-100 text-red-700"
+                : insights.overallSeverity === "Moderate" ? "bg-amber-100 text-amber-700"
                 : "bg-emerald-100 text-emerald-700"
-              }`}>{risk.label}</span>
+              }`}>{insights.overallSeverity}</span>
             </div>
             <div className="h-3 rounded-full bg-white/60 overflow-hidden">
-              <div className={`h-full rounded-full transition-all ${riskBarColor(risk.overallScore)}`} style={{ width: `${risk.overallScore}%` }} />
+              <div className={`h-full rounded-full transition-all ${riskBarColor(insights.overallScore)}`} style={{ width: `${insights.overallScore}%` }} />
             </div>
             <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-              <span>{risk.deficiencyCount} nutrient gap{risk.deficiencyCount !== 1 ? "s" : ""}</span>
+              <span>{insights.deficiencies.length} nutrient gap{insights.deficiencies.length !== 1 ? "s" : ""}</span>
               <span>•</span>
-              <span>{risk.logConsistency}% log consistency</span>
-              {risk.topRisk && <><span>•</span><span>Top: {risk.topRisk}</span></>}
+              <span>{insights.summary.loggedDays} days logged</span>
+              {insights.priorityNutrient && <><span>•</span><span>Top: {insights.priorityNutrient.label}</span></>}
             </div>
           </div>
         </ScrollReveal>
@@ -124,59 +124,51 @@ export default function FPDeficiencyInsightsPage() {
         )}
 
         {/* Deficiency Prediction Cards */}
-        {predictions.hasData && predictions.predictions.length > 0 ? (
+        {insights.deficiencies.length > 0 ? (
           <ScrollReveal delay={20}>
             <h3 className="text-base font-bold mb-4">Predicted Nutrient Gaps</h3>
             <div className="grid gap-4 md:grid-cols-2">
-              {predictions.predictions.map((pred) => (
-                <div key={pred.id} className={`rounded-2xl border-2 p-5 bg-card hover:shadow-md transition-all ${
-                  pred.confidence === "High" ? "border-amber-200" : "border-border/60"
+              {insights.deficiencies.map((d) => (
+                <div key={d.nutrientId} className={`rounded-2xl border-2 p-5 bg-card hover:shadow-md transition-all ${
+                  d.severity === "high" || d.severity === "moderate" ? "border-amber-200" : "border-border/60"
                 }`}>
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h4 className="text-base font-bold">{pred.title}</h4>
-                      <p className="text-sm text-primary font-semibold mt-0.5">{pred.nutrient}</p>
+                      <h4 className="text-base font-bold">{d.label}</h4>
+                      <p className="text-sm text-primary font-semibold mt-0.5 capitalize">{d.severity} priority</p>
                     </div>
                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full ${
-                      pred.confidence === "High" ? "bg-amber-100 text-amber-800"
-                      : pred.confidence === "Medium" ? "bg-blue-100 text-blue-800"
-                      : "bg-gray-100 text-gray-800"
-                    }`}>{pred.confidence}</span>
+                      d.severity === "high" ? "bg-red-100 text-red-800"
+                      : d.severity === "moderate" ? "bg-amber-100 text-amber-800"
+                      : "bg-green-100 text-green-800"
+                    }`}>{d.severity}</span>
                   </div>
 
                   {/* Risk Score Bar */}
                   <div className="mb-3">
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                       <span>Risk Score</span>
-                      <span className="font-bold">{pred.riskScore}/100</span>
+                      <span className="font-bold">{d.score}/100</span>
                     </div>
                     <div className="h-2 rounded-full bg-muted/30 overflow-hidden">
-                      <div className={`h-full rounded-full ${riskBarColor(pred.riskScore)}`} style={{ width: `${pred.riskScore}%` }} />
+                      <div className={`h-full rounded-full ${riskBarColor(d.score)}`} style={{ width: `${d.score}%` }} />
                     </div>
                   </div>
 
                   <div className="space-y-3">
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Why we predict this</p>
-                      <p className="text-sm bg-muted/20 p-2.5 rounded-lg border border-border/50 text-foreground/90">{pred.whyPredicted}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Why it matters</p>
-                      <p className="text-sm text-foreground/85 leading-relaxed">{pred.whyItMatters}</p>
-                    </div>
+                    {d.reasons.length > 0 && (
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Why we predict this</p>
+                        <p className="text-sm bg-muted/20 p-2.5 rounded-lg border border-border/50 text-foreground/90">{d.reasons[0]}</p>
+                      </div>
+                    )}
                     <div className="pt-2 border-t border-border/40">
                       <p className="text-xs font-semibold text-muted-foreground mb-2">Recommended Foods</p>
                       <div className="flex flex-wrap gap-1.5 mb-3">
-                        {pred.foods.map((food) => (
-                          <span key={food} className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-sm">{food}</span>
+                        {d.recommendedFoods.slice(0, 4).map((food) => (
+                          <span key={food.name} className="px-2.5 py-1 rounded-lg text-[11px] font-semibold border bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-sm">{food.emoji} {food.name}</span>
                         ))}
                       </div>
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">Healthy Habits</p>
-                      <ul className="space-y-1 ml-4">
-                        {pred.habits.map((habit, i) => (
-                          <li key={i} className="text-sm text-foreground/85 list-disc">{habit}</li>
-                        ))}
-                      </ul>
                     </div>
                   </div>
                 </div>

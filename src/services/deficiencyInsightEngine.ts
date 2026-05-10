@@ -289,7 +289,7 @@ function calculateNutrientRisk(mapping: NutrientSymptomMapping, input: Deficienc
   const comboMult = getCombinationMultiplier(matchedSymptoms.length);
   const phaseAdjustedMult = 1 + (phaseMultiplier - 1) * 0.6;
 
-  let rawScore = weightedSum * comboMult * phaseAdjustedMult + BASE_CONTRIBUTION;
+  const rawScore = weightedSum * comboMult * phaseAdjustedMult + BASE_CONTRIBUTION;
   const probability = Math.min(MAX_PROBABILITY, Math.round(rawScore));
 
   const confidenceScore = calculateConfidenceScore(matchedSymptoms, input.symptoms, mapping.symptoms.length);

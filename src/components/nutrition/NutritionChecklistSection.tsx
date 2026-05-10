@@ -37,7 +37,7 @@ export default function NutritionChecklistSection({ className = "", hideTodaysFo
   // Initialize and sync checklist
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
-    let currentItems: NutritionChecklistItem[] = saved ? JSON.parse(saved) : [];
+    const currentItems: NutritionChecklistItem[] = saved ? JSON.parse(saved) : [];
 
     // Generate new suggestions
     const generated = generateNutritionChecklist(trimester, symptoms, deficiencies);

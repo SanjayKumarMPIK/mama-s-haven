@@ -37,7 +37,7 @@ export function EnhancedSlider({
   const snapThreshold = Math.max((max - min) * 0.05, step);
 
   const handleValueChange = (vals: number[]) => {
-    let val = vals[0];
+    const val = vals[0];
     let snapped = val;
 
     // Apply soft snapping

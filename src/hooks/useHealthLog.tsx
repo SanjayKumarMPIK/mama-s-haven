@@ -48,6 +48,8 @@ export interface PubertyEntry {
   };
   /** Intensity per symptom (1–10). Required for new logs, optional for legacy data. */
   symptomIntensities?: Record<string, number>;
+  /** Severity label per symptom (Mild / Moderate / Severe). Used by PubertySymptomCard pill UI. */
+  symptomSeverityLabels?: Record<string, "Mild" | "Moderate" | "Severe">;
   mood: MoodType | null;
   sleepHours: number | null;
   sleepQuality: SleepQuality | null;

@@ -12,6 +12,7 @@ import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useHealthLog } from "@/hooks/useHealthLog";
 import { useProfile } from "@/hooks/useProfile";
 import { useOnboarding } from "@/hooks/useOnboarding";
+import { useAuth } from "@/hooks/useAuth";
 import VoiceButton from "@/components/VoiceButton";
 import EmergencyCard from "@/components/EmergencyCard";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
@@ -43,7 +44,8 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pregnancy-assistant`;
+const BASE_URL = (import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
+const CHAT_URL = `${BASE_URL}/functions/v1/pregnancy-assistant`;
 
 const tones: { id: Tone; label: string; icon: React.ReactNode; desc: string }[] = [
   { id: "doctor", label: "Doctor", icon: <Stethoscope className="w-4 h-4" />, desc: "Professional & evidence-based" },
@@ -120,16 +122,17 @@ function buildSymptomContext(logs: Record<string, any>, phase: Phase): string {
 // ─── Stream chat ──────────────────────────────────────────────────────────────
 
 async function streamChat({
-  messages, tone, language, weekContext, onDelta, onDone, onError,
+  messages, tone, language, weekContext, authHeader, onDelta, onDone, onError,
 }: {
-  messages: Msg[]; tone: Tone; language: string; weekContext: string;
+  messages: Msg[]; tone: Tone; language: string; weekContext: string; authHeader: string;
   onDelta: (text: string) => void; onDone: () => void; onError: (err: string) => void;
 }) {
   const resp = await fetch(CHAT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+      "Authorization": authHeader,
+      "apikey": import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
     },
     body: JSON.stringify({ messages, tone, language, weekContext }),
   });
@@ -160,8 +163,9 @@ async function streamChat({
       if (json === "[DONE]") { done = true; break; }
       try {
         const p = JSON.parse(json);
-        const c = p.choices?.[0]?.delta?.content;
-        if (c) onDelta(c);
+        // Support both OpenAI format (choices) and Gemini format (candidates)
+        const content = p.choices?.[0]?.delta?.content || p.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (content) onDelta(content);
       } catch {
         buf = line + "\n" + buf;
         break;
@@ -231,6 +235,7 @@ export default function Assistant() {
   const { logs } = useHealthLog();
   const { profile: userProfile } = useProfile();
   const { config: onboardingConfig } = useOnboarding();
+  const { accessToken } = useAuth();
 
   const isMaternity = phase === "maternity";
 
@@ -348,17 +353,22 @@ export default function Assistant() {
       .join(" ");
 
     try {
+      // Use the actual session token if available, otherwise fallback to the publishable key
+      const authHeader = accessToken ? `Bearer ${accessToken}` : `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`;
+      
       await streamChat({
         messages: [...messages, userMsg],
         tone,
         language,
         weekContext,
+        authHeader,
         onDelta: upsert,
         onDone: () => setIsLoading(false),
         onError: (e) => { setError(e); setIsLoading(false); },
       });
-    } catch {
-      setError("Connection failed. Please try again.");
+    } catch (err) {
+      console.error("AI Assistant connection error:", err);
+      setError("Connection failed. Please check your internet or the server status.");
       setIsLoading(false);
     }
   };

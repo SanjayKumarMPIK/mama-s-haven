@@ -82,22 +82,22 @@ export default function MenoSleepMood() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-[#f8fbff] via-[#f8f6ff] to-[#eef7ff] font-[Poppins,sans-serif]">
       <div className="container max-w-3xl py-6 space-y-6">
         <div className="flex items-center gap-3">
-          <Link to="/menopause/dashboard" className="w-9 h-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center hover:bg-slate-50"><ArrowLeft className="w-4 h-4 text-slate-600" /></Link>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-md"><Moon className="w-5 h-5 text-white" /></div>
+          <Link to="/menopause/tools" className="w-9 h-9 rounded-xl border border-slate-200 bg-white/90 flex items-center justify-center hover:bg-slate-50 transition-colors"><ArrowLeft className="w-4 h-4 text-slate-600" /></Link>
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-md"><Moon className="w-5 h-5 text-white" /></div>
           <div><h1 className="text-xl font-bold text-slate-800">Sleep & Mood</h1><p className="text-xs text-slate-500">Track, understand, and improve</p></div>
         </div>
 
         {/* Summary cards */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-white/80 border border-indigo-200/60 p-4">
+          <div className="rounded-2xl bg-white/85 border border-indigo-200/60 p-4 shadow-sm">
             <p className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider mb-1">Avg Sleep</p>
             <div className="flex items-center gap-2"><span className="text-2xl font-bold text-slate-800">{summary.avgSleep || "–"}h</span><TrendIcon dir={summary.sleepTrend} good={summary.sleepTrend === "up"} /></div>
             <p className="text-[10px] text-slate-500 mt-1">{summary.sleepLabel}</p>
           </div>
-          <div className="rounded-xl bg-white/80 border border-purple-200/60 p-4">
+          <div className="rounded-2xl bg-white/85 border border-purple-200/60 p-4 shadow-sm">
             <p className="text-[10px] font-semibold text-purple-500 uppercase tracking-wider mb-1">Avg Mood</p>
             <div className="flex items-center gap-2"><span className="text-2xl font-bold text-slate-800">{summary.avgMood || "–"}/5</span><TrendIcon dir={summary.moodTrend} good={summary.moodTrend === "up"} /></div>
             <p className="text-[10px] text-slate-500 mt-1">{summary.moodLabel}</p>
@@ -105,25 +105,25 @@ export default function MenoSleepMood() {
         </div>
 
         {/* Log today */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm">
+        <div className="rounded-3xl border border-slate-200/80 bg-white/85 p-5 shadow-sm backdrop-blur-sm">
           <h2 className="text-sm font-bold text-slate-700 mb-4">📝 Log Today</h2>
           <div className="space-y-4">
             <div><label className="text-xs font-semibold text-slate-700 block mb-1.5">Sleep hours</label>
               <input type="number" min={0} max={16} step={0.5} value={sleepHrs} onChange={e => setSleepHrs(e.target.value)} placeholder="7" className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300/50" /></div>
             <div><label className="text-xs font-semibold text-slate-700 block mb-1.5">Sleep quality</label>
               <div className="flex gap-2">{(["good","average","poor"] as const).map(q => (
-                <button key={q} onClick={() => setSleepQual(q)} className={cn("flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 capitalize transition-all", sleepQual === q ? (q === "good" ? "border-emerald-400 bg-emerald-50 text-emerald-700" : q === "average" ? "border-amber-400 bg-amber-50 text-amber-700" : "border-rose-400 bg-rose-50 text-rose-700") : "border-slate-200 text-slate-500")}>{q}</button>
+                <button key={q} onClick={() => setSleepQual(q)} className={cn("flex-1 py-2.5 rounded-xl text-xs font-semibold border-2 capitalize transition-all hover:-translate-y-0.5", sleepQual === q ? (q === "good" ? "border-emerald-400 bg-emerald-50 text-emerald-700" : q === "average" ? "border-amber-400 bg-amber-50 text-amber-700" : "border-rose-400 bg-rose-50 text-rose-700") : "border-slate-200 text-slate-500")}>{q}</button>
               ))}</div></div>
             <div><label className="text-xs font-semibold text-slate-700 block mb-1.5">Mood (1–5)</label>
               <div className="flex gap-2">{[1,2,3,4,5].map(m => (
-                <button key={m} onClick={() => setMood(m)} className={cn("flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all", mood === m ? "border-purple-400 bg-purple-50 text-purple-700" : "border-slate-200 text-slate-400")}>{["😔","😕","😐","🙂","😊"][m-1]}</button>
+                <button key={m} onClick={() => setMood(m)} className={cn("flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all hover:-translate-y-0.5", mood === m ? "border-purple-400 bg-purple-50 text-purple-700" : "border-slate-200 text-slate-400")}>{["😔","😕","😐","🙂","😊"][m-1]}</button>
               ))}</div></div>
           </div>
           <button onClick={handleSave} className="w-full mt-5 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]">Save</button>
         </div>
 
         {/* 14-Day Trend */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm">
+        <div className="rounded-3xl border border-slate-200/80 bg-white/85 p-5 shadow-sm">
           <h2 className="text-sm font-bold text-slate-700 mb-4">📈 14-Day Trend</h2>
           {logs.length === 0 ? <p className="text-center py-8 text-slate-400 text-sm">Log daily to see trends</p> : (
             <ResponsiveContainer width="100%" height={220}>
@@ -142,7 +142,7 @@ export default function MenoSleepMood() {
         <BreathingExercise />
 
         {/* Relaxation */}
-        <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm">
+        <div className="rounded-3xl border border-slate-200/80 bg-white/85 p-5 shadow-sm">
           <h2 className="text-sm font-bold text-slate-700 mb-4">🌿 Relaxation Suggestions</h2>
           <div className="grid sm:grid-cols-2 gap-3">{RELAXATION.map((r,i) => (
             <div key={i} className="flex items-start gap-3 p-3.5 rounded-xl bg-indigo-50/60 border border-indigo-100/60 hover:shadow-sm transition-all">

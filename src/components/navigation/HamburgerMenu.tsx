@@ -16,10 +16,10 @@ interface HamburgerMenuProps {
   onClose: () => void;
   language: Language;
   onLanguageChange: (language: Language) => void;
-  t: (key: "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools" | "articles") => string;
+  t: (key: "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools") => string;
 }
 
-type SecondaryKey = "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools" | "articles";
+type SecondaryKey = "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools";
 
 const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; icon: LucideIcon }[] = [
   { to: "/", labelKey: "home" as const, icon: Home },
@@ -32,11 +32,9 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/tools", label: "Tools", icon: Wrench },
   { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
   { to: "/dashboard", label: "Dashboard", icon: Calendar },
-  { to: "/articles", labelKey: "articles" as const, icon: BookOpen },
   { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
   { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
   { to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList },
-  { to: "/connect", label: "Connect", icon: Stethoscope },
 ];
 
 
@@ -64,7 +62,6 @@ const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause/tools", label: "Tools", icon: Wrench },
   { to: "/menopause/care-essentials", label: "Care Essentials", icon: Package },
   { to: "/menopause/dashboard", label: "Dashboard", icon: Calendar },
-  { to: "/menopause/articles", label: "Articles", icon: BookOpen },
   { to: "/menopause/connect", label: "Connect", icon: Stethoscope },
 ];
 
@@ -219,24 +216,7 @@ export default function HamburgerMenu({
 
             {/* Navigation items */}
             <nav className="space-y-2" aria-label="Secondary navigation">
-              {location.pathname.startsWith("/doctor") ? (
-                <>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Stethoscope className="h-4 w-4 text-teal-600" />
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Doctor Module</p>
-                  </div>
-                  {DOCTOR_ITEMS.map((item) => (
-                    <NavItem
-                      key={item.to}
-                      to={item.to}
-                      label={item.label}
-                      icon={item.icon}
-                      active={location.pathname === item.to}
-                      onClick={onClose}
-                    />
-                  ))}
-                </>
-              ) : phase === "menopause" ? (
+              {phase === "menopause" ? (
                 MENOPAUSE_ITEMS.map((item) => (
                   <NavItem
                     key={item.to}
@@ -256,24 +236,16 @@ export default function HamburgerMenu({
                   // Show family-planning-only routes only in family-planning phase
                   if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
                   return true;
-                }).map((item) => {
-                  let dynamicLabel = item.label ?? (item.labelKey ? t(item.labelKey) : "");
-                  let dynamicTo = item.to;
-                  if (item.to === "/dashboard" && phase === "maternity") {
-                    dynamicLabel = "Maternal Guide";
-                    dynamicTo = "/maternal-guide";
-                  }
-                  return (
-                    <NavItem
-                      key={item.to}
-                      to={dynamicTo}
-                      label={dynamicLabel}
-                      icon={item.icon}
-                      active={location.pathname === item.to}
-                      onClick={onClose}
-                    />
-                  );
-                })
+                }).map((item) => (
+                  <NavItem
+                    key={item.to}
+                    to={item.to}
+                    label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
+                    icon={item.icon}
+                    active={location.pathname === item.to}
+                    onClick={onClose}
+                  />
+                ))
               )}
             </nav>
           </div>

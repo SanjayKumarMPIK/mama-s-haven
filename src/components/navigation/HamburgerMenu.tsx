@@ -258,13 +258,15 @@ export default function HamburgerMenu({
                   return true;
                 }).map((item) => {
                   let dynamicLabel = item.label ?? (item.labelKey ? t(item.labelKey) : "");
+                  let dynamicTo = item.to;
                   if (item.to === "/dashboard" && phase === "maternity") {
                     dynamicLabel = "Maternal Guide";
+                    dynamicTo = "/maternal-guide";
                   }
                   return (
                     <NavItem
                       key={item.to}
-                      to={item.to}
+                      to={dynamicTo}
                       label={dynamicLabel}
                       icon={item.icon}
                       active={location.pathname === item.to}

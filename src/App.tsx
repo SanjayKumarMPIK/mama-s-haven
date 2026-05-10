@@ -117,6 +117,9 @@ const MenoHeartHealth = lazy(() => import("./pages/menopause/MenoHeartHealth"));
 const MenoPHCSupport = lazy(() => import("./pages/menopause/MenoPHCSupport"));
 
 import BabySupportiveHelper from "./pages/BabySupportiveHelper";
+import MaternalGuideHub from "./pages/MaternalGuideHub";
+import PregnancyGuide from "./pages/PregnancyGuide";
+import PrematureCare from "./pages/PrematureCare";
 
 import FPToolPage from "./pages/FPToolPage";
 
@@ -260,6 +263,12 @@ const App = () => (
                           <Route path="/assistant" element={<Assistant />} />
 
                           <Route path="/dashboard" element={<WeeklyGuide />} />
+
+                          <Route path="/maternal-guide" element={<MaternalGuideHub />} />
+
+                          <Route path="/maternal-guide/pregnancy" element={<PregnancyGuide />} />
+
+                          <Route path="/maternal-guide/premature" element={<PrematureCare />} />
 
                           <Route path="/nutrition" element={<NutritionGuide />} />
 

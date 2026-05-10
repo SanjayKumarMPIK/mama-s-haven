@@ -123,25 +123,30 @@ export default function DoctorDashboard() {
   useEffect(() => {
     mountedRef.current = true;
     refresh();
-    const interval = setInterval(refresh, 3000);
+    const refreshInterval = setInterval(refresh, 3000);
     window.addEventListener("storage", refresh);
+
     function loadCount() {
       try {
         const raw = localStorage.getItem(DOCTOR_ALERTS_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
           const count = parsed.filter((a: { alertStatus?: string }) => a.alertStatus === "active").length;
-          setActiveAlertCount(count);
+          setActiveAlerts(count);
         }
       } catch { }
     }
+
     loadCount();
-    const interval = setInterval(loadCount, 3000);
+    const countInterval = setInterval(loadCount, 3000);
     window.addEventListener("storage", loadCount);
+
     return () => {
       mountedRef.current = false;
-      clearInterval(interval);
+      clearInterval(refreshInterval);
+      clearInterval(countInterval);
       window.removeEventListener("storage", refresh);
+      window.removeEventListener("storage", loadCount);
     };
   }, [refresh]);
 

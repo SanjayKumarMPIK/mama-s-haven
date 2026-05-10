@@ -1,9 +1,8 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import {
-  Activity, Bone, Apple, Moon, Scale, Heart, Bot, Building2,
-  Target, Sparkles, TrendingUp, TrendingDown, Minus, ChevronRight,
-  Sun, Calendar, Shield, Stethoscope,
+  Activity, Bone, Moon, Sparkles, TrendingUp, TrendingDown, Minus, ChevronRight,
+  Sun, Shield, CheckCircle2, Circle, AlertTriangle, Compass,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMenopause, getStageLabel, getStageDescription } from "@/hooks/useMenopause";
@@ -13,7 +12,9 @@ import {
   getSleepMoodSummary,
   getDailyGuidance,
   getBoneHealthStatus,
+  getWellnessFocusToday,
 } from "@/lib/menopauseDashboardEngine";
+import type { WellnessFocusAction } from "@/lib/menopauseDashboardEngine";
 import ScrollReveal from "@/components/ScrollReveal";
 
 // ─── Animated Score Ring ──────────────────────────────────────────────────────
@@ -41,35 +42,135 @@ function ScoreRing({ score, color }: { score: number; color: string }) {
   );
 }
 
-// ─── Module Card ──────────────────────────────────────────────────────────────
-
-function ModuleCard({ to, icon: Icon, label, emoji, gradient, delay = 0 }: {
-  to: string; icon: any; label: string; emoji: string; gradient: string; delay?: number;
-}) {
-  return (
-    <ScrollReveal delay={delay}>
-      <Link
-        to={to}
-        className={cn(
-          "group flex flex-col items-center gap-2.5 p-5 rounded-2xl border border-white/60 bg-white/80 backdrop-blur-sm",
-          "shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-1 active:scale-[0.97]"
-        )}
-      >
-        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shadow-md transition-transform group-hover:scale-110", gradient)}>
-          <Icon className="w-5.5 h-5.5 text-white" />
-        </div>
-        <span className="text-xs font-semibold text-slate-700 text-center leading-tight">{label}</span>
-      </Link>
-    </ScrollReveal>
-  );
-}
-
 // ─── Trend Arrow ──────────────────────────────────────────────────────────────
 
 function TrendArrow({ dir, good }: { dir: "up" | "down" | "stable"; good?: boolean }) {
   if (dir === "stable") return <Minus className="w-3.5 h-3.5 text-slate-400" />;
   if (dir === "up") return <TrendingUp className={cn("w-3.5 h-3.5", good ? "text-emerald-500" : "text-rose-500")} />;
   return <TrendingDown className={cn("w-3.5 h-3.5", good ? "text-emerald-500" : "text-rose-500")} />;
+}
+
+// ─── Wellness Focus Card ─────────────────────────────────────────────────────
+
+const FOCUS_STORAGE_KEY = "ss-meno-wellness-focus-done";
+
+function readTodayChecked(): string[] {
+  try {
+    const raw = localStorage.getItem(FOCUS_STORAGE_KEY);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    const today = new Date().toISOString().slice(0, 10);
+    return data.date === today ? (data.checked as string[]) : [];
+  } catch { return []; }
+}
+
+function writeTodayChecked(checked: string[]) {
+  const today = new Date().toISOString().slice(0, 10);
+  localStorage.setItem(FOCUS_STORAGE_KEY, JSON.stringify({ date: today, checked }));
+}
+
+function WellnessFocusCard({
+  focusEmoji, focusTitle, explanation, actions, redFlagAlert, tone,
+}: {
+  focusEmoji: string;
+  focusTitle: string;
+  explanation: string;
+  actions: WellnessFocusAction[];
+  redFlagAlert: string | null;
+  tone: "positive" | "caution" | "info" | "alert";
+}) {
+  const [checked, setChecked] = useState<string[]>(() => readTodayChecked());
+
+  const toggle = useCallback((id: string) => {
+    setChecked((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      writeTodayChecked(next);
+      return next;
+    });
+  }, []);
+
+  const allDone = actions.length > 0 && actions.every((a) => checked.includes(a.id));
+
+  const toneColors = {
+    positive: { border: "border-emerald-200/80", bg: "bg-gradient-to-br from-emerald-50/90 to-teal-50/60", icon: "from-emerald-500 to-teal-500", title: "text-emerald-800" },
+    caution: { border: "border-amber-200/80", bg: "bg-gradient-to-br from-amber-50/90 to-orange-50/60", icon: "from-amber-500 to-orange-500", title: "text-amber-800" },
+    info: { border: "border-purple-200/80", bg: "bg-gradient-to-br from-purple-50/90 to-indigo-50/60", icon: "from-purple-500 to-indigo-500", title: "text-purple-800" },
+    alert: { border: "border-rose-200/80", bg: "bg-gradient-to-br from-rose-50/90 to-pink-50/60", icon: "from-rose-500 to-pink-500", title: "text-rose-800" },
+  };
+  const c = toneColors[tone];
+
+  return (
+    <div className={cn("rounded-2xl border p-5 relative overflow-hidden shadow-sm", c.border, c.bg)}>
+      <div className="absolute -top-20 -right-20 w-44 h-44 rounded-full bg-white/15 blur-3xl pointer-events-none" />
+
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className={cn("w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center shadow-md", c.icon)}>
+          <Compass className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Your Wellness Focus Today</p>
+        </div>
+      </div>
+
+      {/* Focus insight */}
+      <div className="flex items-start gap-3 mb-3">
+        <span className="text-3xl flex-shrink-0 mt-0.5">{focusEmoji}</span>
+        <div>
+          <h3 className={cn("text-sm font-bold leading-snug mb-1", c.title)}>{focusTitle}</h3>
+          <p className="text-xs text-slate-600 leading-relaxed">{explanation}</p>
+        </div>
+      </div>
+
+      {/* Red flag alert */}
+      {redFlagAlert && (
+        <div className="flex items-start gap-2 mb-4 p-3 rounded-xl bg-rose-100/80 border border-rose-300/60">
+          <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+          <p className="text-xs font-semibold text-rose-700 leading-relaxed">{redFlagAlert}</p>
+        </div>
+      )}
+
+      {/* Action checklist */}
+      <div className="space-y-2">
+        {actions.map((action) => {
+          const isDone = checked.includes(action.id);
+          return (
+            <button
+              key={action.id}
+              onClick={() => toggle(action.id)}
+              className={cn(
+                "w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all duration-200",
+                isDone
+                  ? "bg-emerald-50/80 border-emerald-200/60 shadow-sm"
+                  : "bg-white/70 border-slate-200/60 hover:bg-white hover:shadow-sm hover:border-slate-300/60"
+              )}
+            >
+              {isDone ? (
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 transition-transform duration-200 scale-110" />
+              ) : (
+                <Circle className="w-5 h-5 text-slate-300 flex-shrink-0" />
+              )}
+              <span className="text-lg flex-shrink-0">{action.icon}</span>
+              <span className={cn(
+                "text-xs font-medium leading-snug transition-colors duration-200",
+                isDone ? "text-emerald-700 line-through opacity-70" : "text-slate-700"
+              )}>
+                {action.text}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Completion message */}
+      {allDone && (
+        <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-emerald-100/80 border border-emerald-200/60 animate-in fade-in duration-300">
+          <span className="text-lg">🎉</span>
+          <p className="text-xs font-semibold text-emerald-700">Great, you completed today's wellness focus!</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -82,6 +183,7 @@ export default function MenopauseDashboard() {
   const sleepMood = useMemo(() => getSleepMoodSummary(logs), [logs]);
   const guidance = useMemo(() => getDailyGuidance(profile, logs), [profile, logs]);
   const boneHealth = useMemo(() => getBoneHealthStatus(logs, profile), [logs, profile]);
+  const wellnessFocus = useMemo(() => getWellnessFocusToday(logs, profile), [logs, profile]);
 
   const stage = profile?.stage || "menopause";
   const stageLabel = getStageLabel(stage);
@@ -182,6 +284,18 @@ export default function MenopauseDashboard() {
           </ScrollReveal>
         </div>
 
+        {/* ── 1b. Your Wellness Focus Today ───────────────────────── */}
+        <ScrollReveal delay={70}>
+          <WellnessFocusCard
+            focusEmoji={wellnessFocus.focusEmoji}
+            focusTitle={wellnessFocus.focusTitle}
+            explanation={wellnessFocus.explanation}
+            actions={wellnessFocus.actions}
+            redFlagAlert={wellnessFocus.redFlagAlert}
+            tone={wellnessFocus.tone}
+          />
+        </ScrollReveal>
+
         {/* ── 2. Top Symptoms This Week ─────────────────────────── */}
         {topSymptoms.length > 0 && (
           <ScrollReveal delay={80}>
@@ -277,30 +391,6 @@ export default function MenopauseDashboard() {
               </Link>
             </div>
           </ScrollReveal>
-        </div>
-
-        {/* ── 4. Quick Access Grid ──────────────────────────────── */}
-        <ScrollReveal delay={140}>
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center shadow-md">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-700">Your Modules</h2>
-          </div>
-        </ScrollReveal>
-
-        <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
-          <ModuleCard to="/menopause/symptoms" icon={Activity} label="Symptom Tracker" emoji="📊" gradient="bg-gradient-to-br from-purple-500 to-indigo-500" delay={150} />
-          <ModuleCard to="/menopause/bone-health" icon={Bone} label="Bone Health" emoji="🦴" gradient="bg-gradient-to-br from-teal-500 to-emerald-500" delay={160} />
-          <ModuleCard to="/menopause/nutrition" icon={Apple} label="Nutrition Guide" emoji="🥗" gradient="bg-gradient-to-br from-green-500 to-emerald-500" delay={170} />
-          <ModuleCard to="/menopause/sleep-mood" icon={Moon} label="Sleep & Mood" emoji="😴" gradient="bg-gradient-to-br from-indigo-500 to-purple-500" delay={180} />
-          <ModuleCard to="/menopause/weight-metabolism" icon={Scale} label="Weight & Metabolism" emoji="⚖️" gradient="bg-gradient-to-br from-blue-500 to-cyan-500" delay={190} />
-          <ModuleCard to="/menopause/heart-health" icon={Heart} label="Heart Health" emoji="❤️" gradient="bg-gradient-to-br from-rose-500 to-pink-500" delay={200} />
-          <ModuleCard to="/menopause/goals" icon={Target} label="Daily Goals" emoji="🎯" gradient="bg-gradient-to-br from-amber-500 to-orange-500" delay={210} />
-          <ModuleCard to="/menopause/fun" icon={Sparkles} label="Fun Activity" emoji="🌟" gradient="bg-gradient-to-br from-pink-500 to-rose-400" delay={220} />
-          <ModuleCard to="/menopause/ai-assistant" icon={Bot} label="AI Assistant" emoji="🤖" gradient="bg-gradient-to-br from-violet-500 to-purple-600" delay={230} />
-          <ModuleCard to="/menopause/phc-support" icon={Building2} label="PHC Support" emoji="🏥" gradient="bg-gradient-to-br from-slate-600 to-slate-800" delay={240} />
-          <ModuleCard to="/menopause/connect" icon={Stethoscope} label="Connect" emoji="🔗" gradient="bg-gradient-to-br from-teal-500 to-cyan-500" delay={245} />
         </div>
 
         {/* ── Privacy Footer ────────────────────────────────────── */}

@@ -62,7 +62,6 @@ const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause/tools", label: "Tools", icon: Wrench },
   { to: "/menopause/care-essentials", label: "Care Essentials", icon: Package },
   { to: "/menopause/dashboard", label: "Dashboard", icon: Calendar },
-  { to: "/menopause/articles", label: "Articles", icon: BookOpen },
   { to: "/menopause/connect", label: "Connect", icon: Stethoscope },
 ];
 

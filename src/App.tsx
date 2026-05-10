@@ -142,11 +142,13 @@ import DoctorSchedules from "./modules/doctor/pages/DoctorSchedules";
 import DoctorCalendar from "./modules/doctor/pages/DoctorCalendar";
 import DoctorProfile from "./modules/doctor/pages/DoctorProfile";
 import DoctorRequests from "./modules/doctor/pages/DoctorRequests";
+import DoctorHistory from "./modules/doctor/pages/DoctorHistory";
 import PatientsPage from "./modules/doctor/patients/pages/PatientsPage";
 import ConnectPage from "./pages/ConnectPage";
 import RequestSchedulePage from "./pages/RequestSchedulePage";
 import AskDoctorPage from "./pages/AskDoctorPage";
 import ConnectionStatusPage from "./pages/ConnectionStatusPage";
+import DoctorReportsPage from "./pages/DoctorReportsPage";
 
 import PubertyNutritionGuide from "./modules/puberty/nutrition-guide/pages/PubertyNutritionGuide";
 
@@ -234,6 +236,7 @@ const App = () => (
 
                           <Route path="/doctor/patients" element={<PatientsPage />} />
 
+                          <Route path="/doctor/history" element={<DoctorHistory />} />
                           <Route path="/doctor/questions" element={<DoctorQuestions />} />
 
                           <Route path="/doctor/alerts" element={<DoctorAlerts />} />
@@ -287,6 +290,8 @@ const App = () => (
                           <Route path="/ask-doctor" element={<AskDoctorPage />} />
 
                           <Route path="/connection-status" element={<ConnectionStatusPage />} />
+
+                          <Route path="/connect/reports" element={<DoctorReportsPage />} />
 
                           <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
 

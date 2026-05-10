@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link, useLocation } from "react-router-dom";
 import type { LucideIcon } from "lucide-react";
+<<<<<<< HEAD
 import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package } from "lucide-react";
+=======
+import { Home, Bot, Calendar, Apple, Search, Trophy, Wrench, ShoppingBag, BookOpen, Globe, X, Building2, Siren, LogIn, UserPlus, LogOut, Baby, Settings, User, ChevronDown, Pill, Flame, BarChart3, Leaf, Target, ShieldCheck, Sparkles, ClipboardList, Heart, LayoutDashboard, Activity, Bone, Moon, Scale, Package, Bell, MessageSquareText, AlertCircle, FileText, Map, Stethoscope } from "lucide-react";
+>>>>>>> 9a910a677bb3310233ec5ca679e8ed399b41054e
 import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -62,6 +66,25 @@ const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause/tools", label: "Tools", icon: Wrench },
   { to: "/menopause/care-essentials", label: "Care Essentials", icon: Package },
   { to: "/menopause/dashboard", label: "Dashboard", icon: Calendar },
+<<<<<<< HEAD
+=======
+  { to: "/menopause/articles", label: "Articles", icon: BookOpen },
+  { to: "/menopause/connect", label: "Connect", icon: Stethoscope },
+];
+
+// Doctor-specific menu items
+const DOCTOR_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
+  { to: "/doctor", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/doctor/schedules", label: "Schedules", icon: ClipboardList },
+  { to: "/doctor/calendar", label: "Calendar", icon: Calendar },
+  { to: "/doctor/profile", label: "Profile", icon: User },
+  { to: "/doctor/history", label: "Reports", icon: FileText },
+  { to: "/doctor/questions", label: "Questions", icon: MessageSquareText },
+  { to: "/doctor/alerts", label: "Alerts", icon: AlertCircle },
+  { to: "/doctor/requests", label: "Requests", icon: FileText },
+  { to: "/doctor/hotspots", label: "Hotspots", icon: Map },
+  { to: "/doctor/patients", label: "Patients", icon: User },
+>>>>>>> 9a910a677bb3310233ec5ca679e8ed399b41054e
 ];
 
 export default function HamburgerMenu({

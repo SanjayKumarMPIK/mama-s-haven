@@ -81,8 +81,9 @@ export default function NutritionGuide() {
   const accent = phaseAccent[phase] ?? phaseAccent.puberty;
   const [selectedAnalysis, setSelectedAnalysis] = useState<SymptomAnalysisResult | null>(null);
   const isFP = phase === "family-planning";
+  const isAccordionPhase = phase === "family-planning" || phase === "menopause";
 
-  // ── Accordion state (family-planning only) ──
+  // ── Accordion state (family-planning + menopause) ──
   const priorityNutrients = useMemo(
     () => result.nutrientNeeds.filter(n => n.isPriority),
     [result.nutrientNeeds],
@@ -291,9 +292,9 @@ export default function NutritionGuide() {
             </ScrollReveal>
 
             {/* ════════════════════════════════════════════════════
-                FAMILY-PLANNING: Accordion Layout
+                FAMILY-PLANNING + MENOPAUSE: Accordion Layout
                ════════════════════════════════════════════════════ */}
-            {isFP ? (
+            {isAccordionPhase ? (
               <div className="space-y-3">
                 {/* 1 ── Detected Symptoms ─────────────────────── */}
                 {result.detectedSymptoms.length > 0 && (

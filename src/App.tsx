@@ -146,6 +146,7 @@ import DoctorCalendar from "./modules/doctor/pages/DoctorCalendar";
 import DoctorProfile from "./modules/doctor/pages/DoctorProfile";
 import DoctorRequests from "./modules/doctor/pages/DoctorRequests";
 import DoctorHistory from "./modules/doctor/pages/DoctorHistory";
+import DoctorHotspots from "./modules/doctor/pages/DoctorHotspots";
 import PatientsPage from "./modules/doctor/patients/pages/PatientsPage";
 import ConnectPage from "./pages/ConnectPage";
 import RequestSchedulePage from "./pages/RequestSchedulePage";
@@ -243,6 +244,8 @@ const App = () => (
                           <Route path="/doctor/questions" element={<DoctorQuestions />} />
 
                           <Route path="/doctor/alerts" element={<DoctorAlerts />} />
+
+                          <Route path="/doctor/hotspots" element={<DoctorHotspots />} />
 
                           <Route path="/doctor/*" element={<DoctorDashboard />} />
 

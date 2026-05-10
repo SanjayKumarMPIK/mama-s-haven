@@ -8,8 +8,10 @@ import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { usePhase } from "@/hooks/usePhase";
+import { useRole } from "@/hooks/useRole";
 import { useOnboarding } from "@/hooks/useOnboarding";
 import NavItem from "@/components/navigation/NavItem";
+import { DOCTOR_NAV_ITEMS } from "@/components/navigation/doctorMenuConfig";
 
 interface HamburgerMenuProps {
   open: boolean;
@@ -35,6 +37,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
   { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
   { to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList },
+  { to: "/connect", label: "Connect", icon: Stethoscope },
 ];
 
 
@@ -65,20 +68,6 @@ const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause/connect", label: "Connect", icon: Stethoscope },
 ];
 
-// Doctor-specific menu items
-const DOCTOR_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/doctor", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/doctor/schedules", label: "Schedules", icon: ClipboardList },
-  { to: "/doctor/calendar", label: "Calendar", icon: Calendar },
-  { to: "/doctor/profile", label: "Profile", icon: User },
-  { to: "/doctor/history", label: "Reports", icon: FileText },
-  { to: "/doctor/questions", label: "Questions", icon: MessageSquareText },
-  { to: "/doctor/alerts", label: "Alerts", icon: AlertCircle },
-  { to: "/doctor/requests", label: "Requests", icon: FileText },
-  { to: "/doctor/hotspots", label: "Hotspots", icon: Map },
-  { to: "/doctor/patients", label: "Patients", icon: User },
-];
-
 export default function HamburgerMenu({
   open,
   onClose,
@@ -89,6 +78,7 @@ export default function HamburgerMenu({
   const location = useLocation();
   const { user, logout } = useAuth();
   const { phase } = usePhase();
+  const { role } = useRole();
   const { setShowOnboarding, config } = useOnboarding();
   const [isProfileExpanded, setIsProfileExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -192,7 +182,7 @@ export default function HamburgerMenu({
                   <div className="overflow-hidden">
                     <div className="p-2 bg-card border-t border-border space-y-1">
                       <Link
-                        to="/profile"
+                        to={role === "doctor" ? "/doctor/profile" : "/profile"}
                         onClick={onClose}
                         className="w-full text-left flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       >
@@ -216,7 +206,18 @@ export default function HamburgerMenu({
 
             {/* Navigation items */}
             <nav className="space-y-2" aria-label="Secondary navigation">
-              {phase === "menopause" ? (
+              {role === "doctor" ? (
+                DOCTOR_NAV_ITEMS.map((item) => (
+                  <NavItem
+                    key={item.to}
+                    to={item.to}
+                    label={item.label}
+                    icon={item.icon}
+                    active={location.pathname === item.to}
+                    onClick={onClose}
+                  />
+                ))
+              ) : phase === "menopause" ? (
                 MENOPAUSE_ITEMS.map((item) => (
                   <NavItem
                     key={item.to}

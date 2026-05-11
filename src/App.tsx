@@ -96,7 +96,6 @@ import WellnessPlan from "./pages/menopause/WellnessPlan";
 
 import DailyGoals from "./pages/menopause/DailyGoals";
 
-import MenopauseCareEssentials from "./pages/menopause/MenopauseCareEssentials";
 
 import FunActivity from "./pages/menopause/FunActivity";
 
@@ -117,6 +116,9 @@ const MenoHeartHealth = lazy(() => import("./pages/menopause/MenoHeartHealth"));
 const MenoPHCSupport = lazy(() => import("./pages/menopause/MenoPHCSupport"));
 const MenoTools = lazy(() => import("./pages/menopause/MenoTools"));
 const MenoHotFlashTracker = lazy(() => import("./pages/menopause/MenoHotFlashTracker"));
+const MenoCoolingPlanBuilder = lazy(() => import("./pages/menopause/MenoCoolingPlanBuilder"));
+const MenoCalmRoutineGenerator = lazy(() => import("./pages/menopause/MenoCalmRoutineGenerator"));
+const MenoBrainFogHelper = lazy(() => import("./pages/menopause/MenoBrainFogHelper"));
 
 import BabySupportiveHelper from "./pages/BabySupportiveHelper";
 import MaternalGuideHub from "./pages/MaternalGuideHub";
@@ -392,6 +394,9 @@ const App = () => (
 
                         <Route path="/menopause/wellness" element={<WellnessDashboard />} />
                         <Route path="/menopause/tools" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoTools /></Suspense>} />
+                        <Route path="/menopause/tools/cooling-plan" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoCoolingPlanBuilder /></Suspense>} />
+                        <Route path="/menopause/tools/calm-routine" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoCalmRoutineGenerator /></Suspense>} />
+                        <Route path="/menopause/tools/brain-fog-helper" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoBrainFogHelper /></Suspense>} />
                         <Route path="/menopause/hot-flash-tracker" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenoHotFlashTracker /></Suspense>} />
 
 
@@ -399,8 +404,6 @@ const App = () => (
 
 
                         <Route path="/menopause/goals" element={<DailyGoals />} />
-
-                        <Route path="/menopause/care-essentials" element={<MenopauseCareEssentials />} />
 
                         <Route path="/menopause/fun" element={<FunActivity />} />
 

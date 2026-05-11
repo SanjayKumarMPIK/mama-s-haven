@@ -17,7 +17,7 @@ import AccordionSection from "@/components/nutrition/AccordionSection";
 import { Link, Navigate } from "react-router-dom";
 import {
   Apple, Calendar, ChevronRight, ArrowRight, Activity,
-  Sparkles, ShieldCheck, Search, ClipboardList, Scale, Salad
+  Sparkles, ShieldCheck, ClipboardList, Scale, Salad
 } from "lucide-react";
 import type { SymptomAnalysisResult } from "@/lib/nutrition/nutritionTypes";
 
@@ -228,15 +228,17 @@ export default function NutritionGuide() {
           <AffirmationBanner />
         </ScrollReveal>
 
-        {/* ─── Symptom Search ─────────────────────────────────── */}
-        <ScrollReveal>
-          <SymptomSearchBar
-            onSearch={searchSymptoms}
-            onSelectSymptom={handleSelectSymptom}
-            suggestedSymptoms={suggestedSymptoms}
-            accentColor={phase}
-          />
-        </ScrollReveal>
+        {/* ─── Symptom Search (hidden for menopause) ─────────── */}
+        {phase !== "menopause" && (
+          <ScrollReveal>
+            <SymptomSearchBar
+              onSearch={searchSymptoms}
+              onSelectSymptom={handleSelectSymptom}
+              suggestedSymptoms={suggestedSymptoms}
+              accentColor={phase}
+            />
+          </ScrollReveal>
+        )}
 
         {/* ─── Symptom Analysis Card (when selected) ──────────── */}
         {selectedAnalysis && (

@@ -7,7 +7,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, X, Activity, TrendingUp, BarCh
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell } from "recharts";
 import { toast } from "sonner";
 
-import { useHealthLog, type HealthLogEntry, type HealthLogs, type PubertyEntry, type PeriodBloodColor } from "@/hooks/useHealthLog";
+import { useHealthLog, type HealthLogEntry, type HealthLogs, type PubertyEntry, type PeriodBloodColor, type BleedingLevel } from "@/hooks/useHealthLog";
 import { usePhase, type Phase } from "@/hooks/usePhase";
 import { useProfile } from "@/hooks/useProfile";
 import {
@@ -441,6 +441,7 @@ function hasAnyLogData(entry: HealthLogEntry | undefined): boolean {
   if (sympCount > 0) return true;
   if ((entry as any).mood) return true;
   if ((entry as any).notes) return true;
+  if ((entry as any).bleedingLevel) return true;
   if ((entry as any).bloodColor) return true;
   if ((entry as any).periodSymptoms && Object.values((entry as any).periodSymptoms).some(Boolean)) return true;
   if (isPeriodDay(entry)) return true;
@@ -495,6 +496,7 @@ function buildTooltipForEntry(entry: HealthLogEntry | undefined): string | undef
       .map(([k]) => k.replace(/([A-Z])/g, " $1").trim());
     parts.push(...active.slice(0, 3));
   }
+  if ((entry as any).bleedingLevel && (entry as PubertyEntry).periodStarted) parts.push(`Flow: ${(entry as any).bleedingLevel}`);
   if ((entry as any).mood) parts.push(`Mood: ${(entry as any).mood}`);
   if ((entry as any).bloodColor) parts.push(`Color: ${(entry as any).bloodColor}`);
   if (parts.length === 0) return "Logged";
@@ -1208,11 +1210,19 @@ function SymptomLogPanel({
   const handlePeriodToggle = useCallback((checked: boolean) => {
     setPeriodStarted(checked);
     setPeriodToggleChanged(true);
+    if (checked) {
+      setBleedingLevel((prev) => prev || "Moderate");
+    }
   }, []);
 
   const [bloodColor, setBloodColor] = useState<PeriodBloodColor | "">(() => {
     const existingColor = (periodEntry as any)?.bloodColor as PeriodBloodColor | undefined;
     return existingColor ?? "";
+  });
+
+  const [bleedingLevel, setBleedingLevel] = useState<BleedingLevel | "">(() => {
+    const existingLevel = (periodEntry as any)?.bleedingLevel as BleedingLevel | undefined;
+    return existingLevel ?? "";
   });
 
   const [periodInfectionSymptoms, setPeriodInfectionSymptoms] = useState<{
@@ -1294,7 +1304,8 @@ function SymptomLogPanel({
     const hasPeriod = (phase === "puberty" || phase === "family-planning") && periodStarted;
     const hasBloodColor = bloodColor !== "";
     const hasPeriodConcerns = Object.values(periodInfectionSymptoms).some(Boolean);
-    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod && !hasBloodColor && !hasPeriodConcerns && !hasHydration) {
+    const hasBleedingLevel = bleedingLevel !== "";
+    if (!hasSymptoms && !hasMood && !hasSleep && !hasNotes && !hasPeriod && !hasBloodColor && !hasPeriodConcerns && !hasHydration && !hasBleedingLevel) {
       toast.error("Please select at least one symptom, sleep log, mood, or add a note before saving.");
       return;
     }
@@ -1336,6 +1347,7 @@ function SymptomLogPanel({
         periodStarted: periodStarted,
         periodEnded: false,
         flowIntensity: null,
+        bleedingLevel: (phase === "puberty" && bleedingLevel !== "" ? bleedingLevel : undefined) as BleedingLevel | undefined,
         bloodColor: bloodColor !== "" ? bloodColor : undefined,
         periodSymptoms: periodSymptomsHasAny ? periodInfectionSymptoms : undefined,
         symptoms: { ...selectedSymptoms },
@@ -1706,6 +1718,37 @@ function SymptomLogPanel({
                       : "data-[state=checked]:bg-pink-500"
                   )}
                 />
+              </div>
+            </section>
+          )}
+
+          {/* Bleeding Level (only when period is ON) */}
+          {phase === "puberty" && periodStarted && (
+            <section className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="space-y-1">
+                <h3 className="text-sm font-semibold">Bleeding Level</h3>
+                <p className="text-xs text-muted-foreground">How heavy is your flow today?</p>
+              </div>
+              <div className="flex gap-2">
+                {(["Mild", "Moderate", "Heavy"] as const).map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setBleedingLevel(bleedingLevel === level ? "" : level)}
+                    className={cn(
+                      "flex-1 py-2 rounded-xl border text-sm font-medium transition-all",
+                      bleedingLevel === level
+                        ? level === "Mild"
+                          ? "bg-green-100 border-green-300 text-green-700 shadow-sm"
+                          : level === "Moderate"
+                          ? "bg-amber-100 border-amber-300 text-amber-700 shadow-sm"
+                          : "bg-red-100 border-red-300 text-red-700 shadow-sm"
+                        : "bg-card border-border hover:bg-muted/50 text-foreground"
+                    )}
+                  >
+                    {level}
+                  </button>
+                ))}
               </div>
             </section>
           )}

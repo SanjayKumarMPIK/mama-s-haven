@@ -21,7 +21,7 @@ const CATEGORIES: TipCategory[] = [
   {
     id: "nutrition",
     emoji: "🥗",
-    title: "Nutrition",
+    title: "Nutritions",
     color: "text-emerald-700",
     bgColor: "bg-emerald-50",
     borderColor: "border-emerald-200",
@@ -97,9 +97,8 @@ export default function PreparationTips() {
         return (
           <div
             key={cat.id}
-            className={`rounded-xl border overflow-hidden transition-all duration-300 ${cat.borderColor} ${
-              isExpanded ? cat.bgColor : "bg-white"
-            }`}
+            className={`rounded-xl border overflow-hidden transition-all duration-300 ${cat.borderColor} ${isExpanded ? cat.bgColor : "bg-white"
+              }`}
           >
             <button
               onClick={() => setExpandedId(isExpanded ? null : cat.id)}
@@ -109,9 +108,8 @@ export default function PreparationTips() {
               <span className={`text-sm font-semibold ${cat.color}`}>{cat.title}</span>
               <span className="ml-auto text-xs text-slate-400">{cat.tips.length} tips</span>
               <svg
-                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
-                  isExpanded ? "rotate-180" : ""
-                }`}
+                className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                  }`}
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"

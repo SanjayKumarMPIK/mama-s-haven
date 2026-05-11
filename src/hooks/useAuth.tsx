@@ -21,6 +21,9 @@ export interface StoredUserData {
   };
   location: {
     region: "north" | "south" | "east" | "west";
+    state: string;
+    nearbyPhc: "Anna Nagar PHC" | "Tambaram PHC";
+    regionType: "rural" | "urban" | "hillstation";
   };
   health: {
     lifeStage: string;
@@ -113,6 +116,9 @@ function mapSupabaseMetadataToStored(
     },
     location: {
       region: (location.region as StoredUserData["location"]["region"]) || "north",
+      state: location.state ? String(location.state) : "",
+      nearbyPhc: (location.nearbyPhc as StoredUserData["location"]["nearbyPhc"]) || "Anna Nagar PHC",
+      regionType: (location.regionType as StoredUserData["location"]["regionType"]) || "urban",
     },
     health: {
       lifeStage: String(health.lifeStage ?? metadata?.healthCycleStatus ?? ""),
@@ -146,6 +152,9 @@ function mapDbRowToStored(row: Record<string, unknown>): StoredUserData {
     },
     location: {
       region: (row.region as StoredUserData["location"]["region"]) || "north",
+      state: row.state ? String(row.state) : "",
+      nearbyPhc: (row.nearby_phc as StoredUserData["location"]["nearbyPhc"]) || "Anna Nagar PHC",
+      regionType: (row.region_type as StoredUserData["location"]["regionType"]) || "urban",
     },
     health: {
       lifeStage: String(row.health_cycle_status ?? ""),
@@ -191,6 +200,9 @@ async function upsertDbProfile(userId: string, payload: StoredUserData): Promise
       weight: payload.basic.weight ? Number(payload.basic.weight) : null,
       height: payload.basic.height ? Number(payload.basic.height) : null,
       region: payload.location.region,
+      state: payload.location.state,
+      nearby_phc: payload.location.nearbyPhc,
+      region_type: payload.location.regionType,
       health_cycle_status: payload.health.lifeStage,
       last_period_date: payload.health.lastPeriodDate || null,
       cycle_length: payload.health.cycleLength ? Number(payload.health.cycleLength) : null,
@@ -339,8 +351,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       toast.error("Please provide a valid email address.");
       return false;
     }
-    if (!Number.isInteger(parsedAge) || parsedAge < 1 || parsedAge > 120) {
-      toast.error("Please provide a valid age between 1 and 120.");
+    if (!Number.isInteger(parsedAge) || parsedAge < 8 || parsedAge > 120) {
+      toast.error("Please provide a valid age between 8 and 120.");
       return false;
     }
 
@@ -360,6 +372,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       location: {
         region: userData.location.region,
+        state: userData.location.state,
+        nearbyPhc: userData.location.nearbyPhc,
+        regionType: userData.location.regionType,
       },
       health: {
         lifeStage,

@@ -21,6 +21,9 @@ export interface ProfileData {
 
   // Location
   region: "north" | "south" | "east" | "west";
+  state: string;
+  nearbyPhc: "Anna Nagar PHC" | "Tambaram PHC";
+  regionType: "rural" | "urban" | "hillstation";
 
   // Body metrics
   weight: number | null;
@@ -146,6 +149,9 @@ export function useProfile() {
     const bloodGroup = basic?.bloodGroup ?? "";
 
     const region = (loc?.region ?? "north") as "north" | "south" | "east" | "west";
+    const state = loc?.state ?? "";
+    const nearbyPhc = (loc?.nearbyPhc ?? "Anna Nagar PHC") as ProfileData["nearbyPhc"];
+    const regionType = (loc?.regionType ?? "urban") as ProfileData["regionType"];
 
     const weight = wellnessProfile?.weight ?? null;
     const height = wellnessProfile?.height ?? null;
@@ -176,6 +182,9 @@ export function useProfile() {
       email,
       bloodGroup,
       region,
+      state,
+      nearbyPhc,
+      regionType,
       weight,
       height,
       bmi,
@@ -227,7 +236,16 @@ export function useProfile() {
     setExtras(updated);
   }, [extras]);
 
-  const updatePersonalInfo = useCallback((updates: { dob?: string; bloodGroup?: string; medicalConditions?: string[]; region?: "north" | "south" | "east" | "west"; menarcheDate?: string | null }) => {
+  const updatePersonalInfo = useCallback((updates: {
+    dob?: string;
+    bloodGroup?: string;
+    medicalConditions?: string[];
+    region?: "north" | "south" | "east" | "west";
+    state?: string;
+    nearbyPhc?: "Anna Nagar PHC" | "Tambaram PHC";
+    regionType?: "rural" | "urban" | "hillstation";
+    menarcheDate?: string | null;
+  }) => {
     updateProfile((prev) => {
       const dob = updates.dob ?? prev.basic.dob;
       const age = computeAgeFromDOB(dob);
@@ -257,6 +275,9 @@ export function useProfile() {
         location: {
           ...prev.location,
           region,
+          state: updates.state ?? prev.location.state ?? "",
+          nearbyPhc: updates.nearbyPhc ?? prev.location.nearbyPhc ?? "Anna Nagar PHC",
+          regionType: updates.regionType ?? prev.location.regionType ?? "urban",
         },
       };
     });

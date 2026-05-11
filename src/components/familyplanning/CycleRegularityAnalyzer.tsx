@@ -3,10 +3,12 @@
  *
  * TTC Tool: Tracks cycle consistency to improve prediction accuracy.
  * Allows user to log recent cycle lengths and shows regularity analysis.
+ * Cycle history is now synced to Supabase (user_profiles.pregnancy_profile.cycleHistory).
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useFamilyPlanningProfile } from "@/hooks/useFamilyPlanningProfile";
+import { supabase } from "@/integrations/supabase/client";
 
 const LS_KEY = "ss-fp-cycle-history";
 
@@ -24,11 +26,59 @@ function writeHistory(data: number[]) {
   } catch {}
 }
 
+async function loadCloudHistory(): Promise<number[] | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return null;
+    const { data, error } = await (supabase as any)
+      .from("user_profiles")
+      .select("pregnancy_profile")
+      .eq("id", session.user.id)
+      .maybeSingle();
+    if (error || !data?.pregnancy_profile?.cycleHistory) return null;
+    return data.pregnancy_profile.cycleHistory as number[];
+  } catch {
+    return null;
+  }
+}
+
+async function saveCloudHistory(history: number[]): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+    const { data: existing } = await (supabase as any)
+      .from("user_profiles")
+      .select("pregnancy_profile")
+      .eq("id", session.user.id)
+      .maybeSingle();
+    const prev = existing?.pregnancy_profile ?? {};
+    await (supabase as any)
+      .from("user_profiles")
+      .update({ pregnancy_profile: { ...prev, cycleHistory: history } })
+      .eq("id", session.user.id);
+  } catch {
+    /* silent – localStorage is the fallback */
+  }
+}
+
 export default function CycleRegularityAnalyzer() {
   const { profile } = useFamilyPlanningProfile();
   const [history, setHistory] = useState<number[]>(() => readHistory());
   const [input, setInput] = useState("");
   const [showInput, setShowInput] = useState(false);
+
+  // Load cloud history on mount and merge with local
+  useEffect(() => {
+    loadCloudHistory().then((cloud) => {
+      if (!cloud || cloud.length === 0) return;
+      setHistory((prev) => {
+        // Merge: prefer cloud if it has more data
+        const merged = cloud.length >= prev.length ? cloud : prev;
+        writeHistory(merged);
+        return merged;
+      });
+    });
+  }, []);
 
   const addCycle = useCallback(() => {
     const val = parseInt(input, 10);
@@ -36,6 +86,7 @@ export default function CycleRegularityAnalyzer() {
     const updated = [...history, val].slice(-12); // Keep last 12 cycles
     writeHistory(updated);
     setHistory(updated);
+    saveCloudHistory(updated);
     setInput("");
     setShowInput(false);
   }, [input, history]);
@@ -44,7 +95,9 @@ export default function CycleRegularityAnalyzer() {
     const updated = history.slice(0, -1);
     writeHistory(updated);
     setHistory(updated);
+    saveCloudHistory(updated);
   }, [history]);
+
 
   const analysis = useMemo(() => {
     if (history.length < 2) {

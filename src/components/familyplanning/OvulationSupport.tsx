@@ -3,32 +3,11 @@
  *
  * TTC Tool (Optional): Allows inputs like cervical mucus tracking
  * and basal body temperature for better ovulation predictions.
+ * Data is now persisted to Supabase via useHealthLog (health_logs table).
  */
 
-import { useState, useCallback } from "react";
-
-const LS_KEY = "ss-fp-ovulation-logs";
-
-interface OvulationLog {
-  date: string;
-  mucus: "dry" | "sticky" | "creamy" | "watery" | "egg-white" | "";
-  temperature: string;
-  notes: string;
-}
-
-function readLogs(): OvulationLog[] {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return [];
-}
-
-function writeLogs(data: OvulationLog[]) {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(data));
-  } catch {}
-}
+import { useState, useCallback, useEffect } from "react";
+import { useHealthLog, type FamilyPlanningEntry } from "@/hooks/useHealthLog";
 
 const MUCUS_OPTIONS = [
   { val: "dry", emoji: "🏜️", label: "Dry", desc: "No noticeable discharge", fertility: "Low" },
@@ -38,33 +17,62 @@ const MUCUS_OPTIONS = [
   { val: "egg-white", emoji: "🥚", label: "Egg White", desc: "Stretchy, clear", fertility: "Peak" },
 ] as const;
 
+type MucusVal = typeof MUCUS_OPTIONS[number]["val"] | "";
+
 export default function OvulationSupport() {
-  const [logs, setLogs] = useState<OvulationLog[]>(() => readLogs());
-  const [mucus, setMucus] = useState<OvulationLog["mucus"]>("");
+  const { getLog, saveLog, getPhaseLogs } = useHealthLog();
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const [mucus, setMucus] = useState<MucusVal>("");
   const [temp, setTemp] = useState("");
   const [notes, setNotes] = useState("");
   const [saved, setSaved] = useState(false);
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  const todayLog = logs.find((l) => l.date === todayStr);
+  // Pre-fill from today's existing log
+  useEffect(() => {
+    const existing = getLog(todayStr, "family-planning") as FamilyPlanningEntry | undefined;
+    if (existing) {
+      if (existing.ovulationMucus) setMucus(existing.ovulationMucus as MucusVal);
+      if (existing.ovulationTemp) setTemp(existing.ovulationTemp);
+    }
+  }, [todayStr]);
 
-  const saveLog = useCallback(() => {
-    const log: OvulationLog = {
-      date: todayStr,
-      mucus,
-      temperature: temp,
-      notes,
+  // Build recent logs from family-planning phase
+  const recentLogs = Object.entries(getPhaseLogs("family-planning"))
+    .filter(([, e]) => (e as FamilyPlanningEntry).ovulationMucus || (e as FamilyPlanningEntry).ovulationTemp)
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 5);
+
+  const handleSave = useCallback(() => {
+    const existing = (getLog(todayStr, "family-planning") as FamilyPlanningEntry | undefined) ?? {
+      phase: "family-planning" as const,
+      lastPeriodDate: "",
+      cycleLength: null,
+      symptoms: {
+        irregularCycle: false,
+        ovulationPain: false,
+        moodChanges: false,
+        fatigue: false,
+        stress: false,
+        sleepIssues: false,
+      },
+      mood: null,
+      sleepHours: null,
+      sleepQuality: null,
     };
-    const updated = logs.filter((l) => l.date !== todayStr);
-    updated.push(log);
-    updated.sort((a, b) => b.date.localeCompare(a.date));
-    const trimmed = updated.slice(0, 30); // Keep last 30 entries
-    writeLogs(trimmed);
-    setLogs(trimmed);
+
+    saveLog(todayStr, {
+      ...existing,
+      ovulationMucus: mucus || undefined,
+      ovulationTemp: temp || undefined,
+      notes: notes || existing.notes,
+    } as FamilyPlanningEntry);
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
-  }, [mucus, temp, notes, todayStr, logs]);
+  }, [mucus, temp, notes, todayStr, getLog, saveLog]);
 
+  const todayLog = getLog(todayStr, "family-planning") as FamilyPlanningEntry | undefined;
   const selectedMucusInfo = MUCUS_OPTIONS.find((m) => m.val === mucus);
 
   return (
@@ -86,7 +94,7 @@ export default function OvulationSupport() {
           {MUCUS_OPTIONS.map((opt) => (
             <button
               key={opt.val}
-              onClick={() => setMucus(opt.val as OvulationLog["mucus"])}
+              onClick={() => setMucus(opt.val as MucusVal)}
               className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 transition-all duration-200 active:scale-[0.95] ${
                 mucus === opt.val
                   ? "border-sky-400 bg-sky-50 shadow-sm"
@@ -156,7 +164,7 @@ export default function OvulationSupport() {
 
       {/* Save Button */}
       <button
-        onClick={saveLog}
+        onClick={handleSave}
         disabled={!mucus && !temp}
         className={`w-full py-3 rounded-xl font-semibold text-sm transition-all active:scale-[0.97] ${
           saved
@@ -164,26 +172,27 @@ export default function OvulationSupport() {
             : "bg-sky-500 text-white hover:bg-sky-600 disabled:opacity-40 disabled:cursor-not-allowed"
         }`}
       >
-        {saved ? "✓ Saved for Today" : todayLog ? "Update Today's Log" : "Save Today's Entry"}
+        {saved ? "✓ Saved for Today" : todayLog?.ovulationMucus || todayLog?.ovulationTemp ? "Update Today's Log" : "Save Today's Entry"}
       </button>
 
       {/* Recent Logs */}
-      {logs.length > 0 && (
+      {recentLogs.length > 0 && (
         <div>
           <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-            Recent Entries ({logs.length})
+            Recent Entries ({recentLogs.length})
           </p>
           <div className="space-y-1.5 max-h-32 overflow-y-auto">
-            {logs.slice(0, 5).map((log, i) => {
-              const mucusOpt = MUCUS_OPTIONS.find((m) => m.val === log.mucus);
+            {recentLogs.map(([date, entry]) => {
+              const e = entry as FamilyPlanningEntry;
+              const mucusOpt = MUCUS_OPTIONS.find((m) => m.val === e.ovulationMucus);
               return (
                 <div
-                  key={i}
+                  key={date}
                   className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs"
                 >
-                  <span className="text-slate-400 font-medium w-20">{log.date}</span>
+                  <span className="text-slate-400 font-medium w-20">{date}</span>
                   {mucusOpt && <span>{mucusOpt.emoji} {mucusOpt.label}</span>}
-                  {log.temperature && <span className="text-sky-600">🌡️ {log.temperature}°F</span>}
+                  {e.ovulationTemp && <span className="text-sky-600">🌡️ {e.ovulationTemp}°F</span>}
                 </div>
               );
             })}

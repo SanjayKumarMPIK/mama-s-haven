@@ -2,11 +2,12 @@
  * useCareLog.ts
  *
  * React hook for managing Care Log data in the Family Planning phase.
- * Stores care profile, daily logs, checklists, and weekly check-ins in localStorage.
- * Completely separate from normal symptom/health logs.
+ * Stores care profile, daily logs, checklists, and weekly check-ins.
+ * Primary persistence: Supabase care_logs table. localStorage as instant cache.
  */
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -110,6 +111,26 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// ─── Supabase helpers ──────────────────────────────────────────────────────────
+
+async function upsertCloud(payload: {
+  care_profile?: CareProfile | null;
+  daily_logs?: Record<string, CareLogEntry>;
+  checklists?: Record<string, CareChecklist>;
+  weekly_checkins?: WeeklyCheckIn[];
+}): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+    await (supabase as any).from("care_logs").upsert(
+      { user_id: session.user.id, ...payload, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    );
+  } catch {
+    /* silent — localStorage is the fallback */
+  }
+}
+
 export function computeRecoveryStage(procedureDate: string): RecoveryStage {
   const proc = new Date(procedureDate + "T12:00:00");
   const now = new Date();
@@ -202,6 +223,38 @@ export function useCareLog() {
 
   const isOnboarded = profile !== null;
 
+  // ─── Load from Supabase on auth ───────────────────────────────────────
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      const uid = data.session?.user?.id;
+      if (!uid) return;
+      try {
+        const { data: row, error } = await (supabase as any)
+          .from("care_logs")
+          .select("*")
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (error || !row) return;
+        if (row.care_profile) {
+          setProfile(row.care_profile as CareProfile);
+          saveJSON(KEYS.profile, row.care_profile);
+        }
+        if (row.daily_logs && Object.keys(row.daily_logs).length > 0) {
+          setLogs(row.daily_logs as Record<string, CareLogEntry>);
+          saveJSON(KEYS.logs, row.daily_logs);
+        }
+        if (row.checklists && Object.keys(row.checklists).length > 0) {
+          setChecklists(row.checklists as Record<string, CareChecklist>);
+          saveJSON(KEYS.checklists, row.checklists);
+        }
+        if (row.weekly_checkins && (row.weekly_checkins as WeeklyCheckIn[]).length > 0) {
+          setWeeklyCheckIns(row.weekly_checkins as WeeklyCheckIn[]);
+          saveJSON(KEYS.weeklyCheckIns, row.weekly_checkins);
+        }
+      } catch { /* silent */ }
+    });
+  }, []);
+
   // ─── Onboarding ───────────────────────────────────────────────────────
 
   const completeOnboarding = useCallback(
@@ -212,6 +265,7 @@ export function useCareLog() {
       };
       setProfile(newProfile);
       saveJSON(KEYS.profile, newProfile);
+      upsertCloud({ care_profile: newProfile });
     },
     []
   );
@@ -219,6 +273,7 @@ export function useCareLog() {
   const resetProfile = useCallback(() => {
     setProfile(null);
     localStorage.removeItem(KEYS.profile);
+    upsertCloud({ care_profile: null });
   }, []);
 
   // ─── Recovery info ────────────────────────────────────────────────────
@@ -250,6 +305,7 @@ export function useCareLog() {
       };
       setLogs(updated);
       saveJSON(KEYS.logs, updated);
+      upsertCloud({ daily_logs: updated });
     },
     [logs]
   );
@@ -271,6 +327,7 @@ export function useCareLog() {
       };
       setChecklists(updated);
       saveJSON(KEYS.checklists, updated);
+      upsertCloud({ checklists: updated });
     },
     [checklists]
   );
@@ -298,6 +355,7 @@ export function useCareLog() {
       ];
       setWeeklyCheckIns(updated);
       saveJSON(KEYS.weeklyCheckIns, updated);
+      upsertCloud({ weekly_checkins: updated });
     },
     [weeklyCheckIns]
   );

@@ -182,6 +182,9 @@ import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
 
 import { NotificationProvider } from "@/hooks/useNotificationStore";
 
+import { DoctorAuthProvider } from "./modules/doctor/context/DoctorAuthContext";
+import DoctorGuard from "./modules/doctor/components/DoctorGuard";
+
 
 
 
@@ -203,6 +206,8 @@ const App = () => (
         <PregnancyProfileProvider>
 
           <AuthProvider>
+
+            <DoctorAuthProvider>
 
             <RoleProvider>
 
@@ -230,24 +235,26 @@ const App = () => (
 
                           <Route path="/" element={<RoleEntry />} />
 
-                          <Route path="/doctor/schedules" element={<DoctorSchedules />} />
+                          <Route path="/doctor/schedules" element={<DoctorGuard><DoctorSchedules /></DoctorGuard>} />
 
-                          <Route path="/doctor/calendar" element={<DoctorCalendar />} />
+                          <Route path="/doctor/calendar" element={<DoctorGuard><DoctorCalendar /></DoctorGuard>} />
 
-                          <Route path="/doctor/profile" element={<DoctorProfile />} />
+                          <Route path="/doctor/profile" element={<DoctorGuard><DoctorProfile /></DoctorGuard>} />
 
-                          <Route path="/doctor/requests" element={<DoctorRequests />} />
+                          <Route path="/doctor/requests" element={<DoctorGuard><DoctorRequests /></DoctorGuard>} />
 
-                          <Route path="/doctor/patients" element={<PatientsPage />} />
+                          <Route path="/doctor/patients" element={<DoctorGuard><PatientsPage /></DoctorGuard>} />
 
-                          <Route path="/doctor/history" element={<DoctorHistory />} />
-                          <Route path="/doctor/questions" element={<DoctorQuestions />} />
+                          <Route path="/doctor/history" element={<DoctorGuard><DoctorHistory /></DoctorGuard>} />
+                          <Route path="/doctor/questions" element={<DoctorGuard><DoctorQuestions /></DoctorGuard>} />
 
-                          <Route path="/doctor/alerts" element={<DoctorAlerts />} />
+                          <Route path="/doctor/alerts" element={<DoctorGuard><DoctorAlerts /></DoctorGuard>} />
 
-                          <Route path="/doctor/hotspots" element={<DoctorHotspots />} />
+                          <Route path="/doctor/hotspots" element={<DoctorGuard><DoctorHotspots /></DoctorGuard>} />
 
-                          <Route path="/doctor/*" element={<DoctorDashboard />} />
+                          <Route path="/doctor/dashboard" element={<DoctorGuard><DoctorDashboard /></DoctorGuard>} />
+
+                          <Route path="/doctor/*" element={<DoctorGuard><DoctorDashboard /></DoctorGuard>} />
 
                           <Route path="/login" element={<Login />} />
 
@@ -430,6 +437,8 @@ const App = () => (
             </HealthLogProvider>
 
             </RoleProvider>
+
+            </DoctorAuthProvider>
 
           </AuthProvider>
 

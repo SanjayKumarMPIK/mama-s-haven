@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Users, Calendar, FileText, AlertCircle, Search, Clock, ChevronRight, Bell, Stethoscope } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useDoctorAuth } from "@/modules/doctor/hooks/useDoctorAuth";
 import { Link } from "react-router-dom";
 import { getRequestsByDoctor } from "@/lib/connectionStore";
 import { getReportsByDoctor } from "@/components/connect/medicalReportStore";
@@ -100,6 +101,8 @@ const statusColors: Record<string, string> = {
 
 export default function DoctorDashboard() {
   const { user } = useAuth();
+  const { doctorProfile } = useDoctorAuth();
+  const displayName = doctorProfile?.full_name ?? user?.name ?? "Doctor";
   const [patients, setPatients] = useState<PatientRecord[]>(loadPatients);
   const [appointments, setAppointments] = useState<ScheduleItem[]>(loadTodayAppointments);
   const [pendingReports, setPendingReports] = useState(loadPendingReportsCount);
@@ -171,7 +174,7 @@ export default function DoctorDashboard() {
               </div>
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold">Doctor Dashboard</h1>
-                <p className="text-teal-100 mt-1">Welcome back, Dr. {user?.name ?? "Doctor"}</p>
+                <p className="text-teal-100 mt-1">Welcome back, {displayName}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

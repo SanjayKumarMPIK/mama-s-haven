@@ -6,7 +6,7 @@
  * profile (weight, height, region) in localStorage.
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePhase } from "@/hooks/usePhase";
 import { useHealthLog } from "@/hooks/useHealthLog";
@@ -59,11 +59,32 @@ interface UseWellnessResult {
 }
 
 export function useWellnessRecommendation(): UseWellnessResult {
-  const { fullProfile } = useAuth();
+  const { fullProfile, updateProfile } = useAuth();
   const { phase, phaseName } = usePhase();
   const { logs } = useHealthLog();
 
-  const [profile, setProfile] = useState<WellnessProfile | null>(() => readProfile());
+  // Try to build profile from fullProfile first, then fallback to local storage
+  const [profile, setProfile] = useState<WellnessProfile | null>(() => {
+    if (fullProfile?.basic?.weight && fullProfile?.basic?.height) {
+      return {
+        weight: Number(fullProfile.basic.weight),
+        height: Number(fullProfile.basic.height),
+        region: fullProfile.location?.region || "north"
+      };
+    }
+    return readProfile();
+  });
+
+  // Keep local state in sync with fullProfile updates
+  useEffect(() => {
+    if (fullProfile?.basic?.weight && fullProfile?.basic?.height) {
+      setProfile({
+        weight: Number(fullProfile.basic.weight),
+        height: Number(fullProfile.basic.height),
+        region: fullProfile.location?.region || "north"
+      });
+    }
+  }, [fullProfile?.basic?.weight, fullProfile?.basic?.height, fullProfile?.location?.region]);
 
   // Derive age from auth profile — fallback to 25
   const age = useMemo(() => {
@@ -87,7 +108,21 @@ export function useWellnessRecommendation(): UseWellnessResult {
   const saveProfile = useCallback((p: WellnessProfile) => {
     writeProfile(p);
     setProfile(p);
-  }, []);
+    
+    // Sync to Supabase via useAuth
+    updateProfile((prev) => ({
+      ...prev,
+      basic: {
+        ...prev.basic,
+        weight: String(p.weight),
+        height: String(p.height),
+      },
+      location: {
+        ...prev.location,
+        region: p.region,
+      }
+    }));
+  }, [updateProfile]);
 
   const clearProfile = useCallback(() => {
     try { localStorage.removeItem(LS_KEY); } catch {}

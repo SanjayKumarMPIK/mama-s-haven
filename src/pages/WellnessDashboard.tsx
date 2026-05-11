@@ -22,6 +22,7 @@ import {
 import ScrollReveal from "@/components/ScrollReveal";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import type { Region } from "@/lib/nutritionData";
+import { supabase } from "@/integrations/supabase/client";
 
 import {
   Sparkles, Droplets, Moon, Activity, ArrowRight,
@@ -273,11 +274,62 @@ export default function WellnessDashboard() {
 
   // ── Action completion state ─────────────────────────────
   const [completionStore, setCompletionStore] = useState(() => getCompletedActions());
-  const handleToggle = useCallback((id: string) => {
-    setCompletionStore(toggleActionComplete(id));
-  }, []);
-
   
+  // Fetch from DB on mount
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchActions = async () => {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const { data, error } = await supabase
+          .from("wellness_action_logs")
+          .select("action_id")
+          .eq("user_id", user.id)
+          .eq("completed_at", today);
+          
+        if (!error && data) {
+           const actionIds = data.map(d => d.action_id);
+           setCompletionStore(prev => {
+             if (JSON.stringify(prev.completed.sort()) === JSON.stringify([...actionIds].sort())) return prev;
+             return { ...prev, completed: actionIds, date: today };
+           });
+        }
+      } catch (e) {
+        console.warn("Could not fetch wellness actions. Table might not exist yet.", e);
+      }
+    };
+    fetchActions();
+  }, [user?.id]);
+
+  const handleToggle = useCallback(async (id: string) => {
+    // Optimistic local update
+    const newState = toggleActionComplete(id);
+    setCompletionStore(newState);
+    
+    // Background DB sync
+    if (user?.id) {
+       const isCompleted = newState.completed.includes(id);
+       try {
+         const today = new Date().toISOString().slice(0, 10);
+         if (isCompleted) {
+            await supabase.from("wellness_action_logs").upsert({
+              user_id: user.id,
+              action_id: id,
+              phase: phase,
+              completed_at: today
+            }, { onConflict: 'user_id, action_id, completed_at' });
+         } else {
+            await supabase.from("wellness_action_logs")
+              .delete()
+              .eq("user_id", user.id)
+              .eq("action_id", id)
+              .eq("completed_at", today);
+         }
+       } catch (e) {
+         console.warn("Failed to sync wellness action to DB. Make sure table exists.");
+       }
+    }
+  }, [user?.id, phase]);
   
   // --- Setup phase ---
   if (!isProfileComplete || !recommendation) {

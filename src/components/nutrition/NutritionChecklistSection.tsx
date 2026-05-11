@@ -1,6 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useHealthLog } from "@/hooks/useHealthLog";
+import { useAuth } from "@/hooks/useAuth";
+import { usePhase } from "@/hooks/usePhase";
+import { supabase } from "@/integrations/supabase/client";
 import { generateNutritionChecklist, NutritionChecklistItem } from "@/lib/nutrition/nutritionChecklistEngine";
 import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import ScrollReveal from "@/components/ScrollReveal";
@@ -20,9 +23,12 @@ interface NutritionChecklistSectionProps {
 export default function NutritionChecklistSection({ className = "", hideTodaysFocus = false }: NutritionChecklistSectionProps) {
   const { trimester, currentWeek } = usePregnancyProfile();
   const { logs } = useHealthLog();
+  const { user } = useAuth();
+  const { phase } = usePhase();
   const deficiencyInsights = useDeficiencyInsights();
 
   const [items, setItems] = useState<NutritionChecklistItem[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<NutritionChecklistItem | null>(null);
 
@@ -59,10 +65,72 @@ export default function NutritionChecklistSection({ className = "", hideTodaysFo
     localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items]);
 
-  const handleToggle = (id: string) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, completed: !item.completed } : item
-    ));
+  // Fetch completions for today
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchTasks = async () => {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const { data, error } = await supabase
+          .from("nutrition_checklist_logs")
+          .select("task_id")
+          .eq("user_id", user.id)
+          .eq("completed_at", today)
+          .eq("phase", phase);
+          
+        if (!error && data) {
+          setCompletedTasks(data.map(d => d.task_id));
+        }
+      } catch (e) {
+        console.warn("Could not fetch checklist logs.", e);
+      }
+    };
+    fetchTasks();
+  }, [user?.id, phase]);
+
+  const displayItems = useMemo(() => {
+    return items.map(item => ({
+      ...item,
+      completed: completedTasks.includes(item.title)
+    }));
+  }, [items, completedTasks]);
+
+  const handleToggle = async (id: string) => {
+    const item = items.find(i => i.id === id);
+    if (!item) return;
+
+    const taskId = item.title;
+    const isCompleted = completedTasks.includes(taskId);
+    
+    const newCompleted = isCompleted 
+       ? completedTasks.filter(tId => tId !== taskId) 
+       : [...completedTasks, taskId];
+    
+    // Optimistic UI update
+    setCompletedTasks(newCompleted);
+
+    if (!user?.id) return;
+
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      if (!isCompleted) {
+        await supabase.from("nutrition_checklist_logs").upsert({
+          user_id: user.id,
+          task_id: taskId,
+          task_title: item.title,
+          phase: phase,
+          completed_at: today
+        }, { onConflict: 'user_id, task_id, completed_at' });
+      } else {
+        await supabase.from("nutrition_checklist_logs")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("task_id", taskId)
+          .eq("completed_at", today);
+      }
+    } catch (e) {
+      console.warn("Failed to sync checklist task.");
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -97,8 +165,8 @@ export default function NutritionChecklistSection({ className = "", hideTodaysFo
     }
   };
 
-  const incompleteItems = items.filter(i => !i.completed);
-  const completedItems = items.filter(i => i.completed);
+  const incompleteItems = displayItems.filter(i => !i.completed);
+  const completedItems = displayItems.filter(i => i.completed);
 
   return (
     <div className={className}>
@@ -116,7 +184,7 @@ export default function NutritionChecklistSection({ className = "", hideTodaysFo
       </div>
 
       <ScrollReveal>
-        <ChecklistSummary items={items} />
+        <ChecklistSummary items={displayItems} />
       </ScrollReveal>
 
       <ScrollReveal delay={100}>

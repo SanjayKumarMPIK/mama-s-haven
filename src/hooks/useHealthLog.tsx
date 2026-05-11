@@ -1,6 +1,8 @@
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from "react";
 import type { Phase } from "@/hooks/usePhase";
 import type { KeySymptomId } from "@/lib/symptomAnalysis";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -105,6 +107,10 @@ export interface FamilyPlanningEntry {
   sleepQuality: SleepQuality | null;
   hydrationGlasses?: number | null;
   notes?: string;
+  /** Ovulation Support tool: cervical mucus observation */
+  ovulationMucus?: string;
+  /** Ovulation Support tool: basal body temperature in °F */
+  ovulationTemp?: string;
   /** Single-day irregular entry — does NOT trigger multi-day expansion or predictions */
   _irregular?: boolean;
   /** Links regular period blocks together, e.g. "cycle_2026-04-05" */
@@ -588,6 +594,46 @@ const HealthLogContext = createContext<HealthLogContextType>({
 export function HealthLogProvider({ children }: { children: ReactNode }) {
   const [store, setStore] = useState<CalendarStore>(() => readStoreLS());
   const logs = useMemo(() => flattenStore(store), [store]);
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchLogs = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("health_logs")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (error) {
+          console.error("Error fetching health logs from Supabase:", error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          setStore((prev) => {
+            const next = { ...prev };
+            for (const row of data) {
+              const dateISO = row.log_date;
+              const phase = row.phase as Phase;
+              const entry = row.entry_data as HealthLogEntry;
+              next[dateISO] = {
+                ...(next[dateISO] ?? {}),
+                [phase]: entry,
+              };
+            }
+            writeStoreLS(next);
+            return next;
+          });
+        }
+      } catch (err) {
+        console.error("Failed to fetch health logs", err);
+      }
+    };
+
+    fetchLogs();
+  }, [user]);
 
   // Strictly separated state references (Option B style structure)
   const separatedLogs = useMemo(() => {
@@ -633,7 +679,18 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
       writeStoreLS(next);
       return next;
     });
-  }, []);
+
+    if (user) {
+      supabase.from("health_logs").upsert({
+        user_id: user.id,
+        log_date: dateISO,
+        phase: entry.phase,
+        entry_data: entry as any,
+      }, { onConflict: 'user_id, log_date, phase' }).then(({ error }) => {
+        if (error) console.error("Error saving log to Supabase:", error);
+      });
+    }
+  }, [user]);
 
   const saveBulkLogs = useCallback((entries: Record<string, HealthLogEntry>) => {
     setStore((prev) => {
@@ -647,7 +704,21 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
       writeStoreLS(next);
       return next;
     });
-  }, []);
+
+    if (user) {
+      const rowsToUpsert = Object.entries(entries).map(([dateISO, entry]) => ({
+        user_id: user.id,
+        log_date: dateISO,
+        phase: entry.phase,
+        entry_data: entry as any,
+      }));
+      if (rowsToUpsert.length > 0) {
+        supabase.from("health_logs").upsert(rowsToUpsert, { onConflict: 'user_id, log_date, phase' }).then(({ error }) => {
+          if (error) console.error("Error saving bulk logs to Supabase:", error);
+        });
+      }
+    }
+  }, [user]);
 
   const deleteLog = useCallback((dateISO: string, phase?: Phase) => {
     setStore((prev) => {
@@ -669,7 +740,17 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
       writeStoreLS(next);
       return next;
     });
-  }, []);
+
+    if (user) {
+      let query = supabase.from("health_logs").delete().eq("user_id", user.id).eq("log_date", dateISO);
+      if (phase) {
+        query = query.eq("phase", phase);
+      }
+      query.then(({ error }) => {
+        if (error) console.error("Error deleting log from Supabase:", error);
+      });
+    }
+  }, [user]);
 
   const deleteBulkLogs = useCallback((dateISOs: string[], phase?: Phase) => {
     if (dateISOs.length === 0) return;
@@ -689,7 +770,17 @@ export function HealthLogProvider({ children }: { children: ReactNode }) {
       writeStoreLS(next);
       return next;
     });
-  }, []);
+
+    if (user) {
+      let query = supabase.from("health_logs").delete().eq("user_id", user.id).in("log_date", dateISOs);
+      if (phase) {
+        query = query.eq("phase", phase);
+      }
+      query.then(({ error }) => {
+        if (error) console.error("Error deleting bulk logs from Supabase:", error);
+      });
+    }
+  }, [user]);
 
   const clearAllLogs = useCallback(() => {
     setStore({});

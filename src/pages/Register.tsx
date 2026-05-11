@@ -18,6 +18,19 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+const REGION_STATE_OPTIONS = {
+  south: ["Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh"],
+  north: ["Delhi", "Punjab", "Haryana", "Uttar Pradesh"],
+  east: ["West Bengal", "Odisha", "Bihar", "Assam"],
+  west: ["Maharashtra", "Gujarat", "Rajasthan", "Goa"],
+} as const;
+
+const NEARBY_PHC_OPTIONS = ["Anna Nagar PHC", "Tambaram PHC"] as const;
+const REGION_TYPE_OPTIONS = ["rural", "urban", "hillstation"] as const;
+
+type RegionKey = keyof typeof REGION_STATE_OPTIONS;
+type RegionType = (typeof REGION_TYPE_OPTIONS)[number];
+
 const registerSchema = z.object({
   basic: z.object({
     fullName: z.string().min(2, "Full name is required"),
@@ -26,8 +39,8 @@ const registerSchema = z.object({
       .min(1, "Age is required")
       .refine((value) => {
         const age = Number(value);
-        return Number.isInteger(age) && age >= 1 && age <= 120;
-      }, "Enter a valid age between 1 and 120"),
+        return Number.isInteger(age) && age >= 8 && age <= 120;
+      }, "Enter a valid age between 8 and 120"),
     dob: z.string().min(1, "Date of birth is required"),
     contact: z.string().email("Valid email is required"),
     bloodGroup: z.enum(["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"], { message: "Blood group is required" }),
@@ -39,6 +52,9 @@ const registerSchema = z.object({
   }),
   location: z.object({
     region: z.enum(["north", "south", "east", "west"], { message: "Region is required" }),
+    state: z.string().min(1, "State is required"),
+    nearbyPhc: z.enum(NEARBY_PHC_OPTIONS, { message: "Nearby PHC is required" }),
+    regionType: z.enum(REGION_TYPE_OPTIONS, { message: "Region type is required" }),
   }),
   health: z.object({
     lastPeriodDate: z.string().optional(),
@@ -81,7 +97,7 @@ export default function Register() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       basic: { fullName: "", age: "", dob: "", contact: "", bloodGroup: "O+", password: "", confirmPassword: "" },
-      location: { region: "north" },
+      location: { region: "north", state: "Delhi", nearbyPhc: "Anna Nagar PHC", regionType: "urban" },
       health: { lastPeriodDate: "", cycleLength: "", haemoglobin: "", dietType: "mixed", knownConditions: "", medicalConditions: [] },
       consent: { terms: false, healthData: false }
     },
@@ -90,6 +106,15 @@ export default function Register() {
 
   const { formState: { errors }, trigger } = form;
   const dob = form.watch("basic.dob");
+  const selectedRegion = form.watch("location.region");
+  const availableStates = REGION_STATE_OPTIONS[selectedRegion as RegionKey] ?? REGION_STATE_OPTIONS.north;
+
+  useEffect(() => {
+    const currentState = form.getValues("location.state");
+    if (!availableStates.includes(currentState as (typeof availableStates)[number])) {
+      form.setValue("location.state", availableStates[0], { shouldValidate: true });
+    }
+  }, [availableStates, form]);
 
   useEffect(() => {
     if (!dob) return;
@@ -401,7 +426,7 @@ export default function Register() {
                     
                     <div className="space-y-2">
                       <Label htmlFor="location.region" className="text-slate-700 font-medium">Region <span className="text-red-500">*</span></Label>
-                      <Select onValueChange={(v) => form.setValue("location.region", v as any)} defaultValue={form.getValues("location.region")}>
+                      <Select onValueChange={(v) => form.setValue("location.region", v as RegionKey, { shouldValidate: true })} defaultValue={form.getValues("location.region")}>
                         <SelectTrigger id="region-trigger" className="h-12 bg-slate-50 border-slate-200 focus:ring-primary shadow-sm">
                           <SelectValue placeholder="Select Region" />
                         </SelectTrigger>
@@ -414,6 +439,51 @@ export default function Register() {
                       </Select>
                       {getErrorFields('location')?.region && <p className="text-red-500 text-sm">{getErrorFields('location').region.message}</p>}
                       <p className="text-xs text-slate-500">Used for food, lifestyle, and climate-based personalized suggestions.</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="location.state" className="text-slate-700 font-medium">State <span className="text-red-500">*</span></Label>
+                      <Select onValueChange={(v) => form.setValue("location.state", v, { shouldValidate: true })} value={form.watch("location.state")}>
+                        <SelectTrigger id="state-trigger" className="h-12 bg-slate-50 border-slate-200 focus:ring-primary shadow-sm">
+                          <SelectValue placeholder="Select State" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableStates.map((stateName) => (
+                            <SelectItem key={stateName} value={stateName}>{stateName}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {getErrorFields('location')?.state && <p className="text-red-500 text-sm">{getErrorFields('location').state.message}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="location.nearbyPhc" className="text-slate-700 font-medium">Nearby PHC <span className="text-red-500">*</span></Label>
+                      <Select onValueChange={(v) => form.setValue("location.nearbyPhc", v as (typeof NEARBY_PHC_OPTIONS)[number], { shouldValidate: true })} value={form.watch("location.nearbyPhc")}>
+                        <SelectTrigger id="nearby-phc-trigger" className="h-12 bg-slate-50 border-slate-200 focus:ring-primary shadow-sm">
+                          <SelectValue placeholder="Select Nearby PHC" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {NEARBY_PHC_OPTIONS.map((phc) => (
+                            <SelectItem key={phc} value={phc}>{phc}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {getErrorFields('location')?.nearbyPhc && <p className="text-red-500 text-sm">{getErrorFields('location').nearbyPhc.message}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="location.regionType" className="text-slate-700 font-medium">Region Type <span className="text-red-500">*</span></Label>
+                      <Select onValueChange={(v) => form.setValue("location.regionType", v as RegionType, { shouldValidate: true })} value={form.watch("location.regionType")}>
+                        <SelectTrigger id="region-type-trigger" className="h-12 bg-slate-50 border-slate-200 focus:ring-primary shadow-sm">
+                          <SelectValue placeholder="Select Region Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="rural">Rural</SelectItem>
+                          <SelectItem value="urban">Urban</SelectItem>
+                          <SelectItem value="hillstation">Hillstation</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {getErrorFields('location')?.regionType && <p className="text-red-500 text-sm">{getErrorFields('location').regionType.message}</p>}
                     </div>
                   </div>
                 )}

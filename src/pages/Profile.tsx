@@ -25,6 +25,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const REGION_STATE_OPTIONS = {
+  south: ["Tamil Nadu", "Kerala", "Karnataka", "Andhra Pradesh"],
+  north: ["Delhi", "Punjab", "Haryana", "Uttar Pradesh"],
+  east: ["West Bengal", "Odisha", "Bihar", "Assam"],
+  west: ["Maharashtra", "Gujarat", "Rajasthan", "Goa"],
+} as const;
+
+type RegionKey = keyof typeof REGION_STATE_OPTIONS;
+
 // ─── BMI Gauge ────────────────────────────────────────────────────────────────
 
 function BMIGauge({ bmi, category }: { bmi: number | null; category: string }) {
@@ -239,13 +248,26 @@ export default function ProfilePage() {
   const [draftMenarcheDate, setDraftMenarcheDate] = useState<string | null>(profile.menarcheDate || null);
   const [draftMedicalConditions, setDraftMedicalConditions] = useState<string[]>(profile.medicalConditions || []);
   const [draftRegion, setDraftRegion] = useState<"north" | "south" | "east" | "west">(profile.region || "north");
+  const [draftState, setDraftState] = useState(profile.state || "");
+  const [draftNearbyPhc, setDraftNearbyPhc] = useState<"Anna Nagar PHC" | "Tambaram PHC">(profile.nearbyPhc || "Anna Nagar PHC");
+  const [draftRegionType, setDraftRegionType] = useState<"rural" | "urban" | "hillstation">(profile.regionType || "urban");
+  const availableStates = REGION_STATE_OPTIONS[draftRegion as RegionKey] ?? REGION_STATE_OPTIONS.north;
   useEffect(() => {
     setDraftDob(profile.dob || "");
     setDraftBloodGroup(profile.bloodGroup || "");
     setDraftMenarcheDate(profile.menarcheDate || null);
     setDraftMedicalConditions(profile.medicalConditions || []);
     setDraftRegion(profile.region || "north");
-  }, [profile.dob, profile.bloodGroup, profile.menarcheDate, profile.medicalConditions, profile.region]);
+    setDraftState(profile.state || "");
+    setDraftNearbyPhc(profile.nearbyPhc || "Anna Nagar PHC");
+    setDraftRegionType(profile.regionType || "urban");
+  }, [profile.dob, profile.bloodGroup, profile.menarcheDate, profile.medicalConditions, profile.region, profile.state, profile.nearbyPhc, profile.regionType]);
+
+  useEffect(() => {
+    if (!availableStates.includes(draftState as (typeof availableStates)[number])) {
+      setDraftState(availableStates[0]);
+    }
+  }, [availableStates, draftState]);
   
   const handleFinishSetup = () => {
     if (profile.weight === null || profile.height === null) {
@@ -316,6 +338,9 @@ export default function ProfilePage() {
       menarcheDate: draftMenarcheDate,
       medicalConditions: draftMedicalConditions,
       region: draftRegion,
+      state: draftState,
+      nearbyPhc: draftNearbyPhc,
+      regionType: draftRegionType,
     });
     setEditingPersonal(false);
     toast.success("Profile health details updated.");
@@ -931,22 +956,85 @@ export default function ProfilePage() {
               iconBg="bg-teal-50"
               iconColor="text-teal-600"
             />
+            <InfoRow
+              icon={MapPin}
+              label="State"
+              value={profile.state || "Not set"}
+              iconBg="bg-indigo-50"
+              iconColor="text-indigo-600"
+            />
+            <InfoRow
+              icon={MapPin}
+              label="Nearby PHC"
+              value={profile.nearbyPhc || "Not set"}
+              iconBg="bg-cyan-50"
+              iconColor="text-cyan-700"
+            />
+            <InfoRow
+              icon={MapPin}
+              label="Region Type"
+              value={profile.regionType ? `${profile.regionType.charAt(0).toUpperCase()}${profile.regionType.slice(1)}` : "Not set"}
+              iconBg="bg-emerald-50"
+              iconColor="text-emerald-700"
+            />
           </div>
           {editingPersonal && (
-            <div className="px-5 py-4 border-t border-border/40">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 block">Edit Region</label>
-              <select
-                value={draftRegion}
-                onChange={(e) => setDraftRegion(e.target.value as any)}
-                className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background max-w-xs"
-              >
-                <option value="north">North India</option>
-                <option value="south">South India</option>
-                <option value="east">East India</option>
-                <option value="west">West India</option>
-              </select>
-              <p className="text-xs text-muted-foreground mt-2">
-                Region is used for food, lifestyle, and climate-based personalized recommendations.
+            <div className="px-5 py-4 border-t border-border/40 space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Edit Region Details</label>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Region</label>
+                  <select
+                    value={draftRegion}
+                    onChange={(e) => setDraftRegion(e.target.value as RegionKey)}
+                    className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background"
+                  >
+                    <option value="north">North India</option>
+                    <option value="south">South India</option>
+                    <option value="east">East India</option>
+                    <option value="west">West India</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">State</label>
+                  <select
+                    value={draftState}
+                    onChange={(e) => setDraftState(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background"
+                  >
+                    {availableStates.map((state) => (
+                      <option key={state} value={state}>{state}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Nearby PHC</label>
+                  <select
+                    value={draftNearbyPhc}
+                    onChange={(e) => setDraftNearbyPhc(e.target.value as "Anna Nagar PHC" | "Tambaram PHC")}
+                    className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background"
+                  >
+                    <option value="Anna Nagar PHC">Anna Nagar PHC</option>
+                    <option value="Tambaram PHC">Tambaram PHC</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Region Type</label>
+                  <select
+                    value={draftRegionType}
+                    onChange={(e) => setDraftRegionType(e.target.value as "rural" | "urban" | "hillstation")}
+                    className="h-10 w-full rounded-lg border border-border px-3 text-sm bg-background"
+                  >
+                    <option value="rural">Rural</option>
+                    <option value="urban">Urban</option>
+                    <option value="hillstation">Hillstation</option>
+                  </select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Region details are used for location-based recommendations and nearby PHC guidance.
               </p>
             </div>
           )}
@@ -957,7 +1045,7 @@ export default function ProfilePage() {
           <Shield className="w-5 h-5 text-muted-foreground shrink-0" />
           <p className="text-[11px] text-muted-foreground leading-relaxed">
             Your profile data is synced with Supabase securely and also cached locally for faster loading.
-            You can update DOB, blood group, and medical conditions from this profile page.
+            You can update DOB, blood group, region details, and medical conditions from this profile page.
           </p>
         </div>
 

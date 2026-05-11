@@ -1,4 +1,4 @@
-import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { getCurrentWeek, getDaysRemaining, getTrimester, getProgressPercentage } from "@/lib/pregnancyData";
 import { resolveMaternityLifecycle } from "@/lib/maternityLifecycleResolver";
 import {
@@ -6,6 +6,7 @@ import {
   getCompletedWeeksSince,
 } from "@/lib/maternalPhaseResolver";
 import type { Region } from "@/lib/nutritionData";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -126,6 +127,50 @@ export interface PregnancyProfile {
 // ─── Storage ─────────────────────────────────────────────────────────────────
 
 const STORAGE_KEY = "mh-profile";
+
+// ─── Supabase helpers ─────────────────────────────────────────────────────────
+
+interface CloudPregnancyProfile {
+  lmp?: string;
+  userEDD?: string;
+  delivery?: DeliveryData;
+  gdmStatus?: GDMStatus;
+  gttQuestionCompleted?: boolean;
+  deliveryTransitionCompleted?: boolean;
+}
+
+async function loadCloudProfile(userId: string): Promise<CloudPregnancyProfile | null> {
+  try {
+    const { data, error } = await (supabase as any)
+      .from("user_profiles")
+      .select("pregnancy_profile")
+      .eq("id", userId)
+      .maybeSingle();
+    if (error || !data?.pregnancy_profile) return null;
+    return data.pregnancy_profile as CloudPregnancyProfile;
+  } catch {
+    return null;
+  }
+}
+
+async function saveCloudProfile(userId: string, profile: PregnancyProfile): Promise<void> {
+  try {
+    const payload: CloudPregnancyProfile = {
+      lmp: profile.lmp,
+      userEDD: profile.userEDD,
+      delivery: profile.delivery,
+      gdmStatus: profile.gdmStatus,
+      gttQuestionCompleted: profile.gttQuestionCompleted,
+      deliveryTransitionCompleted: profile.deliveryTransitionCompleted,
+    };
+    await (supabase as any)
+      .from("user_profiles")
+      .update({ pregnancy_profile: payload })
+      .eq("id", userId);
+  } catch {
+    /* silent – localStorage is the fallback */
+  }
+}
 
 function loadProfile(): PregnancyProfile {
   try {
@@ -259,12 +304,48 @@ const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
 export function PregnancyProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<PregnancyProfile>(loadProfile);
   const [isGTTPopupOpen, setIsGTTPopupOpen] = useState(false);
+  const userIdRef = useRef<string | null>(null);
 
-  // Persist whenever profile changes
+  // Listen for auth state to get userId for Supabase sync
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user?.id ?? null;
+      userIdRef.current = uid;
+      if (!uid) return;
+      // Load from cloud and merge into local state
+      loadCloudProfile(uid).then((cloud) => {
+        if (!cloud) return;
+        setProfile((prev) => {
+          const lmp = cloud.lmp || prev.lmp;
+          const calculatedEDD = lmp ? addDays(lmp, 280) : prev.calculatedEDD;
+          const userEDD = cloud.userEDD ?? prev.userEDD;
+          const activeEDD = userEDD || calculatedEDD;
+          return {
+            ...prev,
+            lmp,
+            calculatedEDD,
+            userEDD,
+            dueDate: activeEDD,
+            isSetup: !!lmp,
+            delivery: cloud.delivery ?? prev.delivery,
+            gdmStatus: cloud.gdmStatus !== undefined ? cloud.gdmStatus : prev.gdmStatus,
+            gttQuestionCompleted: cloud.gttQuestionCompleted ?? prev.gttQuestionCompleted,
+            deliveryTransitionCompleted: cloud.deliveryTransitionCompleted ?? prev.deliveryTransitionCompleted,
+          };
+        });
+      });
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      userIdRef.current = session?.user?.id ?? null;
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  // Persist to localStorage and Supabase whenever profile changes
   useEffect(() => {
     if (profile.isSetup) {
       try {
-        // Store only the essential fields (no derived `dueDate` legacy field)
         const toStore = {
           name: profile.name,
           lmp: profile.lmp,
@@ -274,6 +355,11 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
         };
         localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
       } catch { /* ignore */ }
+
+      // Sync to Supabase in background
+      if (userIdRef.current) {
+        saveCloudProfile(userIdRef.current, profile);
+      }
     }
   }, [profile]);
 

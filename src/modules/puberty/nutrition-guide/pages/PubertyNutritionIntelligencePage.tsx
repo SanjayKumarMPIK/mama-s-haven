@@ -4,6 +4,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
 import { useProfile } from "@/hooks/useProfile";
 import { useHealthLog } from "@/hooks/useHealthLog";
+import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
 import { usePubertyNutritionIntelligence } from "../hooks/usePubertyNutritionIntelligence";
 import { generatePubertyDiet, type PubertyDietInput, type PubertyDietPlan } from "../services/pubertyDietGenerator";
 import { getPubertySpecificDiet } from "@/lib/pubertyDietLogic";

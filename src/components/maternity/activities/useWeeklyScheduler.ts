@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MaternityMode, PregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { maternityActivitiesData } from "@/components/maternity/MaternityActivities";
 import { generateSchedule, replaceDayActivity, type GeneratedSchedule } from "./SchedulerEngine";
 import {
@@ -39,6 +41,59 @@ function savePersist(key: string, data: PersistShape) {
   }
 }
 
+// ─── Supabase helpers ─────────────────────────────────────────────────────────
+
+async function loadFromSupabase(
+  userId: string,
+  weekKey: string,
+  stage: string,
+  generationSeed: string,
+): Promise<PersistShape | null> {
+  try {
+    const { data, error } = await supabase
+      .from("maternity_exercise_logs")
+      .select("statuses, activity_ids, generation_seed")
+      .eq("user_id", userId)
+      .eq("week_key", weekKey)
+      .eq("stage", stage)
+      .maybeSingle();
+    if (error || !data) return null;
+    // If the seed changed (user shuffled on another device), treat as stale
+    if (data.generation_seed !== generationSeed) return null;
+    return {
+      statuses: data.statuses as DayCompletionStatus[],
+      activityIds: data.activity_ids as (string | null)[],
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function saveToSupabase(
+  userId: string,
+  weekKey: string,
+  stage: string,
+  generationSeed: string,
+  data: PersistShape,
+) {
+  try {
+    await supabase.from("maternity_exercise_logs").upsert(
+      {
+        user_id: userId,
+        week_key: weekKey,
+        stage,
+        generation_seed: generationSeed,
+        statuses: data.statuses as any,
+        activity_ids: data.activityIds as any,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id,week_key,stage" },
+    );
+  } catch {
+    /* silent – localStorage is the fallback */
+  }
+}
+
 function initialStatuses(): DayCompletionStatus[] {
   return Array.from({ length: 7 }, (_, i) => (i === 6 ? "recovery" : "pending"));
 }
@@ -68,6 +123,7 @@ function buildPersistFromSchedule(
 
 export function useWeeklyScheduler() {
   const { mode, trimester, currentWeek, profile } = usePregnancyProfile();
+  const { user } = useAuth();
   const stage = useExercisePhaseResolver();
 
   const progressionWeekIndex = useMemo(
@@ -125,9 +181,12 @@ export function useWeeklyScheduler() {
 
   const [statuses, setStatuses] = useState<DayCompletionStatus[]>(() => initialStatuses());
 
+  // Load from Supabase on mount / key change, then fall back to localStorage
   useEffect(() => {
     const stageChanged = lastStageRef.current !== stage;
     lastStageRef.current = stage;
+
+    // Start with localStorage for instant render
     const persisted = loadPersist(persistKey);
     const next = buildPersistFromSchedule(schedule, persisted);
     setStatuses(next.statuses);
@@ -135,19 +194,42 @@ export function useWeeklyScheduler() {
       statuses: next.statuses,
       activityIds: schedule.days.map((d) => (d.isRecovery ? null : d.activity?.id ?? null)),
     });
+
+    // Then try Supabase for cross-device sync
+    if (user?.id) {
+      loadFromSupabase(user.id, schedule.weekKey, stage, baseSchedule.generationSeed).then(
+        (cloud) => {
+          if (cloud) {
+            const merged = buildPersistFromSchedule(schedule, cloud);
+            setStatuses(merged.statuses);
+            savePersist(persistKey, {
+              statuses: merged.statuses,
+              activityIds: schedule.days.map((d) => (d.isRecovery ? null : d.activity?.id ?? null)),
+            });
+          }
+        },
+      );
+    }
+
     if (stageChanged) {
       setThemeSpin(0);
       setScheduleNonce(0);
       setExpandedDay(null);
     }
-  }, [persistKey, schedule, stage]);
+  }, [persistKey, schedule, stage, user?.id]);
 
+  // Save to both localStorage and Supabase on status changes
   useEffect(() => {
-    savePersist(persistKey, {
+    const persistData: PersistShape = {
       statuses,
       activityIds: schedule.days.map((d) => (d.isRecovery ? null : d.activity?.id ?? null)),
-    });
-  }, [statuses, persistKey, schedule.days]);
+    };
+    savePersist(persistKey, persistData);
+
+    if (user?.id) {
+      saveToSupabase(user.id, schedule.weekKey, stage, baseSchedule.generationSeed, persistData);
+    }
+  }, [statuses, persistKey, schedule.days, user?.id]);
 
   const setStatus = useCallback((dayIndex: number, status: DayCompletionStatus) => {
     if (dayIndex === 6) return;

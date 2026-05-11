@@ -258,7 +258,22 @@ export default function ProfilePage() {
   };
 
   const showCycleSettings = phase === "puberty" || phase === "family-planning";
-  const CONDITION_OPTIONS = ["Hypothyroidism", "Hyperthyroidism", "PCOD", "PCOS", "Diabetes", "Anemia", "Osteoporosis"];
+  
+  const ALL_CONDITIONS = ["Hypothyroidism", "Hyperthyroidism", "PCOD", "PCOS", "Diabetes", "Anemia", "Osteoporosis"];
+  
+  const PHASE_CONDITIONS: Record<string, string[]> = {
+    puberty: ["PCOD", "PCOS", "Anemia", "Hypothyroidism", "Hyperthyroidism"],
+    maternity: ["Diabetes", "Anemia", "Hypothyroidism", "Hyperthyroidism"],
+    "family-planning": ["PCOD", "PCOS", "Diabetes", "Anemia", "Hypothyroidism", "Hyperthyroidism"],
+    menopause: ["Osteoporosis", "Diabetes", "Hypothyroidism", "Hyperthyroidism", "Anemia"],
+  };
+
+  // Only show conditions for the current phase, plus any they already have selected
+  const CONDITION_OPTIONS = Array.from(new Set([
+    ...(PHASE_CONDITIONS[phase] || []),
+    ...draftMedicalConditions
+  ])).filter(c => ALL_CONDITIONS.includes(c));
+
   const CONDITION_GUIDANCE: Record<string, string> = {
     Hypothyroidism: "Slow metabolism diet, iodine intake, and light exercise plan",
     Hyperthyroidism: "Calorie-rich diet, avoid excess iodine, and stress management",

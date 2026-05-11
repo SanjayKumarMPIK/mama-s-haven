@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 export type Phase = "puberty" | "maternity" | "family-planning" | "menopause" | "postpartum";
 
@@ -42,9 +43,25 @@ export function PhaseProvider({ children }: { children: ReactNode }) {
     }
   });
 
-  const setPhase = (p: Phase) => {
+  const setPhase = async (p: Phase) => {
     setPhaseState(p);
     try { localStorage.setItem("ss-phase", p); } catch {}
+
+    // Sync phase change to database
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        // Update user_profiles table
+        await supabase.from("user_profiles").update({ health_cycle_status: p }).eq("id", session.user.id);
+        
+        // Update auth metadata
+        await supabase.auth.updateUser({
+          data: { healthCycleStatus: p }
+        });
+      }
+    } catch (err) {
+      console.error("Failed to sync phase to DB:", err);
+    }
   };
 
   const meta = PHASE_META[phase];

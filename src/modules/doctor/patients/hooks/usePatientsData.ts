@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { getRequestsByDoctor, type ConnectionRequest } from "@/lib/connectionStore";
-
-const DOCTOR_ID = "doctor-demo-123";
+import { getSupabaseRequestsByDoctor } from "@/lib/supabaseConnectionStore";
+import type { ConnectionRequest } from "@/lib/connectionStore";
+import { useDoctorAuth } from "@/modules/doctor/hooks/useDoctorAuth";
 
 export interface Patient {
   id: string;
@@ -34,16 +34,12 @@ function mapRisk(risk?: string): Patient["riskLevel"] {
 }
 
 function formatLastActivity(iso: string): string {
-  const d = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
+  const diffMins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
   if (diffMins < 1) return "Just now";
   if (diffMins < 60) return `${diffMins} min ago`;
   const diffHours = Math.floor(diffMins / 60);
   if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return `${diffDays}d ago`;
+  return `${Math.floor(diffHours / 24)}d ago`;
 }
 
 function mapRequestToPatient(req: ConnectionRequest): Patient {
@@ -63,23 +59,31 @@ function mapRequestToPatient(req: ConnectionRequest): Patient {
 }
 
 export function usePatientsData() {
+  const { doctorProfile } = useDoctorAuth();
+  const doctorId = doctorProfile?.id ?? "";
+
   const [search, setSearch] = useState("");
   const [phaseFilter, setPhaseFilter] = useState<string>("all");
   const [riskFilter, setRiskFilter] = useState<string>("all");
-  const [accepted, setAccepted] = useState<ConnectionRequest[]>(() =>
-    getRequestsByDoctor(DOCTOR_ID).filter((r) => r.status === "accepted"),
-  );
+  const [accepted, setAccepted] = useState<ConnectionRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const mountedRef = useRef(true);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
+    if (!doctorId) return;
+    const data = await getSupabaseRequestsByDoctor(doctorId);
     if (mountedRef.current) {
-      setAccepted(getRequestsByDoctor(DOCTOR_ID).filter((r) => r.status === "accepted"));
+      setAccepted(data.filter((r) => r.status === "accepted"));
     }
-  }, []);
+  }, [doctorId]);
 
   useEffect(() => {
     mountedRef.current = true;
-    const interval = setInterval(refresh, 5000);
+    setIsLoading(true);
+    refresh().finally(() => {
+      if (mountedRef.current) setIsLoading(false);
+    });
+    const interval = setInterval(refresh, 10_000);
     return () => {
       mountedRef.current = false;
       clearInterval(interval);
@@ -97,32 +101,22 @@ export function usePatientsData() {
 
   const filteredPatients = useMemo(() => {
     let result = patients;
-
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((p) => p.name.toLowerCase().includes(q));
     }
-
-    if (phaseFilter !== "all") {
-      result = result.filter((p) => p.phase === phaseFilter);
-    }
-
-    if (riskFilter !== "all") {
-      result = result.filter((p) => p.riskLevel === riskFilter);
-    }
-
+    if (phaseFilter !== "all") result = result.filter((p) => p.phase === phaseFilter);
+    if (riskFilter !== "all")  result = result.filter((p) => p.riskLevel === riskFilter);
     return result;
   }, [patients, search, phaseFilter, riskFilter]);
 
   return {
     patients: filteredPatients,
     totalPatients: patients.length,
+    isLoading,
     stats,
-    search,
-    setSearch,
-    phaseFilter,
-    setPhaseFilter,
-    riskFilter,
-    setRiskFilter,
+    search, setSearch,
+    phaseFilter, setPhaseFilter,
+    riskFilter, setRiskFilter,
   };
 }

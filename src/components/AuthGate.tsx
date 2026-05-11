@@ -4,6 +4,7 @@ import { useOnboarding } from "@/hooks/useOnboarding";
 import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { useRole } from "@/hooks/useRole";
+import { useDoctorAuth } from "@/modules/doctor/context/DoctorAuthContext";
 import OnboardingFlow from "@/components/onboarding/OnboardingFlow";
 import type { ReactNode } from "react";
 
@@ -11,31 +12,27 @@ import type { ReactNode } from "react";
  * AuthGate enforces login → onboarding → profile setup → dashboard flow.
  *
  * - Not logged in → redirect to /login (except /login, /register, /emergency)
+ * - Doctor logged in → redirect to /doctor
  * - Logged in + onboarding incomplete → show OnboardingFlow overlay
- * - Logged in + profile unconfigured → redirect to /profile
  * - Logged in + everything complete → render children normally
+ *
+ * IMPORTANT: We wait for BOTH useAuth and DoctorAuthContext to finish loading
+ * before making any routing decision, to avoid redirect loops when sessionStorage
+ * is cleared but a Supabase session still exists in localStorage.
  */
-function hasCompletedProfileSetup() {
-  try {
-    const raw = localStorage.getItem("ss-wellness-profile");
-    if (!raw) return false;
-    const parsed = JSON.parse(raw);
-    return !!(parsed.weight && parsed.height);
-  } catch {
-    return false;
-  }
-}
-
 export default function AuthGate({ children }: { children: ReactNode }) {
   const { user, isLoading } = useAuth();
   const { config, showOnboarding } = useOnboarding();
   const { phase } = usePhase();
   const { profile: pregnancyProfile } = usePregnancyProfile();
   const { role } = useRole();
+  const { isDoctorLoading, isDoctorLoggedIn } = useDoctorAuth();
   const location = useLocation();
 
-  // Don't flash anything while checking session
-  if (isLoading) {
+  // ── 1. Wait for both auth systems to resolve ──────────────────────────────
+  // isDoctorLoading starts true and resolves after the doctor_profiles check.
+  // Without this, role=null + user=set triggers a /dashboard → / infinite loop.
+  if (isLoading || isDoctorLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -43,12 +40,17 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  // 1. Enforce Role Selection First
-  if (!role) {
+  // ── 2. Derive effective role ───────────────────────────────────────────────
+  // isDoctorLoggedIn is the authoritative source for the doctor role.
+  // This handles the case where ss-role is missing from sessionStorage (new tab)
+  // but the Supabase session + doctor_profiles row are both present.
+  const effectiveRole = isDoctorLoggedIn ? "doctor" : role;
+
+  // ── 3. Enforce role selection ─────────────────────────────────────────────
+  if (!effectiveRole) {
     if (location.pathname !== "/") {
       return <Navigate to="/" replace />;
     }
-    // Allow rendering RoleSelect at "/" without further checks
     return <>{children}</>;
   }
 
@@ -56,18 +58,22 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const publicPaths = ["/login", "/register", "/emergency", "/"];
   const isPublicRoute = publicPaths.includes(location.pathname);
 
-  // Not logged in
-  if (!user) {
+  // ── 4. Not logged in ──────────────────────────────────────────────────────
+  if (!user && !isDoctorLoggedIn) {
     if (isPublicRoute) {
       return <>{children}</>;
     }
     return <Navigate to="/login" replace />;
   }
 
-  // Logged in but on auth pages or root → redirect to dashboard
-  if (location.pathname === "/login" || location.pathname === "/register" || location.pathname === "/") {
-    if (role === "doctor") {
-      return <Navigate to="/doctor" replace />;
+  // ── 5. Logged-in → redirect away from auth pages ─────────────────────────
+  if (
+    location.pathname === "/login" ||
+    location.pathname === "/register" ||
+    location.pathname === "/"
+  ) {
+    if (effectiveRole === "doctor") {
+      return <Navigate to="/doctor/dashboard" replace />;
     }
     if (phase === "postpartum") {
       return <Navigate to="/postpartum-dashboard" replace />;
@@ -75,27 +81,22 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Require profile setup (weight & height) before allowing access to the rest of the application
-  const isProfileComplete = hasCompletedProfileSetup();
-  if (!isProfileComplete && location.pathname !== "/profile" && role !== "doctor") {
-    return <Navigate to="/profile?setup=true" replace />;
-  }
-
-  // Maternity users without pregnancy profile setup → redirect to pregnancy dashboard setup
+  // ── 6. Maternity setup check (non-doctors only) ───────────────────────────
   if (
     config.onboardingCompleted &&
     phase === "maternity" &&
     !pregnancyProfile.isSetup &&
     location.pathname !== "/pregnancy-dashboard" &&
-    role !== "doctor"
+    effectiveRole !== "doctor"
   ) {
     return <Navigate to="/pregnancy-dashboard" replace />;
   }
 
-  // Logged in → show onboarding if not completed (or if manually re-opened)
+  // ── 7. Render children (with optional onboarding overlay) ─────────────────
   return (
     <>
-      {(!config.onboardingCompleted || showOnboarding) && role !== "doctor" && <OnboardingFlow />}
+      {(!config.onboardingCompleted || showOnboarding) &&
+        effectiveRole !== "doctor" && <OnboardingFlow />}
       {children}
     </>
   );

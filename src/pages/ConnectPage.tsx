@@ -1,95 +1,88 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
-  ArrowLeft, Stethoscope, Send, Clock, AlertCircle,
-  XCircle,
+  ArrowLeft, Stethoscope, Send, Clock, AlertCircle, XCircle, Loader2,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { createRequest, getRequestByCode, type PatientProfileData } from "@/lib/connectionStore";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  createSupabaseRequest,
+  getSupabaseRequestByCode,
+} from "@/lib/supabaseConnectionStore";
+import type { PatientProfileData } from "@/lib/connectionStore";
 import type { ConnectionStatus } from "@/lib/connectionStore";
 import MyDoctorDashboard from "@/components/connect/MyDoctorDashboard";
 
+function buildPatientProfile(): PatientProfileData | undefined {
+  try {
+    const userRaw = localStorage.getItem("swasthyasakhi_user");
+    if (!userRaw) return undefined;
+    const userData = JSON.parse(userRaw);
+    const age = parseInt(userData.basic.age) || 0;
+    const lifeStage = userData.health.lifeStage || "Maternity";
+    let trimester: number | undefined;
+    let pregnancyWeek: number | undefined;
+    let expectedDueDate: string | undefined;
+
+    if (userData.health.trimester) trimester = parseInt(userData.health.trimester);
+    if (userData.health.expectedDueDate) expectedDueDate = userData.health.expectedDueDate;
+
+    const pregRaw = localStorage.getItem("mh-profile");
+    if (pregRaw) {
+      const pregProfile = JSON.parse(pregRaw);
+      const edd = pregProfile.dueDate || pregProfile.calculatedEDD || pregProfile.userEDD;
+      if (edd) {
+        expectedDueDate = edd;
+        const weeksLeft = Math.ceil((new Date(edd).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000));
+        pregnancyWeek = Math.max(1, 40 - weeksLeft);
+      }
+      if (!trimester && pregProfile.currentTrimester) trimester = pregProfile.currentTrimester;
+    }
+    return { fullName: userData.basic.fullName, age, lifeStage, trimester, pregnancyWeek, expectedDueDate };
+  } catch { return undefined; }
+}
+
 export default function ConnectPage() {
+  const { user } = useAuth();
   const [doctorCode, setDoctorCode] = useState("");
-  const [requestStatus, setRequestStatus] = useState<"idle" | "invalid">("idle");
+  const [requestStatus, setRequestStatus] = useState<"idle" | "invalid" | "submitting">("idle");
   const [connection, setConnection] = useState<{ status: ConnectionStatus; code: string } | null>(null);
 
-  // On mount, check if there's already a pending request
+  // On mount, check for existing pending request stored in sessionStorage
   useEffect(() => {
-    const raw = localStorage.getItem("ss-doctor-profile");
-    if (!raw) return;
-    try {
-      const profile = JSON.parse(raw);
-      if (profile.doctorCode) {
-        const existing = getRequestByCode(profile.doctorCode);
-        if (existing) {
-          setConnection({ status: existing.status, code: profile.doctorCode });
-        }
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
+    const savedCode = sessionStorage.getItem("ss-active-doctor-code");
+    if (!savedCode || !user?.id) return;
+    getSupabaseRequestByCode(savedCode, user.id).then((req) => {
+      if (req) setConnection({ status: req.status, code: savedCode });
+    });
+  }, [user?.id]);
 
   // Poll for status changes when a connection exists
-  useEffect(() => {
-    if (!connection) return;
-
-    const interval = setInterval(() => {
-      const req = getRequestByCode(connection.code);
+  const pollStatus = useCallback(() => {
+    if (!connection || !user?.id) return;
+    getSupabaseRequestByCode(connection.code, user.id).then((req) => {
       if (req && req.status !== connection.status) {
         setConnection({ status: req.status, code: connection.code });
       }
-    }, 3000);
+    });
+  }, [connection, user?.id]);
 
+  useEffect(() => {
+    if (!connection) return;
+    const interval = setInterval(pollStatus, 5000);
     return () => clearInterval(interval);
-  }, [connection]);
+  }, [connection, pollStatus]);
 
-  const handleSubmit = () => {
-    if (!doctorCode.trim()) return;
+  const handleSubmit = async () => {
+    if (!doctorCode.trim() || !user?.id) return;
+    setRequestStatus("submitting");
 
-    let profile: PatientProfileData | undefined;
-    try {
-      const userRaw = localStorage.getItem("swasthyasakhi_user");
-      if (userRaw) {
-        const userData = JSON.parse(userRaw);
-        const age = parseInt(userData.basic.age) || 0;
-        const lifeStage = userData.health.lifeStage || "Maternity";
+    const profile = buildPatientProfile();
+    const req = await createSupabaseRequest(doctorCode.trim(), user.id, profile);
 
-        let trimester: number | undefined;
-        let pregnancyWeek: number | undefined;
-        let expectedDueDate: string | undefined;
-
-        if (userData.health.trimester) {
-          trimester = parseInt(userData.health.trimester);
-        }
-        if (userData.health.expectedDueDate) {
-          expectedDueDate = userData.health.expectedDueDate;
-        }
-
-        const pregRaw = localStorage.getItem("mh-profile");
-        if (pregRaw) {
-          const pregProfile = JSON.parse(pregRaw);
-          const edd = pregProfile.dueDate || pregProfile.calculatedEDD || pregProfile.userEDD;
-          if (edd) {
-            expectedDueDate = edd;
-            const eddDate = new Date(edd);
-            const now = new Date();
-            const diffMs = eddDate.getTime() - now.getTime();
-            const weeksLeft = Math.ceil(diffMs / (7 * 24 * 60 * 60 * 1000));
-            pregnancyWeek = Math.max(1, 40 - weeksLeft);
-          }
-          if (!trimester && pregProfile.currentTrimester) {
-            trimester = pregProfile.currentTrimester;
-          }
-        }
-
-        profile = { fullName: userData.basic.fullName, age, lifeStage, trimester, pregnancyWeek, expectedDueDate };
-      }
-    } catch { /* ignore */ }
-
-    const req = createRequest(doctorCode.trim(), profile);
     if (req) {
+      sessionStorage.setItem("ss-active-doctor-code", doctorCode.trim());
       setConnection({ status: req.status, code: doctorCode.trim() });
+      setRequestStatus("idle");
     } else {
       setRequestStatus("invalid");
     }
@@ -99,6 +92,7 @@ export default function ConnectPage() {
     setRequestStatus("idle");
     setConnection(null);
     setDoctorCode("");
+    sessionStorage.removeItem("ss-active-doctor-code");
   };
 
   return (
@@ -155,10 +149,7 @@ export default function ConnectPage() {
                     </div>
                   </>
                 )}
-                <button
-                  onClick={reset}
-                  className="mt-6 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors"
-                >
+                <button onClick={reset} className="mt-6 text-sm text-teal-600 hover:text-teal-700 font-medium transition-colors">
                   Connect with a different doctor
                 </button>
               </div>
@@ -171,12 +162,13 @@ export default function ConnectPage() {
                   <input
                     id="code"
                     type="text"
-                    placeholder="e.g., A7kP29Qx"
+                    placeholder="e.g., A7h34l"
                     value={doctorCode}
                     onChange={(e) => {
                       setDoctorCode(e.target.value);
                       if (requestStatus === "invalid") setRequestStatus("idle");
                     }}
+                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
                     className={`w-full h-12 px-4 rounded-xl border text-sm text-gray-900 bg-white focus:outline-none focus:ring-2 focus:border-transparent placeholder:text-slate-400 transition-shadow ${
                       requestStatus === "invalid"
                         ? "border-red-300 focus:ring-red-400"
@@ -186,7 +178,7 @@ export default function ConnectPage() {
                   {requestStatus === "invalid" ? (
                     <p className="flex items-center gap-1 text-xs text-red-500 mt-1.5">
                       <AlertCircle className="w-3 h-3" />
-                      Doctor code not found
+                      Doctor code not found. Please check and try again.
                     </p>
                   ) : (
                     <p className="text-xs text-slate-400 mt-1.5">Ask your doctor for their unique connection code</p>
@@ -194,11 +186,17 @@ export default function ConnectPage() {
                 </div>
                 <button
                   onClick={handleSubmit}
-                  disabled={!doctorCode.trim()}
+                  disabled={!doctorCode.trim() || requestStatus === "submitting"}
                   className="w-full h-12 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-teal-600 to-cyan-600 text-white font-semibold shadow-md shadow-teal-200/50 hover:shadow-lg hover:from-teal-700 hover:to-cyan-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98]"
                 >
-                  <Send className="w-4 h-4" />
-                  Send Request
+                  {requestStatus === "submitting" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      Send Request
+                    </>
+                  )}
                 </button>
               </div>
             )}

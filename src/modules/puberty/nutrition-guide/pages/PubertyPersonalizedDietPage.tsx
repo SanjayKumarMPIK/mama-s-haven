@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useProfile } from "@/hooks/useProfile";
+import { useAuth } from "@/hooks/useAuth";
 import { useHealthLog } from "@/hooks/useHealthLog";
+import { useEffect } from "react";
 import { usePubertyNutritionIntelligence } from "../hooks/usePubertyNutritionIntelligence";
 import { generatePubertyDiet, type PubertyDietPlan, type PubertyDietInput } from "../services/pubertyDietGenerator";
 import { computeIntelligentNutrition } from "@/lib/pubertyIntelligentNutritionEngine";
@@ -15,6 +17,7 @@ import {
   Apple, Lightbulb, Activity, Droplets, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -78,11 +81,13 @@ function MealCard({
 
 export default function PubertyPersonalizedDietPage() {
   const { profile } = useProfile();
+  const { user } = useAuth();
   const { logs } = useHealthLog();
   const { result } = usePubertyNutritionIntelligence();
   const [regenerateKey, setRegenerateKey] = useState(0);
   const [activeDietSegment, setActiveDietSegment] = useState<"mealPlan" | "foodGuidance" | "checklist">("mealPlan");
   const [showAllNotes, setShowAllNotes] = useState(false);
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
 
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
@@ -128,6 +133,63 @@ export default function PubertyPersonalizedDietPage() {
     setRegenerateKey((prev) => prev + 1);
   };
 
+  // ── Supabase Checklist Sync ───────────────────────────────────────
+  
+  // Fetch initial completions
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchTasks = async () => {
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const { data, error } = await supabase
+          .from("nutrition_checklist_logs")
+          .select("task_id")
+          .eq("user_id", user.id)
+          .eq("completed_at", today)
+          .eq("phase", "puberty");
+          
+        if (!error && data) {
+          setCompletedTasks(data.map(d => d.task_id));
+        }
+      } catch (e) {
+        console.warn("Could not fetch checklist logs.", e);
+      }
+    };
+    fetchTasks();
+  }, [user?.id]);
+
+  const handleChecklistToggle = async (taskId: string, title: string) => {
+    const isCompleted = completedTasks.includes(taskId);
+    const newCompleted = isCompleted
+      ? completedTasks.filter(id => id !== taskId)
+      : [...completedTasks, taskId];
+      
+    // Optimistic UI update
+    setCompletedTasks(newCompleted);
+
+    if (!user?.id) return;
+    
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      if (!isCompleted) {
+        await supabase.from("nutrition_checklist_logs").upsert({
+          user_id: user.id,
+          task_id: taskId,
+          task_title: title,
+          phase: "puberty",
+          completed_at: today
+        }, { onConflict: 'user_id, task_id, completed_at' });
+      } else {
+        await supabase.from("nutrition_checklist_logs")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("task_id", taskId)
+          .eq("completed_at", today);
+      }
+    } catch (e) {
+      console.warn("Failed to sync checklist task.");
+    }
+  };
   // ── Helper to find extra foods for a meal slot ────────────────────
   function getExtraFoodsForMeal(time: string): { extraFoods: string[]; whyAppend: string } {
     for (const tag of dietContext.mealTags) {
@@ -434,7 +496,14 @@ export default function PubertyPersonalizedDietPage() {
                   </div>
                 ) : (
                   dietContext.checklistItems.map((item, i) => (
-                    <PubertyChecklistRow key={i} title={item.title} reason={item.reason} nutrient={item.nutrient} />
+                    <PubertyChecklistRow 
+                      key={item.title} 
+                      title={item.title} 
+                      reason={item.reason} 
+                      nutrient={item.nutrient} 
+                      checked={completedTasks.includes(item.title)}
+                      onToggle={() => handleChecklistToggle(item.title, item.title)}
+                    />
                   ))
                 )}
               </div>
@@ -478,13 +547,15 @@ function PubertyChecklistRow({
   title,
   reason,
   nutrient,
+  checked,
+  onToggle,
 }: {
   title: string;
   reason: string;
   nutrient: string;
+  checked: boolean;
+  onToggle: () => void;
 }) {
-  const [checked, setChecked] = useState(false);
-
   return (
     <div
       className={cn(
@@ -495,7 +566,7 @@ function PubertyChecklistRow({
       )}
     >
       <button
-        onClick={() => setChecked(!checked)}
+        onClick={onToggle}
         className={cn(
           "w-5 h-5 rounded-full border-2 shrink-0 mt-0.5 flex items-center justify-center transition-all",
           checked

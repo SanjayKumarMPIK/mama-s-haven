@@ -1,9 +1,9 @@
 import { useState, useMemo } from "react";
-import { Search, Users, AlertTriangle, Activity, Baby, X, Clock, Calendar, ChevronRight, FileText } from "lucide-react";
+import { Search, Users, AlertTriangle, Activity, Baby, X, Clock, Calendar, ChevronRight, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { usePatientsData, type Patient } from "../hooks/usePatientsData";
-import { getOrCreateHealthUserId, getAllRequests } from "@/lib/connectionStore";
+import { useDoctorAuth } from "@/modules/doctor/hooks/useDoctorAuth";
 import MonthlyReportPreview from "@/components/connect/MonthlyReportPreview";
 
 const riskBadge: Record<string, string> = {
@@ -23,18 +23,10 @@ const phaseStage = (p: Patient) => {
 };
 
 export default function PatientsPage() {
-  const { patients, stats, totalPatients, search, setSearch, phaseFilter, setPhaseFilter, riskFilter, setRiskFilter } = usePatientsData();
+  const { doctorProfile } = useDoctorAuth();
+  const { patients, stats, totalPatients, isLoading, search, setSearch, phaseFilter, setPhaseFilter, riskFilter, setRiskFilter } = usePatientsData();
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-  const doctorInfo = (() => {
-    try {
-      const raw = localStorage.getItem("ss-doctor-profile");
-      if (raw) {
-        const p = JSON.parse(raw);
-        return { name: p.name || "Your Doctor", code: p.doctorCode || "" };
-      }
-    } catch { /* ignore */ }
-    return { name: "Your Doctor", code: "" };
-  })();
+  const doctorInfo = { name: doctorProfile?.full_name ?? "Your Doctor", code: doctorProfile?.doctor_code ?? "" };
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportMonth, setReportMonth] = useState(() => {
     const now = new Date();
@@ -43,13 +35,9 @@ export default function PatientsPage() {
   const [lastGenerated, setLastGenerated] = useState<string | null>(null);
 
   const patientHealthId = useMemo(() => {
-    if (!selectedPatient) return null;
-    const requests = getAllRequests();
-    const req = requests.find((r) => r.id === selectedPatient.id);
-    const doctorCode = req?.doctorCode || doctorInfo.code;
-    if (!doctorCode) return null;
-    return getOrCreateHealthUserId(doctorCode, selectedPatient.phase);
-  }, [selectedPatient]);
+    if (!selectedPatient || !doctorInfo.code) return null;
+    return doctorInfo.code + "-" + selectedPatient.id.slice(0, 6).toUpperCase();
+  }, [selectedPatient, doctorInfo.code]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -152,7 +140,12 @@ export default function PatientsPage() {
           </CardContent>
         </Card>
 
-        {patients.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-3">
+            <Loader2 className="h-8 w-8 text-teal-600 animate-spin" />
+            <p className="text-sm text-slate-500">Loading patients…</p>
+          </div>
+        ) : patients.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <Users className="h-12 w-12 mx-auto mb-3 text-slate-300" />
             <p className="text-sm font-medium">{totalPatients === 0 ? "No connected patients yet." : "No patients match your filters"}</p>

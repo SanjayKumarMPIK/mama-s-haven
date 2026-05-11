@@ -16,6 +16,8 @@ export interface StoredUserData {
     email?: string;
     bloodGroup?: string;
     password: string; 
+    weight?: string;
+    height?: string;
   };
   location: {
     region: "north" | "south" | "east" | "west";
@@ -106,6 +108,8 @@ function mapSupabaseMetadataToStored(
       email: (basic.email ? String(basic.email) : fallbackEmail) || undefined,
       bloodGroup: basic.bloodGroup ? String(basic.bloodGroup) : undefined,
       password: "",
+      weight: basic.weight ? String(basic.weight) : undefined,
+      height: basic.height ? String(basic.height) : undefined,
     },
     location: {
       region: (location.region as StoredUserData["location"]["region"]) || "north",
@@ -137,6 +141,8 @@ function mapDbRowToStored(row: Record<string, unknown>): StoredUserData {
       email: row.email ? String(row.email) : undefined,
       bloodGroup: row.blood_group ? String(row.blood_group) : undefined,
       password: "",
+      weight: row.weight ? String(row.weight) : undefined,
+      height: row.height ? String(row.height) : undefined,
     },
     location: {
       region: (row.region as StoredUserData["location"]["region"]) || "north",
@@ -182,6 +188,8 @@ async function upsertDbProfile(userId: string, payload: StoredUserData): Promise
       email: payload.basic.email,
       mobile: payload.basic.mobile || null,
       blood_group: payload.basic.bloodGroup || null,
+      weight: payload.basic.weight ? Number(payload.basic.weight) : null,
+      height: payload.basic.height ? Number(payload.basic.height) : null,
       region: payload.location.region,
       health_cycle_status: payload.health.lifeStage,
       last_period_date: payload.health.lastPeriodDate || null,
@@ -210,7 +218,9 @@ async function buildAuthStateFromSession(supabaseSession: Session | null): Promi
     return { user: null, fullProfile: null, accessToken: null };
   }
 
-  const profileFromDb = await fetchDbProfile(currentUser.id);
+  // Doctors have no user_profiles row — skip the lookup to avoid a 400 error.
+  const isDoctor = sessionStorage.getItem('ss-role') === 'doctor';
+  const profileFromDb = isDoctor ? null : await fetchDbProfile(currentUser.id);
   const storedFromMetadata = mapSupabaseMetadataToStored(
     currentUser.user_metadata as Record<string, unknown> | undefined,
     currentUser.email,
@@ -258,19 +268,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     const init = async () => {
-      // Bypass Supabase if doctor demo session exists
-      const isDoctorDemo = sessionStorage.getItem("doctor_demo_logged_in") === "true";
-      if (isDoctorDemo) {
-        setUser({
-          id: "doctor-demo-123",
-          name: "Dr. Demo",
-          email: "doctor@swasthyasakhi.com",
-          isLoggedIn: true,
-        });
-        setIsLoading(false);
-        return;
-      }
-
       const {
         data: { session: supabaseSession },
       } = await supabase.auth.getSession();
@@ -292,20 +289,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // ── Login with email/mobile + password (validates against localStorage) ────
   const loginWithPassword = async (emailOrMobile: string, password: string) => {
     const email = emailOrMobile.trim().toLowerCase();
-    
-    // Doctor demo login bypass
-    const isDoctorRole = sessionStorage.getItem("ss-role") === "doctor";
-    if (isDoctorRole) {
-      sessionStorage.setItem("doctor_demo_logged_in", "true");
-      setUser({
-        id: "doctor-demo-123",
-        name: "Dr. Demo",
-        email: email,
-        isLoggedIn: true,
-      });
-      toast.success("Doctor Login successful! Welcome back.");
-      return true;
-    }
 
     if (!email.includes("@")) {
       toast.error("Please log in with your registered email.");
@@ -372,6 +355,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email,
         bloodGroup: userData.basic.bloodGroup || undefined,
         password: "",
+        weight: userData.basic.weight || undefined,
+        height: userData.basic.height || undefined,
       },
       location: {
         region: userData.location.region,
@@ -462,7 +447,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY_USER);
     localStorage.removeItem("ss-role");
     sessionStorage.removeItem("ss-role");
-    sessionStorage.removeItem("doctor_demo_logged_in");
     localStorage.removeItem("ss-wellness-profile");
     toast.info("Logged out successfully.");
     // Force page reload to clear all React state

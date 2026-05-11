@@ -1,9 +1,10 @@
 import { useState, useMemo, useCallback } from "react";
 import { useHealthLog } from "@/hooks/useHealthLog";
-import { usePhase } from "@/hooks/usePhase";
+import { usePhase, type Phase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import { filterLogsByPhase } from "@/shared/symptom-sync/symptomAnalyticsAdapter";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SafetyDisclaimer from "@/components/SafetyDisclaimer";
 import ScrollReveal from "@/components/ScrollReveal";
 import SymptomGuideSearch from "@/components/symptoms/SymptomGuideSearch";
@@ -116,7 +117,8 @@ const insightBg: Record<string, string> = {
 
 export default function SymptomChecker() {
   const { simpleMode } = useLanguage();
-  const { phase } = usePhase();
+  const { phase: globalPhase } = usePhase();
+  const [localPhase, setLocalPhase] = useState<Phase>(globalPhase);
   const { getPhaseLogs } = useHealthLog();
   const { profile, mode } = usePregnancyProfile();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -126,10 +128,10 @@ export default function SymptomChecker() {
   
   const [isSearchVisible, setIsSearchVisible] = useState(!!initialQuery);
 
-  const rawPhaseLogs = useMemo(() => getPhaseLogs(phase), [getPhaseLogs, phase]);
+  const rawPhaseLogs = useMemo(() => getPhaseLogs(localPhase), [getPhaseLogs, localPhase]);
 
   const phaseLogs = useMemo(() => {
-    if (phase === "maternity" && (mode === "postpartum" || mode === "premature")) {
+    if (localPhase === "maternity" && (mode === "postpartum" || mode === "premature")) {
       const filteredArr = filterLogsByPhase(rawPhaseLogs, mode, profile.delivery.birthDate);
       const filteredObj: any = {};
       filteredArr.forEach(item => {
@@ -138,13 +140,13 @@ export default function SymptomChecker() {
       return filteredObj;
     }
     return rawPhaseLogs;
-  }, [rawPhaseLogs, phase, mode, profile.delivery.birthDate]);
+  }, [rawPhaseLogs, localPhase, mode, profile.delivery.birthDate]);
 
-  const effectivePhase = phase === "maternity" && mode !== "pregnancy" ? `maternity_${mode}` : phase;
+  const effectivePhase = localPhase === "maternity" && mode !== "pregnancy" ? `maternity_${mode}` : localPhase;
 
   const [selectedSymptomId, setSelectedSymptomId] = useState<string | null>(null);
 
-  const accent = phaseAccent[phase] ?? phaseAccent.puberty;
+  const accent = phaseAccent[localPhase] ?? phaseAccent.puberty;
 
   // ── Compute analytics (memoized) ──
   const data = useMemo(() => computeSymptomInsights(phaseLogs, effectivePhase), [phaseLogs, effectivePhase]);
@@ -182,16 +184,31 @@ export default function SymptomChecker() {
       <div className="border-b border-border bg-card/60 backdrop-blur-sm">
         <div className="container py-6">
           <ScrollReveal>
-            <div className="flex items-center gap-3">
-              <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-lg shadow-primary/10`}>
-                <Activity className="w-5 h-5 text-white" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${accent.gradient} flex items-center justify-center shadow-lg shadow-primary/10`}>
+                  <Activity className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight">Symptom Insights</h1>
+                  <p className="text-sm text-muted-foreground">
+                    Powered by your calendar data • Updated in real-time
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-2xl font-bold tracking-tight">Symptom Insights</h1>
-                <p className="text-sm text-muted-foreground">
-                  Powered by your calendar data • Updated in real-time
-                </p>
-              </div>
+
+              <Tabs value={localPhase} onValueChange={(val) => {
+                setLocalPhase(val as Phase);
+                setSelectedSymptomId(null);
+                setIsSearchVisible(false);
+              }} className="w-full md:w-auto overflow-x-auto">
+                <TabsList className="bg-background border border-border">
+                  <TabsTrigger value="puberty">Puberty</TabsTrigger>
+                  <TabsTrigger value="maternity">Maternity</TabsTrigger>
+                  <TabsTrigger value="family-planning">Family Planning</TabsTrigger>
+                  <TabsTrigger value="menopause">Menopause</TabsTrigger>
+                </TabsList>
+              </Tabs>
             </div>
           </ScrollReveal>
         </div>
@@ -202,7 +219,7 @@ export default function SymptomChecker() {
         <ScrollReveal>
           {isSearchVisible ? (
             <SymptomGuideSearch 
-              phase={phase} 
+              phase={localPhase} 
               initialQuery={initialQuery} 
               onClose={() => {
                 setIsSearchVisible(false);

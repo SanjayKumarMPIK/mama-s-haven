@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   User, Stethoscope, Building2, Phone, Mail, MapPin, Clock,
   Fingerprint, Copy, CheckCircle2, UserCircle2, Loader2,
@@ -10,8 +10,12 @@ import { useDoctorAuth } from '@/modules/doctor/hooks/useDoctorAuth';
 
 
 export default function DoctorProfile() {
-  const { doctorProfile, isDoctorLoading } = useDoctorAuth();
+  const { doctorProfile, isDoctorLoading, refreshDoctorProfile } = useDoctorAuth();
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    void refreshDoctorProfile();
+  }, [refreshDoctorProfile]);
 
   const doctorCode = doctorProfile?.doctor_code || '—';
 

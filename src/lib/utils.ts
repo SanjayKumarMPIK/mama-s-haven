@@ -16,10 +16,11 @@ export type GDMStatus = "confirmed" | "negative" | "not_sure" | "not_done" | nul
  * 
  * Rules:
  * 1. ONLY show in pregnancy phase (not postpartum, premature, puberty, baby/child, etc.)
- * 2. ONLY between pregnancy weeks 24 and 36 inclusive
+ * 2. ONLY between pregnancy weeks 25 and 36 inclusive
  * 3. If GTT status is confirmed/completed, stop all future popup appearances
  * 4. Null safety: if pregnancy week is undefined/null/NaN, do not show popup
  * 5. If user phase data is unavailable, fail safely and do not render popup
+ * 6. If user has already delivered, never show popup
  * 
  * @param mode - Current maternity mode ("pregnancy" | "premature" | "postpartum")
  * @param pregnancyWeek - Current pregnancy week (1-40)
@@ -27,6 +28,7 @@ export type GDMStatus = "confirmed" | "negative" | "not_sure" | "not_done" | nul
  * @param isSetup - Whether the pregnancy profile is set up
  * @param isPopupOpen - Whether the popup is currently open (to prevent duplicate triggers)
  * @param questionCompleted - Whether the GTT question flow was already completed
+ * @param isDelivered - Whether the user has marked delivery (override check)
  * @returns boolean - true if the GTT popup should be shown
  */
 export function shouldShowGTTPopup(
@@ -35,7 +37,8 @@ export function shouldShowGTTPopup(
   gdmStatus: GDMStatus,
   isSetup: boolean | null | undefined,
   isPopupOpen: boolean | null | undefined,
-  questionCompleted: boolean | null | undefined
+  questionCompleted: boolean | null | undefined,
+  isDelivered?: boolean
 ): boolean {
   // Null safety: fail safely if data is unavailable
   if (!mode || pregnancyWeek == null || isNaN(pregnancyWeek)) {
@@ -47,14 +50,19 @@ export function shouldShowGTTPopup(
     return false;
   }
 
-  // Rule 2: ONLY between weeks 24 and 36 inclusive
-  if (pregnancyWeek < 24 || pregnancyWeek > 36) {
+  // Rule 2: ONLY between weeks 25 and 36 inclusive
+  if (pregnancyWeek < 25 || pregnancyWeek > 36) {
     return false;
   }
 
   // Rule 3: If GTT status is confirmed, stop all future popup appearances
   // Also suppress for other completed status values
   if (gdmStatus === "confirmed" || gdmStatus === "negative") {
+    return false;
+  }
+
+  // Rule 4: If user has delivered, never show popup
+  if (isDelivered === true) {
     return false;
   }
 
@@ -74,4 +82,21 @@ export function shouldShowGTTPopup(
   }
 
   return true;
+}
+
+/**
+ * Checks if the current route is a maternity-specific route.
+ * Uses a whitelist approach to prevent notification leakage into
+ * doctor routes, other health phases, auth pages, onboarding, etc.
+ */
+export function isMaternityRoute(): boolean {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname;
+  return (
+    path === '/maternity' ||
+    path.startsWith('/maternity/') ||
+    path === '/pregnancy-dashboard' ||
+    path === '/maternal-guide' ||
+    path.startsWith('/maternal-guide/')
+  );
 }

@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { Stethoscope } from 'lucide-react';
 import { useDoctorAuth } from '../hooks/useDoctorAuth';
+import { DoctorRouteAlertProvider } from './DoctorRouteAlertOverlays';
 import type { ReactNode } from 'react';
 
 /**
@@ -37,5 +38,5 @@ export default function DoctorGuard({ children }: { children: ReactNode }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <>{children}</>;
+  return <DoctorRouteAlertProvider>{children}</DoctorRouteAlertProvider>;
 }

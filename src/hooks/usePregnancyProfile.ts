@@ -428,7 +428,10 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     }));
   }, []);
 
-  const openGTTPopup = useCallback(() => setIsGTTPopupOpen(true), []);
+  const openGTTPopup = useCallback(() => {
+    setIsGTTPopupOpen(true);
+  }, []);
+
   const closeGTTPopup = useCallback(() => setIsGTTPopupOpen(false), []);
 
   // Clear everything
@@ -453,6 +456,14 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     if (lifecycleState === "postpartum") return "postpartum";
     return "pregnancy";
   }, [lifecycleState]);
+
+  // Auto-close GTT popup when mode leaves pregnancy or delivery happens
+  // Placed here (after mode definition) to avoid TDZ errors with const
+  useEffect(() => {
+    if (mode !== "pregnancy" || profile.delivery.isDelivered) {
+      setIsGTTPopupOpen(false);
+    }
+  }, [mode, profile.delivery.isDelivered]);
 
   const gestationalWeek = activeEDD ? getCurrentWeek(activeEDD) : 1;
 

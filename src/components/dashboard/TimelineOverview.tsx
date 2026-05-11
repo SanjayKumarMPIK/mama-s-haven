@@ -45,9 +45,9 @@ function WeekNode({
 
       <div
         className={cn(
-          "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative z-10 group-hover:scale-110",
+          "w-7 h-7 rounded-full border-2 flex items-center justify-center transition-all duration-300 relative z-10 group-hover:scale-110",
           trimesterBorderColor,
-          isActive && `w-8 h-8 ${trimesterBgColor} shadow-md scale-110`,
+          isActive && `w-10 h-10 ${trimesterBgColor} shadow-md scale-110`,
           isCompleted && !isActive && trimesterBgColor,
           !isCompleted && !isActive && "bg-white opacity-40 group-hover:opacity-60",
           (isCompleted || isActive) && "opacity-100",
@@ -59,7 +59,7 @@ function WeekNode({
         )}
         <span
           className={cn(
-            "text-[10px] font-bold z-10",
+            "text-xs font-bold z-10",
             isActive || isCompleted ? "text-white" : (trimesterBorderColor || "border-gray-500").replace("border-", "text-")
           )}
         >
@@ -83,7 +83,7 @@ function WeekNode({
       )}
       <span
         className={cn(
-          "mt-2 text-[10px] font-medium transition-colors",
+          "mt-3 text-xs font-medium transition-colors",
           isActive ? "text-slate-900 font-bold" : "text-slate-400"
         )}
       >
@@ -130,7 +130,7 @@ export function TimelineOverview({ currentWeek, selectedWeek, onSelectWeek }: Ti
   useEffect(() => {
     if (scrollRef.current) {
       const targetWeek = currentWeek || selectedWeek;
-      const nodeWidth = 60; // Approximate width including gap
+      const nodeWidth = 75; // Approximate width including gap
       const targetPos = (targetWeek - 1) * nodeWidth;
       const containerWidth = scrollRef.current.clientWidth;
 
@@ -144,12 +144,12 @@ export function TimelineOverview({ currentWeek, selectedWeek, onSelectWeek }: Ti
   const weeks = Array.from({ length: 40 }, (_, i) => i + 1);
 
   return (
-    <div className="w-full rounded-3xl p-6 border border-border/60 bg-gradient-to-b from-white to-slate-50/50 shadow-sm relative overflow-hidden mt-4 transition-all hover:shadow-md">
+    <div className="w-full rounded-3xl p-6 sm:p-8 border border-border/60 bg-gradient-to-b from-white to-slate-50/50 shadow-sm relative overflow-hidden transition-all hover:shadow-md">
       <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-amber-500 to-purple-500 opacity-20" />
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-8">
         <h3 className="font-bold text-slate-900 text-lg">Timeline Overview</h3>
-        <div className="flex gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+        <div className="flex gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500">
           <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-100">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> T1 (W1-12)
           </span>
@@ -164,11 +164,11 @@ export function TimelineOverview({ currentWeek, selectedWeek, onSelectWeek }: Ti
 
       <div
         ref={scrollRef}
-        className="flex items-center gap-6 overflow-x-auto pb-4 pt-10 px-4 snap-x snap-mandatory scrollbar-hide relative"
+        className="flex items-center gap-8 overflow-x-auto pb-4 pt-12 px-4 snap-x snap-mandatory scrollbar-hide relative"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {/* Background connector line */}
-        <div className="absolute top-[52px] left-8 right-8 h-1 bg-slate-100 z-0" />
+        <div className="absolute top-[56px] left-8 right-8 h-1 bg-slate-100 z-0" />
 
         {weeks.map((w) => {
           const colors = getTrimesterColors(w);

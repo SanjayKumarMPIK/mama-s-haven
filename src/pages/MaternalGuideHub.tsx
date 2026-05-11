@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Baby, Heart, ChevronRight } from "lucide-react";
+import { Baby, Heart, Feather, ChevronRight } from "lucide-react";
 
 export default function MaternalGuideHub() {
   return (
@@ -53,6 +53,25 @@ export default function MaternalGuideHub() {
                 </p>
               </div>
               <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-purple-400 group-hover:translate-x-0.5 transition-all shrink-0" />
+            </div>
+          </Link>
+
+          {/* Postpartum Guide Card */}
+          <Link
+            to="/maternity/postpartum-guide"
+            className="group block w-full rounded-2xl border border-slate-200 bg-white p-6 md:p-8 hover:border-amber-200 hover:shadow-md transition-all"
+          >
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-rose-400 flex items-center justify-center shadow-sm shrink-0">
+                <Feather className="w-7 h-7 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold text-slate-900">Postpartum Guide</h2>
+                <p className="text-sm text-slate-500 mt-1 leading-relaxed">
+                  Recovery, emotional wellbeing, breastfeeding, and newborn care after delivery.
+                </p>
+              </div>
+              <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-amber-400 group-hover:translate-x-0.5 transition-all shrink-0" />
             </div>
           </Link>
         </div>

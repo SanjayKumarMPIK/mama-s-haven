@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { supabaseUserClient } from "@/lib/supabase-user";
+import { clearUserSessionCaches } from "@/lib/authSessionCleanup";
 import type { Session } from "@supabase/supabase-js";
 
 // ─── Storage keys ────────────────────────────────────────────────────────────
@@ -32,9 +33,13 @@ export interface StoredUserData {
     lastPeriodDate?: string;
     cycleLength?: string;
     haemoglobin?: string;
-    dietType?: "veg" | "mixed";
+    dietType?: "veg" | "mixed" | "non-veg" | "eggetarian";
     knownConditions?: string;
     medicalConditions?: string[];
+    menarcheDate?: string | null;
+    periodDurationDays?: number;
+    activityLevel?: "sedentary" | "moderate" | "active";
+    climate?: "hot" | "moderate" | "cold";
   };
   registeredAt: string;        // ISO timestamp
   onboardingCompleted?: boolean;
@@ -59,7 +64,8 @@ interface AuthContextType {
   loginWithPassword: (emailOrMobile: string, password: string) => Promise<boolean>;
   register: (userData: any) => Promise<boolean>;
   updateProfile: (updater: (prev: StoredUserData) => StoredUserData) => void;
-  logout: () => void;
+  saveFullProfile: (data: StoredUserData) => Promise<void>;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -132,12 +138,101 @@ function mapSupabaseMetadataToStored(
       medicalConditions: Array.isArray(health.medicalConditions)
         ? health.medicalConditions.map((item) => String(item))
         : [],
+      menarcheDate: health.menarcheDate != null ? String(health.menarcheDate) : undefined,
+      periodDurationDays:
+        typeof health.periodDurationDays === "number" ? health.periodDurationDays : undefined,
+      activityLevel: health.activityLevel as StoredUserData["health"]["activityLevel"] | undefined,
+      climate: health.climate as StoredUserData["health"]["climate"] | undefined,
     },
     registeredAt: String(metadata?.registeredAt ?? new Date().toISOString()),
   };
 }
 
+function readFamilyPlanningGoalFromRow(row: Record<string, unknown>): string | undefined {
+  if (row.family_planning_goal != null && String(row.family_planning_goal).trim() !== "") {
+    return String(row.family_planning_goal);
+  }
+  const od = row.onboarding_data;
+  if (od && typeof od === "object" && !Array.isArray(od)) {
+    const v = (od as Record<string, unknown>).familyPlanningGoal;
+    if (v != null && String(v).trim() !== "") return String(v);
+  }
+  return undefined;
+}
+
+function readOnboardingCompletedFromRow(row: Record<string, unknown>): boolean {
+  if (row.onboarding_completed != null) return Boolean(row.onboarding_completed);
+  const od = row.onboarding_data;
+  if (od && typeof od === "object" && !Array.isArray(od)) {
+    const v = (od as Record<string, unknown>).onboardingCompleted;
+    if (typeof v === "boolean") return v;
+  }
+  return false;
+}
+
+function readOnboardingStepFromRow(row: Record<string, unknown>): string | undefined {
+  if (row.onboarding_step != null && String(row.onboarding_step).trim() !== "") {
+    return String(row.onboarding_step);
+  }
+  const od = row.onboarding_data;
+  if (od && typeof od === "object" && !Array.isArray(od)) {
+    const v = (od as Record<string, unknown>).onboardingStep;
+    if (v != null && String(v).trim() !== "") return String(v);
+  }
+  return undefined;
+}
+
+/** Optional EDD: only meaningful in maternity phase; stored in JSON when DB columns are absent. */
+function readExpectedDueDateFromRow(row: Record<string, unknown>, lifeStage: string): string | undefined {
+  if (lifeStage !== "maternity") return undefined;
+  if (row.pregnancy_due_date != null && String(row.pregnancy_due_date).trim() !== "") {
+    return String(row.pregnancy_due_date).split("T")[0];
+  }
+  const od = row.onboarding_data;
+  if (od && typeof od === "object" && !Array.isArray(od)) {
+    const rec = od as Record<string, unknown>;
+    const v = rec.expectedDueDate ?? rec.maternityExpectedDueDate;
+    if (v != null && String(v).trim() !== "") return String(v).split("T")[0];
+  }
+  return undefined;
+}
+
+/**
+ * Merges app-only fields into `onboarding_data` JSON so saves succeed when dedicated
+ * columns are missing (family_planning_goal, onboarding flags, pregnancy_due_date, etc.).
+ */
+function buildOnboardingDataForDb(payload: StoredUserData): Record<string, unknown> | null {
+  const base =
+    payload.onboardingData && typeof payload.onboardingData === "object" && !Array.isArray(payload.onboardingData)
+      ? { ...(payload.onboardingData as Record<string, unknown>) }
+      : {};
+  if (payload.familyPlanningGoal && String(payload.familyPlanningGoal).trim() !== "") {
+    base.familyPlanningGoal = payload.familyPlanningGoal;
+  } else {
+    delete base.familyPlanningGoal;
+  }
+  if (typeof payload.onboardingCompleted === "boolean") {
+    base.onboardingCompleted = payload.onboardingCompleted;
+  }
+  if (payload.onboardingStep !== undefined) {
+    if (String(payload.onboardingStep).trim() !== "") {
+      base.onboardingStep = payload.onboardingStep;
+    } else {
+      delete base.onboardingStep;
+    }
+  }
+  const isMaternity = payload.health.lifeStage === "maternity";
+  if (isMaternity && payload.health.expectedDueDate && String(payload.health.expectedDueDate).trim() !== "") {
+    base.expectedDueDate = String(payload.health.expectedDueDate).split("T")[0];
+  } else {
+    delete base.expectedDueDate;
+    delete base.maternityExpectedDueDate;
+  }
+  return Object.keys(base).length ? base : null;
+}
+
 function mapDbRowToStored(row: Record<string, unknown>): StoredUserData {
+  const lifeStage = String(row.health_cycle_status ?? "");
   return {
     basic: {
       fullName: String(row.full_name ?? ""),
@@ -157,26 +252,35 @@ function mapDbRowToStored(row: Record<string, unknown>): StoredUserData {
       regionType: (row.region_type as StoredUserData["location"]["regionType"]) || "urban",
     },
     health: {
-      lifeStage: String(row.health_cycle_status ?? ""),
+      lifeStage,
+      expectedDueDate: readExpectedDueDateFromRow(row, lifeStage),
       lastPeriodDate: row.last_period_date ? String(row.last_period_date) : undefined,
-      cycleLength: row.cycle_length ? String(row.cycle_length) : undefined,
-      haemoglobin: row.haemoglobin ? String(row.haemoglobin) : undefined,
+      cycleLength: row.cycle_length != null ? String(row.cycle_length) : undefined,
+      haemoglobin: row.haemoglobin != null ? String(row.haemoglobin) : undefined,
       dietType: row.diet_type as StoredUserData["health"]["dietType"] | undefined,
       knownConditions: row.known_conditions ? String(row.known_conditions) : undefined,
       medicalConditions: Array.isArray(row.medical_conditions)
         ? row.medical_conditions.map((item) => String(item))
         : [],
+      menarcheDate:
+        row.menarche_date != null && String(row.menarche_date).trim() !== ""
+          ? String(row.menarche_date).split("T")[0]
+          : null,
+      periodDurationDays:
+        typeof row.period_duration_days === "number" ? row.period_duration_days : undefined,
+      activityLevel: row.activity_level as StoredUserData["health"]["activityLevel"] | undefined,
+      climate: row.climate as StoredUserData["health"]["climate"] | undefined,
     },
     registeredAt: String(row.registered_at ?? new Date().toISOString()),
-    onboardingCompleted: row.onboarding_completed ? true : false,
-    onboardingStep: row.onboarding_step ? String(row.onboarding_step) : undefined,
+    onboardingCompleted: readOnboardingCompletedFromRow(row),
+    onboardingStep: readOnboardingStepFromRow(row),
     onboardingData: row.onboarding_data ?? undefined,
-    familyPlanningGoal: row.family_planning_goal ? String(row.family_planning_goal) : undefined,
+    familyPlanningGoal: readFamilyPlanningGoalFromRow(row),
   };
 }
 
 async function fetchDbProfile(userId: string): Promise<StoredUserData | null> {
-  const db = supabase as any;
+  const db = supabaseUserClient as any;
   const { data, error } = await db
     .from("user_profiles")
     .select("*")
@@ -187,7 +291,7 @@ async function fetchDbProfile(userId: string): Promise<StoredUserData | null> {
 }
 
 async function upsertDbProfile(userId: string, payload: StoredUserData): Promise<void> {
-  const db = supabase as any;
+  const db = supabaseUserClient as any;
   await db.from("user_profiles").upsert(
     {
       id: userId,
@@ -210,14 +314,59 @@ async function upsertDbProfile(userId: string, payload: StoredUserData): Promise
       diet_type: payload.health.dietType || null,
       known_conditions: payload.health.knownConditions || null,
       medical_conditions: payload.health.medicalConditions || [],
+      menarche_date:
+        payload.health.menarcheDate && String(payload.health.menarcheDate).trim()
+          ? payload.health.menarcheDate
+          : null,
+      period_duration_days:
+        typeof payload.health.periodDurationDays === "number" ? payload.health.periodDurationDays : null,
+      activity_level: payload.health.activityLevel ?? null,
+      climate: payload.health.climate ?? null,
       registered_at: payload.registeredAt,
-      onboarding_completed: payload.onboardingCompleted ?? false,
-      onboarding_step: payload.onboardingStep || 'phase_selection',
-      onboarding_data: payload.onboardingData ?? null,
-      family_planning_goal: payload.familyPlanningGoal || null,
+      onboarding_data: buildOnboardingDataForDb(payload),
     },
     { onConflict: "id" },
   );
+}
+
+async function updateDbProfile(userId: string, payload: StoredUserData): Promise<{ error?: string }> {
+  const db = supabaseUserClient as any;
+  const { error } = await db
+    .from("user_profiles")
+    .update({
+      full_name: payload.basic.fullName,
+      age: Number(payload.basic.age),
+      dob: payload.basic.dob,
+      email: payload.basic.email,
+      mobile: payload.basic.mobile || null,
+      blood_group: payload.basic.bloodGroup || null,
+      weight: payload.basic.weight ? Number(payload.basic.weight) : null,
+      height: payload.basic.height ? Number(payload.basic.height) : null,
+      region: payload.location.region,
+      state: payload.location.state,
+      nearby_phc: payload.location.nearbyPhc,
+      region_type: payload.location.regionType,
+      health_cycle_status: payload.health.lifeStage,
+      last_period_date: payload.health.lastPeriodDate || null,
+      cycle_length: payload.health.cycleLength ? Number(payload.health.cycleLength) : null,
+      haemoglobin: payload.health.haemoglobin ? Number(payload.health.haemoglobin) : null,
+      diet_type: payload.health.dietType || null,
+      known_conditions: payload.health.knownConditions || null,
+      medical_conditions: payload.health.medicalConditions || [],
+      menarche_date:
+        payload.health.menarcheDate && String(payload.health.menarcheDate).trim()
+          ? payload.health.menarcheDate
+          : null,
+      period_duration_days:
+        typeof payload.health.periodDurationDays === "number" ? payload.health.periodDurationDays : null,
+      activity_level: payload.health.activityLevel ?? null,
+      climate: payload.health.climate ?? null,
+      registered_at: payload.registeredAt,
+      onboarding_data: buildOnboardingDataForDb(payload),
+    })
+    .eq("id", userId);
+  if (error) return { error: error.message };
+  return {};
 }
 
 async function buildAuthStateFromSession(supabaseSession: Session | null): Promise<{
@@ -282,13 +431,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       const {
         data: { session: supabaseSession },
-      } = await supabase.auth.getSession();
+      } = await supabaseUserClient.auth.getSession();
       await applySession(supabaseSession);
     };
 
     init();
 
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: subscription } = supabaseUserClient.auth.onAuthStateChange((_event, session) => {
       applySession(session);
     });
 
@@ -307,7 +456,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabaseUserClient.auth.signInWithPassword({
       email,
       password,
     });
@@ -390,7 +539,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       registeredAt,
     };
 
-    const { data, error } = await supabase.auth.signUp({
+    const { data, error } = await supabaseUserClient.auth.signUp({
       email,
       password,
       options: {
@@ -439,7 +588,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFullProfile(next);
     if (user?.id) {
       upsertDbProfile(user.id, next);
-      supabase.auth.updateUser({
+      supabaseUserClient.auth.updateUser({
         data: {
           ...next,
           healthCycleStatus: next.health.lifeStage,
@@ -453,18 +602,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ── Save Full Profile (async, for profile page) ─────────────────────────────
+  const saveFullProfile = async (data: StoredUserData): Promise<void> => {
+    if (!user?.id) throw new Error("No authenticated user");
+
+    localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(data));
+    setFullProfile(data);
+
+    const { error } = await updateDbProfile(user.id, data);
+    if (error) throw new Error(error);
+
+    await supabaseUserClient.auth.updateUser({
+      data: { ...data, healthCycleStatus: data.health.lifeStage },
+    });
+
+    if (user) {
+      const refreshed = createSessionFromStored(data);
+      refreshed.id = user.id;
+      setUser(refreshed);
+    }
+  };
+
   // ── Logout ─────────────────────────────────────────────────────────────────
-  const logout = () => {
+  const logout = async () => {
+    const onboardingUserId = user?.id;
     setUser(null);
     setFullProfile(null);
     setAccessToken(null);
-    supabase.auth.signOut();
-    localStorage.removeItem(STORAGE_KEY_USER);
-    localStorage.removeItem("ss-role");
-    sessionStorage.removeItem("ss-role");
-    localStorage.removeItem("ss-wellness-profile");
+    try {
+      await supabaseUserClient.auth.signOut({ scope: "global" });
+    } catch {
+      await supabaseUserClient.auth.signOut({ scope: "local" });
+    }
+    clearUserSessionCaches({ onboardingUserId });
     toast.info("Logged out successfully.");
-    // Force page reload to clear all React state
     setTimeout(() => {
       window.location.href = "/";
     }, 500);
@@ -472,7 +643,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, fullProfile, accessToken, loginWithPassword, register, updateProfile, logout, isLoading }}
+      value={{ user, fullProfile, accessToken, loginWithPassword, register, updateProfile, saveFullProfile, logout, isLoading }}
     >
       {children}
     </AuthContext.Provider>

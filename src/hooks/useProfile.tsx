@@ -153,15 +153,23 @@ export function useProfile() {
     const nearbyPhc = (loc?.nearbyPhc ?? "Anna Nagar PHC") as ProfileData["nearbyPhc"];
     const regionType = (loc?.regionType ?? "urban") as ProfileData["regionType"];
 
-    const weight = wellnessProfile?.weight ?? null;
-    const height = wellnessProfile?.height ?? null;
+    const wBasic = basic?.weight != null && String(basic.weight).trim() !== "" ? Number(basic.weight) : null;
+    const hBasic = basic?.height != null && String(basic.height).trim() !== "" ? Number(basic.height) : null;
+    const weight =
+      wBasic != null && !Number.isNaN(wBasic) ? wBasic : (wellnessProfile?.weight ?? null);
+    const height =
+      hBasic != null && !Number.isNaN(hBasic) ? hBasic : (wellnessProfile?.height ?? null);
     const bmi = computeBMI(weight, height);
     const bmiCategory = getBMICategory(bmi);
 
-    const cycleLength = extras.cycleLength ?? (health?.cycleLength ? parseInt(health.cycleLength, 10) : 28);
+    const cycleFromDb = health?.cycleLength ? parseInt(String(health.cycleLength), 10) : null;
+    const cycleLength =
+      cycleFromDb != null && !Number.isNaN(cycleFromDb) ? cycleFromDb : (extras.cycleLength ?? 28);
     const lastPeriodDate = health?.lastPeriodDate ?? "";
-    const periodDuration = extras.periodDuration;
-    const menarcheDate = (health as any)?.menarcheDate ?? null;
+    const periodFromDb = typeof health?.periodDurationDays === "number" ? health.periodDurationDays : null;
+    const periodDuration =
+      periodFromDb != null && periodFromDb >= 1 && periodFromDb <= 10 ? periodFromDb : extras.periodDuration;
+    const menarcheDate = health?.menarcheDate ?? null;
 
     const haemoglobin = health?.haemoglobin ?? "";
     const knownConditions = health?.knownConditions ?? "";
@@ -169,8 +177,10 @@ export function useProfile() {
     const dietType = (health?.dietType ?? "mixed") as ProfileData["dietType"];
     const lifeStage = health?.lifeStage ?? phase;
 
-    const activityLevel = (wellnessProfile?.activityLevel ?? "moderate") as ProfileData["activityLevel"];
-    const climate = (wellnessProfile?.climate ?? "hot") as ProfileData["climate"];
+    const activityLevel = (health?.activityLevel ??
+      wellnessProfile?.activityLevel ??
+      "moderate") as ProfileData["activityLevel"];
+    const climate = (health?.climate ?? wellnessProfile?.climate ?? "hot") as ProfileData["climate"];
 
     const registeredAt = fullProfile?.registeredAt ?? "";
 

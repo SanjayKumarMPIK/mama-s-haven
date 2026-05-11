@@ -4,6 +4,8 @@ import { Building2, Menu, Siren, ShieldCheck, Phone, LogIn, UserPlus, LogOut } f
 import { useLanguage } from "@/hooks/useLanguage";
 import { usePhase } from "@/hooks/usePhase";
 import { useAuth } from "@/hooks/useAuth";
+import { useDoctorAuth } from "@/modules/doctor/hooks/useDoctorAuth";
+import { useRole } from "@/hooks/useRole";
 import HamburgerMenu from "@/components/navigation/HamburgerMenu";
 import NavItem from "@/components/navigation/NavItem";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
@@ -16,6 +18,11 @@ export default function Navbar() {
   const { t, setLanguage, language } = useLanguage();
   const { phaseName } = usePhase();
   const { user, logout } = useAuth();
+  const { doctorProfile, isDoctorLoggedIn, logoutDoctor } = useDoctorAuth();
+  const { role, clearRole } = useRole();
+  const doctorSession = role === "doctor" && isDoctorLoggedIn;
+  const showAuthUser = !!user || doctorSession;
+  const headerName = user?.name ?? doctorProfile?.full_name ?? "Doctor";
 
   return (
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/95 backdrop-blur">
@@ -50,16 +57,31 @@ export default function Navbar() {
           <LanguageSwitcher />
 
           {/* Auth buttons */}
-          {user ? (
+          {showAuthUser ? (
             <div className="flex items-center gap-2 border-l pl-2 border-border/50">
               <Link
-                to="/profile"
+                to={doctorSession ? "/doctor/profile" : "/profile"}
                 className="text-xs font-medium text-slate-700 max-w-[100px] truncate hover:text-primary transition-colors"
               >
-                {user.name}
+                {headerName}
               </Link>
               <CalendarNavButton />
               {!location.pathname.startsWith("/doctor") && <NotificationBell />}
+              {doctorSession && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    void (async () => {
+                      await logoutDoctor();
+                      clearRole();
+                    })();
+                  }}
+                  className="inline-flex h-9 items-center gap-1 rounded-md border border-border bg-white px-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  Log out
+                </button>
+              )}
             </div>
           ) : (
             <div className="flex items-center gap-2 border-l pl-2 border-border/50">

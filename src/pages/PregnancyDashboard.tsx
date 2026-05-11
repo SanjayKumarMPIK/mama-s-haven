@@ -458,7 +458,8 @@ function DashboardView({
     profile.gdmStatus,
     profile.isSetup,
     false, // Not checking if popup is open for dashboard card
-    profile.gttQuestionCompleted
+    profile.gttQuestionCompleted,
+    profile.delivery.isDelivered
   );
 
   return (
@@ -486,7 +487,7 @@ function DashboardView({
             <div className="max-w-4xl mx-auto">
               <div className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
                 {/* Card Header */}
-                <div className="p-5 sm:p-6 pb-4">
+                <div className="p-6 sm:p-8 pb-6">
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
@@ -494,20 +495,20 @@ function DashboardView({
                         <span className="text-xs text-muted-foreground">•</span>
                         <span className="text-xs text-muted-foreground">Week {currentWeek} of 40</span>
                       </div>
-                      <h1 className="text-xl sm:text-2xl font-bold">Pregnancy Guide</h1>
+                      <h1 className="text-2xl sm:text-3xl font-bold">Pregnancy Guide</h1>
                       {profileName && <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Welcome, {profileName}</p>}
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
-                        <p className="text-xl sm:text-2xl font-bold text-primary">{daysLeft}</p>
-                        <p className="text-[10px] text-muted-foreground font-medium">days left</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-primary">{daysLeft}</p>
+                        <p className="text-xs text-muted-foreground font-medium">days left</p>
                       </div>
-                      <div className="relative w-14 h-14 sm:w-16 sm:h-16 shrink-0">
-                        <svg className="w-14 h-14 sm:w-16 sm:h-16 -rotate-90" viewBox="0 0 36 36">
+                      <div className="relative w-16 h-16 sm:w-20 sm:h-20 shrink-0">
+                        <svg className="w-16 h-16 sm:w-20 sm:h-20 -rotate-90" viewBox="0 0 36 36">
                           <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--muted))" strokeWidth="3" />
                           <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--primary))" strokeWidth="3" strokeDasharray={`${progress}, 100`} strokeLinecap="round" />
                         </svg>
-                        <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">{progress}%</div>
+                        <div className="absolute inset-0 flex items-center justify-center text-sm font-bold">{progress}%</div>
                       </div>
                     </div>
                   </div>
@@ -527,7 +528,7 @@ function DashboardView({
                 <div className="border-t border-border/50" />
 
                 {/* Card Footer - EDD */}
-                <div className="p-5 sm:p-6 pt-4">
+                <div className="p-6 sm:p-8 pt-6">
                   <EDDOverrideCard />
                 </div>
               </div>

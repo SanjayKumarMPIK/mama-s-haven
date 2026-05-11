@@ -23,6 +23,8 @@ import { OnboardingProvider } from "@/hooks/useOnboarding";
 import { RoleProvider } from "@/hooks/useRole";
 
 import AuthGate from "@/components/AuthGate";
+import HillstationDeliveryAlertPublisher from "@/components/HillstationDeliveryAlertPublisher";
+import RequireMotherSession from "@/components/RequireMotherSession";
 
 import Navbar from "@/components/Navbar";
 
@@ -122,6 +124,7 @@ import BabySupportiveHelper from "./pages/BabySupportiveHelper";
 import MaternalGuideHub from "./pages/MaternalGuideHub";
 import PregnancyGuide from "./pages/PregnancyGuide";
 import PrematureCare from "./pages/PrematureCare";
+import PostpartumGuide from "./pages/PostpartumGuide";
 
 import FPToolPage from "./pages/FPToolPage";
 
@@ -177,6 +180,7 @@ import FPFoodsToAvoidPage from "./pages/familyplanning/FPFoodsToAvoidPage";
 import CareLog from "./pages/familyplanning/CareLog";
 
 import MaternityDeficiencyInsightsPage from "./pages/maternity/MaternityDeficiencyInsightsPage";
+import { SchemesPage } from "./modules/maternity/schemes/SchemesPage";
 
 import { CustomSymptomsProvider } from "./hooks/useCustomSymptoms";
 
@@ -210,6 +214,8 @@ const App = () => (
             <DoctorAuthProvider>
 
             <RoleProvider>
+
+              <HillstationDeliveryAlertPublisher />
 
               <HealthLogProvider>
 
@@ -274,13 +280,15 @@ const App = () => (
 
                           <Route path="/assistant" element={<Assistant />} />
 
-                          <Route path="/dashboard" element={<WeeklyGuide />} />
+                          <Route path="/dashboard" element={<RequireMotherSession><WeeklyGuide /></RequireMotherSession>} />
 
                           <Route path="/maternal-guide" element={<MaternalGuideHub />} />
 
                           <Route path="/maternal-guide/pregnancy" element={<PregnancyGuide />} />
 
                           <Route path="/maternal-guide/premature" element={<PrematureCare />} />
+
+                          <Route path="/maternity/postpartum-guide" element={<PostpartumGuide />} />
 
                           <Route path="/nutrition" element={<NutritionGuide />} />
 
@@ -295,6 +303,8 @@ const App = () => (
                           <Route path="/puberty" element={<Puberty />} />
 
                           <Route path="/maternity" element={<Maternity />} />
+
+                          <Route path="/maternity/schemes" element={<SchemesPage />} />
 
                           <Route path="/family-planning" element={<FamilyPlanning />} />
 
@@ -312,7 +322,7 @@ const App = () => (
 
                           <Route path="/connect/reports" element={<DoctorReportsPage />} />
 
-                          <Route path="/pregnancy-dashboard" element={<PregnancyDashboard />} />
+                          <Route path="/pregnancy-dashboard" element={<RequireMotherSession><PregnancyDashboard /></RequireMotherSession>} />
 
                           <Route path="/health-log" element={<HealthLog />} />
 
@@ -332,7 +342,7 @@ const App = () => (
 
                           <Route path="/maternity/nutrition/checklist" element={<NutritionChecklistPage />} />
 
-                          <Route path="/postpartum-dashboard" element={<PostpartumDashboard />} />
+                          <Route path="/postpartum-dashboard" element={<RequireMotherSession><PostpartumDashboard /></RequireMotherSession>} />
 
                           {/* Puberty nutrition sub-pages */}
 
@@ -370,7 +380,7 @@ const App = () => (
 
                         <Route path="/menopause/onboarding" element={<MenopauseOnboarding />} />
 
-                        <Route path="/menopause/dashboard" element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenopauseDashboard /></Suspense>} />
+                        <Route path="/menopause/dashboard" element={<RequireMotherSession><Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500" /></div>}><MenopauseDashboard /></Suspense></RequireMotherSession>} />
 
                         <Route path="/menopause/symptoms" element={<SymptomChecker />} />
 

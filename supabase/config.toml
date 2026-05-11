@@ -1,5 +1,10 @@
 project_id = "pgxyldrpjykmrmdmnvew"
 
+# Local Supabase Auth: access-token (JWT) lifetime. Hosted projects: set the same
+# value in Dashboard → Authentication → Settings → JWT expiry (max 604800s).
+[auth]
+jwt_expiry = 172800
+
 [functions.send-email-otp]
 verify_jwt = false
 

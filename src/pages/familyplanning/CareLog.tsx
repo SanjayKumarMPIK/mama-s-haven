@@ -1,18 +1,146 @@
 /**
  * CareLog.tsx — Family Planning Care Log Module
- * Post-procedure recovery support with onboarding, daily tracking, and guidance.
+ * Recovery dashboard for post-procedure tracking and support.
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { useCareLog, detectRedFlags, type CareProfile, type CareLogEntry, type CareChecklist, type WeeklyCheckIn, type ProcedureType, type ConcernId, type PainLevel } from "@/hooks/useCareLog";
-import { PROCEDURE_OPTIONS, CONCERN_OPTIONS, RECOVERY_MESSAGES, PROCEDURE_GUIDANCE, CHECKLIST_ITEMS, SYMPTOM_WATCH_TOGGLES, WEEKLY_QUESTIONS, SAFETY_DISCLAIMER, RED_FLAG_WARNING } from "@/lib/careLogGuidance";
-import { ArrowLeft, Shield, Phone, ChevronDown, ChevronUp, AlertTriangle, CheckCircle2, RotateCcw, Heart, Activity, ClipboardList, Calendar, Stethoscope } from "lucide-react";
+import {
+  useCareLog,
+  detectRedFlags,
+  type CareProfile,
+  type CareLogEntry,
+  type CareChecklist,
+  type WeeklyCheckIn,
+  type ProcedureType,
+  type ConcernId,
+  type PainLevel,
+} from "@/hooks/useCareLog";
+import {
+  PROCEDURE_OPTIONS,
+  CONCERN_OPTIONS,
+  RECOVERY_MESSAGES,
+  PROCEDURE_GUIDANCE,
+  CHECKLIST_ITEMS,
+  SYMPTOM_WATCH_TOGGLES,
+  WEEKLY_QUESTIONS,
+  SAFETY_DISCLAIMER,
+} from "@/lib/careLogGuidance";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Heart,
+  RotateCcw,
+  Shield,
+  Stethoscope,
+} from "lucide-react";
 import SOSButton from "@/components/emergency/SOSButton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-// ─── Onboarding ───────────────────────────────────────────────────────────────
+const dateFormatter = new Intl.DateTimeFormat("en-IN", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+const TIMELINE_STAGES = [
+  {
+    key: "first-week",
+    label: "First week",
+    range: "Days 0-7",
+    description: "Rest, hydration, medicine adherence, and watching for warning signs.",
+    reminder: "Take recovery gently and follow your doctor's instructions.",
+  },
+  {
+    key: "2-6-weeks",
+    label: "2-6 weeks",
+    range: "Weeks 2-6",
+    description: "Gradual recovery, follow-up visits, and avoiding strain.",
+    reminder: "Keep tracking symptoms and return to routine only as advised.",
+  },
+  {
+    key: "6-weeks-plus",
+    label: "6+ weeks",
+    range: "Weeks 7-12",
+    description: "Continue monitoring and resume activities only as advised.",
+    reminder: "Notice whether comfort, energy, and mobility continue improving.",
+  },
+  {
+    key: "follow-up",
+    label: "Follow-up stage",
+    range: "Longer-term",
+    description: "Keep follow-ups, monitor ongoing concerns, and ask about long-term care.",
+    reminder: "Use your log to guide questions during health visits.",
+  },
+] as const;
+
+const PRIMARY_CHECKLIST_KEYS: Array<keyof Omit<CareChecklist, "date" | "savedAt">> = [
+  "medicineTaken",
+  "hydration",
+  "rest",
+  "avoidedHeavyLifting",
+];
+
+const EXTRA_CHECKLIST_KEYS: Array<keyof Omit<CareChecklist, "date" | "savedAt">> = [
+  "woundChecked",
+  "followupDone",
+];
+
+function formatDate(date: string) {
+  return dateFormatter.format(new Date(`${date}T12:00:00`));
+}
+
+function formatTimeSince(daysSince: number) {
+  const weeks = Math.floor(daysSince / 7);
+  const days = daysSince % 7;
+
+  if (weeks <= 0) {
+    return `${daysSince} day${daysSince === 1 ? "" : "s"} since procedure`;
+  }
+
+  return `${weeks} week${weeks === 1 ? "" : "s"}, ${days} day${days === 1 ? "" : "s"} since procedure`;
+}
+
+function getDisplayStage(daysSince: number) {
+  if (daysSince <= 7) {
+    return {
+      badge: "Early Recovery",
+      summary: "You are in the earliest recovery phase. Focus on rest, routine care, and noticing any symptoms that may need attention.",
+      progress: 18,
+      timelineIndex: 0,
+    };
+  }
+
+  if (daysSince <= 42) {
+    return {
+      badge: "Mid Recovery",
+      summary: "Your recovery is underway. Keep up daily care, monitor symptoms, and follow up as advised.",
+      progress: 52,
+      timelineIndex: 1,
+    };
+  }
+
+  if (daysSince <= 84) {
+    return {
+      badge: "Advanced Recovery",
+      summary: "You are in a later recovery phase. Keep monitoring symptoms and attend follow-ups as advised.",
+      progress: 82,
+      timelineIndex: 2,
+    };
+  }
+
+  return {
+    badge: "Long-term Follow-up",
+    summary: "Your recovery may now be in longer-term follow-up. Continue tracking anything ongoing and follow your doctor's advice.",
+    progress: 100,
+    timelineIndex: 3,
+  };
+}
 
 function CareLogOnboarding({ onComplete }: { onComplete: (data: Omit<CareProfile, "onboardedAt">) => void }) {
   const [step, setStep] = useState(0);
@@ -21,172 +149,306 @@ function CareLogOnboarding({ onComplete }: { onComplete: (data: Omit<CareProfile
   const [concerns, setConcerns] = useState<ConcernId[]>([]);
 
   const toggleConcern = (id: ConcernId) => {
-    if (id === "none") { setConcerns(["none"]); return; }
-    setConcerns(prev => {
-      const filtered = prev.filter(c => c !== "none");
-      return filtered.includes(id) ? filtered.filter(c => c !== id) : [...filtered, id];
+    if (id === "none") {
+      setConcerns(["none"]);
+      return;
+    }
+
+    setConcerns((prev) => {
+      const filtered = prev.filter((concern) => concern !== "none");
+      return filtered.includes(id) ? filtered.filter((concern) => concern !== id) : [...filtered, id];
     });
   };
 
   const canProceed = step === 0 ? !!procedureType : step === 1 ? !!procedureDate : concerns.length > 0;
 
   const handleNext = () => {
-    if (step < 2) { setStep(step + 1); return; }
+    if (step < 2) {
+      setStep(step + 1);
+      return;
+    }
+
     if (procedureType && procedureDate) {
       onComplete({ procedureType, procedureDate, concerns });
     }
   };
 
   return (
-    <div className="min-h-screen py-12 bg-background">
-      <div className="container max-w-lg">
-        <Link to="/family-planning" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-8">
-          <ArrowLeft className="w-4 h-4" /> Back
+    <div className="min-h-screen bg-slate-50 py-10 md:py-14">
+      <div className="container max-w-2xl px-4">
+        <Link to="/family-planning" className="mb-8 inline-flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900">
+          <ArrowLeft className="h-4 w-4" />
+          Back
         </Link>
 
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-teal-100 flex items-center justify-center mx-auto mb-4">
-            <Heart className="w-8 h-8 text-teal-600" />
-          </div>
-          <h1 className="text-2xl font-bold">Care Log Setup</h1>
-          <p className="text-sm text-muted-foreground mt-2">A few questions to personalize your recovery support</p>
-          <div className="flex justify-center gap-2 mt-4">
-            {[0, 1, 2].map(i => (
-              <div key={i} className={cn("h-1.5 rounded-full transition-all", i <= step ? "w-10 bg-teal-500" : "w-6 bg-muted")} />
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-          {step === 0 && (
-            <div className="space-y-3">
-              <h2 className="text-base font-bold mb-1">What procedure did you undergo?</h2>
-              <p className="text-xs text-muted-foreground mb-4">This helps us provide relevant care guidance.</p>
-              {PROCEDURE_OPTIONS.map(opt => (
-                <button key={opt.id} onClick={() => setProcedureType(opt.id)}
-                  className={cn("w-full text-left p-4 rounded-xl border-2 transition-all", procedureType === opt.id ? "border-teal-400 bg-teal-50" : "border-border hover:border-teal-200")}>
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{opt.emoji}</span>
-                    <div><p className="text-sm font-semibold">{opt.label}</p><p className="text-xs text-muted-foreground">{opt.description}</p></div>
-                    {procedureType === opt.id && <CheckCircle2 className="w-5 h-5 text-teal-500 ml-auto shrink-0" />}
-                  </div>
-                </button>
+        <div className="rounded-[28px] border border-teal-100 bg-white p-6 shadow-[0_20px_60px_-35px_rgba(15,118,110,0.35)] md:p-8">
+          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1 text-xs font-semibold text-teal-700">
+                <Heart className="h-3.5 w-3.5" />
+                Care Log Setup
+              </div>
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Personalize your recovery support</h1>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-slate-600">
+                A few details help tailor your care dashboard and recovery guidance.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {[0, 1, 2].map((index) => (
+                <div
+                  key={index}
+                  className={cn(
+                    "h-2 rounded-full transition-all duration-300",
+                    index <= step ? "w-10 bg-teal-500" : "w-6 bg-slate-200",
+                  )}
+                />
               ))}
             </div>
-          )}
+          </div>
 
-          {step === 1 && (
-            <div className="space-y-4">
-              <h2 className="text-base font-bold">When was the procedure?</h2>
-              <p className="text-xs text-muted-foreground">We'll calculate your recovery stage automatically.</p>
-              <input type="date" value={procedureDate} max={new Date().toISOString().slice(0, 10)}
-                onChange={e => setProcedureDate(e.target.value)}
-                className="w-full rounded-xl border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300" />
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-3">
-              <h2 className="text-base font-bold">Any current concerns?</h2>
-              <p className="text-xs text-muted-foreground mb-2">Select all that apply.</p>
-              <div className="grid grid-cols-2 gap-2">
-                {CONCERN_OPTIONS.map(opt => {
-                  const active = concerns.includes(opt.id);
+          {step === 0 ? (
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">What procedure did you undergo?</h2>
+              <p className="mt-1 text-sm text-slate-500">This helps us show more relevant recovery guidance.</p>
+              <div className="mt-5 grid gap-3">
+                {PROCEDURE_OPTIONS.map((option) => {
+                  const selected = procedureType === option.id;
                   return (
-                    <button key={opt.id} onClick={() => toggleConcern(opt.id)}
-                      className={cn("p-3 rounded-xl border text-left text-sm font-medium transition-all",
-                        active ? "border-teal-400 bg-teal-50 text-teal-800" : "border-border hover:border-teal-200")}>
-                      <span className="flex items-center gap-2">{opt.emoji} {opt.label}</span>
+                    <button
+                      key={option.id}
+                      onClick={() => setProcedureType(option.id)}
+                      className={cn(
+                        "rounded-2xl border p-4 text-left transition-all duration-200",
+                        selected
+                          ? "border-teal-300 bg-teal-50 shadow-sm"
+                          : "border-slate-200 bg-white hover:border-teal-200 hover:bg-slate-50",
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-100 text-xl">{option.emoji}</div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-slate-900">{option.label}</p>
+                          <p className="mt-1 text-xs leading-5 text-slate-500">{option.description}</p>
+                        </div>
+                        {selected ? <CheckCircle2 className="h-5 w-5 shrink-0 text-teal-600" /> : null}
+                      </div>
                     </button>
                   );
                 })}
               </div>
             </div>
-          )}
+          ) : null}
 
-          <div className="flex gap-3 mt-6">
-            {step > 0 && (
-              <button onClick={() => setStep(step - 1)} className="px-4 py-2.5 rounded-xl border border-border text-sm font-medium hover:bg-muted/50 transition-colors">Back</button>
-            )}
-            <button onClick={handleNext} disabled={!canProceed}
-              className={cn("flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all",
-                canProceed ? "bg-teal-600 text-white hover:bg-teal-700 shadow-sm" : "bg-muted text-muted-foreground cursor-not-allowed")}>
+          {step === 1 ? (
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">When was the procedure?</h2>
+              <p className="mt-1 text-sm text-slate-500">Your recovery stage will update automatically based on this date.</p>
+              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Procedure date</label>
+                <input
+                  type="date"
+                  value={procedureDate}
+                  max={new Date().toISOString().slice(0, 10)}
+                  onChange={(event) => setProcedureDate(event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none ring-0 transition focus:border-teal-300"
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {step === 2 ? (
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Any current concerns?</h2>
+              <p className="mt-1 text-sm text-slate-500">Select what feels most relevant right now.</p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                {CONCERN_OPTIONS.map((option) => {
+                  const selected = concerns.includes(option.id);
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => toggleConcern(option.id)}
+                      className={cn(
+                        "rounded-2xl border p-3 text-left text-sm transition-all duration-200",
+                        selected
+                          ? "border-teal-300 bg-teal-50 text-teal-800"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-teal-200 hover:bg-slate-50",
+                      )}
+                    >
+                      <span className="font-medium">{option.emoji} {option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-8 flex gap-3">
+            {step > 0 ? (
+              <button
+                onClick={() => setStep(step - 1)}
+                className="rounded-xl border border-slate-200 px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                Back
+              </button>
+            ) : null}
+            <button
+              onClick={handleNext}
+              disabled={!canProceed}
+              className={cn(
+                "flex-1 rounded-xl px-4 py-3 text-sm font-semibold transition",
+                canProceed ? "bg-teal-600 text-white hover:bg-teal-700" : "bg-slate-200 text-slate-500",
+              )}
+            >
               {step === 2 ? "Start Care Log" : "Continue"}
             </button>
           </div>
         </div>
 
-        <p className="text-[11px] text-muted-foreground text-center mt-6 flex items-center justify-center gap-1.5">
-          <Shield className="w-3.5 h-3.5" /> {SAFETY_DISCLAIMER}
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Recovery Summary Card ────────────────────────────────────────────────────
-
-function RecoverySummaryCard({ profile, daysSince, stage }: { profile: CareProfile; daysSince: number; stage: string }) {
-  const msg = RECOVERY_MESSAGES[stage as keyof typeof RECOVERY_MESSAGES];
-  const procLabel = PROCEDURE_OPTIONS.find(p => p.id === profile.procedureType)?.label ?? "Procedure";
-  const weeks = Math.floor(daysSince / 7);
-  const days = daysSince % 7;
-  const timeStr = weeks > 0 ? `${weeks} week${weeks > 1 ? "s" : ""}${days > 0 ? `, ${days} day${days > 1 ? "s" : ""}` : ""}` : `${days} day${days !== 1 ? "s" : ""}`;
-
-  return (
-    <div className={`rounded-2xl border bg-gradient-to-br ${msg.color} p-6 shadow-sm`}>
-      <div className="flex items-start gap-4">
-        <span className="text-4xl">{msg.emoji}</span>
-        <div className="flex-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Recovery Summary</p>
-          <h3 className="text-lg font-bold mb-1">{msg.title}</h3>
-          <div className="flex flex-wrap gap-2 mb-3">
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full bg-white/60 border border-current/10 px-2.5 py-0.5">🏥 {procLabel}</span>
-            <span className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full bg-white/60 border border-current/10 px-2.5 py-0.5">📅 {timeStr} ago</span>
+        <div className="mt-5 rounded-2xl border border-slate-200 bg-white/80 p-4 text-xs leading-5 text-slate-500">
+          <div className="flex items-start gap-2.5">
+            <Shield className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+            <p>{SAFETY_DISCLAIMER}</p>
           </div>
-          <p className="text-sm leading-relaxed opacity-80">{msg.message}</p>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Daily Care Checklist ─────────────────────────────────────────────────────
+function RecoverySummaryCard({ profile, daysSince, stage }: { profile: CareProfile; daysSince: number; stage: string }) {
+  const procedureLabel = PROCEDURE_OPTIONS.find((item) => item.id === profile.procedureType)?.label ?? "Procedure";
+  const displayStage = getDisplayStage(daysSince);
+  const stageMessage = RECOVERY_MESSAGES[stage as keyof typeof RECOVERY_MESSAGES];
 
-function DailyCareChecklist({ checklist, onSave }: { checklist: CareChecklist; onSave: (c: CareChecklist) => void }) {
+  return (
+    <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-3">
+          <p className="text-sm font-semibold text-slate-900">{displayStage.badge}</p>
+          <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+            <span className="rounded-full border border-slate-200 px-3 py-1">{procedureLabel}</span>
+            <span className="rounded-full border border-slate-200 px-3 py-1">{formatTimeSince(daysSince)}</span>
+          </div>
+          <p className="max-w-2xl text-sm leading-6 text-slate-600">{stageMessage?.message ?? displayStage.summary}</p>
+        </div>
+        <div className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600">
+          {displayStage.badge}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DailyCareChecklist({ checklist, onSave }: { checklist: CareChecklist; onSave: (entry: CareChecklist) => void }) {
   const [local, setLocal] = useState(checklist);
-  const checked = CHECKLIST_ITEMS.filter(i => local[i.key]).length;
-  const total = CHECKLIST_ITEMS.length;
 
-  const toggle = (key: string) => {
-    const updated = { ...local, [key]: !(local as any)[key] };
+  useEffect(() => {
+    setLocal(checklist);
+  }, [checklist]);
+
+  const visibleItems = CHECKLIST_ITEMS.filter((item) => PRIMARY_CHECKLIST_KEYS.includes(item.key));
+  const completed = visibleItems.filter((item) => local[item.key]).length;
+  const total = visibleItems.length;
+  const progress = Math.round((completed / total) * 100);
+
+  const toggleItem = (key: keyof Omit<CareChecklist, "date" | "savedAt">) => {
+    const updated = { ...local, [key]: !local[key] };
     setLocal(updated);
     onSave(updated);
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center"><ClipboardList className="w-4.5 h-4.5 text-emerald-600" /></div>
-          <div><h3 className="text-sm font-bold">Daily Care Checklist</h3><p className="text-[11px] text-muted-foreground">{checked}/{total} completed</p></div>
+    <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">Today's Care Checklist</h2>
+          <p className="mt-1 text-sm text-slate-500">{completed} of {total} completed</p>
         </div>
-        <div className="w-10 h-10 rounded-full border-4 border-emerald-200 flex items-center justify-center">
-          <span className="text-xs font-bold text-emerald-700">{Math.round((checked / total) * 100)}%</span>
-        </div>
+        <span className="text-sm font-medium text-slate-600">{progress}%</span>
       </div>
-      <div className="space-y-2">
-        {CHECKLIST_ITEMS.map(item => {
-          const isChecked = (local as any)[item.key];
+
+      <div className="mb-4 h-2 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-teal-500 transition-all duration-500" style={{ width: `${progress}%` }} />
+      </div>
+
+      <div className="grid gap-3">
+        {visibleItems.map((item) => {
+          const checked = local[item.key];
           return (
-            <button key={item.key} onClick={() => toggle(item.key)}
-              className={cn("w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all",
-                isChecked ? "bg-emerald-50 border-emerald-200" : "border-border hover:bg-muted/50")}>
-              <span className={cn("w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors shrink-0",
-                isChecked ? "bg-emerald-500 border-emerald-500" : "border-muted-foreground/30")}>
-                {isChecked && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
+            <button
+              key={item.key}
+              onClick={() => toggleItem(item.key)}
+              className={cn(
+                "rounded-2xl border px-4 py-3 text-left transition-all duration-200",
+                checked
+                  ? "border-teal-200 bg-teal-50"
+                  : "border-slate-200 bg-white hover:bg-slate-50",
+              )}
+            >
+              <div className="flex items-center gap-3">
+                <span
+                  className={cn(
+                    "flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all",
+                    checked ? "border-teal-500 bg-teal-500 text-white" : "border-slate-300 bg-white text-transparent",
+                  )}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                </span>
+                <p className="text-sm font-medium text-slate-800">{item.label}</p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {completed === total ? (
+        <div className="mt-4 rounded-2xl border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-800">
+          Great job. You completed today's recovery care.
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function ExtraChecklistItems({ checklist, onSave }: { checklist: CareChecklist; onSave: (entry: CareChecklist) => void }) {
+  const [local, setLocal] = useState(checklist);
+
+  useEffect(() => {
+    setLocal(checklist);
+  }, [checklist]);
+
+  const extraItems = CHECKLIST_ITEMS.filter((item) => EXTRA_CHECKLIST_KEYS.includes(item.key));
+
+  const toggleItem = (key: keyof Omit<CareChecklist, "date" | "savedAt">) => {
+    const updated = { ...local, [key]: !local[key] };
+    setLocal(updated);
+    onSave(updated);
+  };
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h3 className="text-sm font-semibold text-slate-900">Extra checklist items</h3>
+      <div className="mt-3 grid gap-2">
+        {extraItems.map((item) => {
+          const checked = local[item.key];
+          return (
+            <button
+              key={item.key}
+              onClick={() => toggleItem(item.key)}
+              className={cn(
+                "flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-all",
+                checked ? "border-teal-200 bg-teal-50" : "border-slate-200 bg-white hover:bg-slate-50",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-all",
+                  checked ? "border-teal-500 bg-teal-500 text-white" : "border-slate-300 bg-white text-transparent",
+                )}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5" />
               </span>
-              <span className="text-sm">{item.emoji} {item.label}</span>
+              <span className="text-slate-800">{item.label}</span>
             </button>
           );
         })}
@@ -195,275 +457,567 @@ function DailyCareChecklist({ checklist, onSave }: { checklist: CareChecklist; o
   );
 }
 
-// ─── Symptom Watch ────────────────────────────────────────────────────────────
-
-function SymptomWatch({ log, onSave }: { log: CareLogEntry; onSave: (l: CareLogEntry) => void }) {
+function SymptomWatchPanel({ log, onSave }: { log: CareLogEntry; onSave: (entry: CareLogEntry) => void }) {
   const [local, setLocal] = useState(log);
+
+  useEffect(() => {
+    setLocal(log);
+  }, [log]);
+
   const redFlags = detectRedFlags(local);
+  const monitoringSymptoms = SYMPTOM_WATCH_TOGGLES.filter((item) => !item.isRedFlag);
+  const warningSymptoms = SYMPTOM_WATCH_TOGGLES.filter((item) => item.isRedFlag);
 
-  const toggleSymptom = (key: string) => {
-    const updated = { ...local, [key]: !(local as any)[key] };
+  const saveUpdate = (updated: CareLogEntry) => {
     setLocal(updated);
     onSave(updated);
   };
 
-  const setPain = (level: PainLevel) => {
-    const updated = { ...local, painLevel: level };
-    setLocal(updated);
-    onSave(updated);
+  const toggleSymptom = (key: keyof CareLogEntry) => {
+    saveUpdate({ ...local, [key]: !local[key] });
   };
 
-  const setNotes = (notes: string) => {
-    const updated = { ...local, notes };
-    setLocal(updated);
+  const setPainLevel = (level: PainLevel) => {
+    saveUpdate({ ...local, painLevel: level });
   };
 
-  const saveNotes = () => onSave(local);
+  const painMeta = (level: PainLevel) => {
+    if (level === 0) return { label: "No pain", tone: "text-emerald-700 bg-emerald-50 border-emerald-200" };
+    if (level <= 2) return { label: "Mild", tone: "text-teal-700 bg-teal-50 border-teal-200" };
+    if (level <= 4) return { label: "Moderate", tone: "text-amber-700 bg-amber-50 border-amber-200" };
+    return { label: "Severe", tone: "text-rose-700 bg-rose-50 border-rose-200" };
+  };
+
+  const currentPain = painMeta(local.painLevel);
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm space-y-5">
-      <div className="flex items-center gap-2.5">
-        <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center"><Activity className="w-4.5 h-4.5 text-blue-600" /></div>
-        <div><h3 className="text-sm font-bold">Symptom Watch</h3><p className="text-[11px] text-muted-foreground">Log how you're feeling today</p></div>
+    <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4">
+        <h2 className="text-base font-semibold text-slate-900">Symptom Watch</h2>
+        <p className="mt-1 text-sm text-slate-500">Log how you feel today.</p>
       </div>
 
-      {/* Pain Level */}
-      <div>
-        <p className="text-xs font-semibold mb-2">Pain Level</p>
-        <div className="flex gap-1.5">
-          {([0, 1, 2, 3, 4, 5] as PainLevel[]).map(level => (
-            <button key={level} onClick={() => setPain(level)}
-              className={cn("flex-1 py-2 rounded-lg border text-xs font-bold transition-all",
-                local.painLevel === level
-                  ? level <= 1 ? "bg-green-100 border-green-300 text-green-700"
-                    : level <= 3 ? "bg-amber-100 border-amber-300 text-amber-700"
-                    : "bg-red-100 border-red-300 text-red-700"
-                  : "border-border hover:bg-muted/50")}>
-              {level}
-            </button>
-          ))}
-        </div>
-        <div className="flex justify-between mt-1"><span className="text-[10px] text-muted-foreground">No pain</span><span className="text-[10px] text-muted-foreground">Severe</span></div>
-      </div>
-
-      {/* Symptom toggles */}
-      <div>
-        <p className="text-xs font-semibold mb-2">Symptoms</p>
-        <div className="grid grid-cols-2 gap-2">
-          {SYMPTOM_WATCH_TOGGLES.map(s => {
-            const active = !!(local as any)[s.key];
-            return (
-              <button key={s.key} onClick={() => toggleSymptom(s.key)}
-                className={cn("p-2.5 rounded-xl border text-left text-xs font-medium transition-all",
-                  active ? s.isRedFlag ? "bg-red-50 border-red-300 text-red-800" : "bg-blue-50 border-blue-300 text-blue-800"
-                  : "border-border hover:bg-muted/50")}>
-                {s.emoji} {s.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Red Flag Alert */}
-      {redFlags.length > 0 && (
-        <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4 animate-in fade-in duration-300">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-6 h-6 text-red-600 shrink-0 mt-0.5" />
+      <div className="space-y-4">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-bold text-red-800 mb-1">⚠️ Red Flag Detected</p>
-              <ul className="text-xs text-red-700 space-y-0.5 mb-3">
-                {redFlags.map(f => <li key={f}>• {f}</li>)}
-              </ul>
-              <p className="text-sm font-semibold text-red-900">{RED_FLAG_WARNING}</p>
-              <a href="tel:104" className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold shadow hover:bg-red-700 transition-all">
-                <Phone className="w-4 h-4" /> Call 104 Now
-              </a>
+              <p className="text-sm font-semibold text-slate-900">Pain level</p>
+            </div>
+            <span className={cn("rounded-full border px-3 py-1 text-xs font-semibold", currentPain.tone)}>{currentPain.label}</span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {([0, 1, 2, 3, 4, 5] as PainLevel[]).map((level) => {
+              const active = local.painLevel === level;
+              const label = level === 0 ? "No pain" : level <= 2 ? "Mild" : level <= 4 ? "Moderate" : "Severe";
+
+              return (
+                <button
+                  key={level}
+                  onClick={() => setPainLevel(level)}
+                  className={cn(
+                    "rounded-xl border px-3 py-2.5 text-center transition-all duration-200",
+                    active
+                      ? level <= 2
+                        ? "border-teal-300 bg-teal-50 text-teal-800"
+                        : level <= 4
+                          ? "border-amber-300 bg-amber-50 text-amber-800"
+                          : "border-rose-300 bg-rose-50 text-rose-800"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50",
+                  )}
+                >
+                  <p className="text-sm font-semibold">{level}</p>
+                  <p className="mt-0.5 text-[10px]">{label}</p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="mb-2">
+              <p className="text-sm font-semibold text-slate-900">Normal monitoring symptoms</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {monitoringSymptoms.map((item) => {
+                const active = !!local[item.key];
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => toggleSymptom(item.key)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-sm transition-all duration-200",
+                      active
+                        ? "border-sky-200 bg-sky-50 text-sky-800"
+                        : "border-slate-200 bg-white text-slate-700 hover:border-sky-200 hover:bg-sky-50/60",
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="mb-2">
+              <p className="text-sm font-semibold text-slate-900">Warning symptoms</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {warningSymptoms.map((item) => {
+                const active = !!local[item.key];
+                return (
+                  <button
+                    key={item.key}
+                    onClick={() => toggleSymptom(item.key)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-sm transition-all duration-200",
+                      active
+                        ? "border-rose-300 bg-rose-100 text-rose-800"
+                        : "border-rose-200 bg-white text-slate-700 hover:border-rose-300 hover:bg-rose-50",
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
-      )}
 
-      {/* Notes */}
-      <div>
-        <p className="text-xs font-semibold mb-1.5">Notes (optional)</p>
-        <textarea value={local.notes} onChange={e => setNotes(e.target.value)} onBlur={saveNotes}
-          rows={2} placeholder="How are you feeling today?"
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-teal-300" />
+        {redFlags.length > 0 ? (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" />
+              <p>Please contact a healthcare professional if these symptoms continue or worsen.</p>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <label className="mb-2 block text-sm font-semibold text-slate-900">Notes</label>
+          <textarea
+            value={local.notes}
+            onChange={(event) => setLocal({ ...local, notes: event.target.value })}
+            onBlur={() => onSave(local)}
+            rows={3}
+            placeholder="Add anything you want to remember or tell your doctor."
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-teal-300"
+          />
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
 
-// ─── Procedure-Specific Guidance ──────────────────────────────────────────────
+function MoreRecoveryDetailsSection({
+  daysSince,
+  procedureType,
+  weekNumber,
+  checkIn,
+  onSaveCheckIn,
+  checklist,
+  onSaveChecklist,
+  procedureDate,
+  recoveryStage,
+}: {
+  daysSince: number;
+  procedureType: ProcedureType;
+  weekNumber: number;
+  checkIn: WeeklyCheckIn | null;
+  onSaveCheckIn: (entry: WeeklyCheckIn) => void;
+  checklist: CareChecklist;
+  onSaveChecklist: (entry: CareChecklist) => void;
+  procedureDate: string;
+  recoveryStage: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const stageMessage = RECOVERY_MESSAGES[recoveryStage as keyof typeof RECOVERY_MESSAGES];
 
-function ProcedureGuidanceSection({ procedureType }: { procedureType: ProcedureType }) {
-  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  return (
+    <section className="rounded-[24px] border border-slate-200 bg-white shadow-sm">
+      <button
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center justify-between gap-3 px-5 py-4 text-left"
+      >
+        <div>
+          <h2 className="text-base font-semibold text-slate-900">More Recovery Details</h2>
+          <p className="mt-1 text-sm text-slate-500">Timeline, guidance, weekly check-in, and extra checklist items.</p>
+        </div>
+        {open ? <ChevronUp className="h-4 w-4 shrink-0 text-slate-500" /> : <ChevronDown className="h-4 w-4 shrink-0 text-slate-500" />}
+      </button>
+
+      <div className={cn("grid transition-all duration-300 ease-out", open ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+        <div className="overflow-hidden">
+          <div className="space-y-5 border-t border-slate-200 px-5 py-5">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-600">
+              <p className="font-medium text-slate-900">Detailed recovery education</p>
+              <p className="mt-2">Procedure date: {formatDate(procedureDate)}</p>
+              <p className="mt-1">{stageMessage?.message}</p>
+            </div>
+            <ExtraChecklistItems checklist={checklist} onSave={onSaveChecklist} />
+            <RecoveryTimelineSection daysSince={daysSince} />
+            <ProcedureGuidanceCards procedureType={procedureType} />
+            <WeeklyCheckInCard weekNumber={weekNumber} checkIn={checkIn} onSave={onSaveCheckIn} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RecoveryTimelineSection({ daysSince }: { daysSince: number }) {
+  const currentIndex = getDisplayStage(daysSince).timelineIndex;
+
+  return (
+    <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="mb-6 flex items-start gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-50 text-teal-700">
+          <Calendar className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Recovery Timeline</h2>
+          <p className="mt-1 text-sm text-slate-500">See where you are now and what each stage is generally focused on.</p>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+        {TIMELINE_STAGES.map((item, index) => {
+          const state = index < currentIndex ? "complete" : index === currentIndex ? "current" : "upcoming";
+          return (
+            <div
+              key={item.key}
+              className={cn(
+                "rounded-3xl border p-4 transition-all duration-200",
+                state === "complete" && "border-emerald-200 bg-emerald-50/60",
+                state === "current" && "border-sky-200 bg-sky-50/70 shadow-sm",
+                state === "upcoming" && "border-slate-200 bg-slate-50/70",
+              )}
+            >
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{item.range}</span>
+                <span
+                  className={cn(
+                    "rounded-full px-2.5 py-1 text-[11px] font-semibold",
+                    state === "complete" && "bg-emerald-100 text-emerald-700",
+                    state === "current" && "bg-sky-100 text-sky-700",
+                    state === "upcoming" && "bg-slate-200 text-slate-600",
+                  )}
+                >
+                  {state === "current" ? "Current" : state === "complete" ? "Covered" : "Upcoming"}
+                </span>
+              </div>
+              <h3 className="text-base font-semibold text-slate-900">{item.label}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{item.description}</p>
+              <div className="mt-4 rounded-2xl border border-white/80 bg-white/80 p-3 text-xs leading-5 text-slate-500">
+                {item.reminder}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ProcedureGuidanceCards({ procedureType }: { procedureType: ProcedureType }) {
+  const [expanded, setExpanded] = useState<number | null>(0);
   const guidance = PROCEDURE_GUIDANCE[procedureType];
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center gap-2.5 mb-4">
-        <div className="w-9 h-9 rounded-xl bg-purple-100 flex items-center justify-center"><Stethoscope className="w-4.5 h-4.5 text-purple-600" /></div>
-        <div><h3 className="text-sm font-bold">{guidance.title}</h3><p className="text-[11px] text-muted-foreground">Tap a topic to expand</p></div>
+    <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="mb-5 flex items-start gap-3">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-50 text-violet-700">
+          <Stethoscope className="h-5 w-5" />
+        </div>
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Procedure-Specific Guidance</h2>
+          <p className="mt-1 text-sm text-slate-500">{guidance.title}. Follow your doctor's advice if it differs from general guidance here.</p>
+        </div>
       </div>
-      <div className="space-y-2">
-        {guidance.topics.map((topic, idx) => (
-          <div key={idx} className="rounded-xl border border-border overflow-hidden">
-            <button onClick={() => setExpandedIdx(expandedIdx === idx ? null : idx)}
-              className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors">
-              <span className="text-lg">{topic.emoji}</span>
-              <span className="text-sm font-semibold flex-1">{topic.title}</span>
-              {expandedIdx === idx ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
-            </button>
-            {expandedIdx === idx && (
-              <div className="px-4 pb-4 pt-1 border-t border-border/50 animate-in fade-in duration-200">
-                <ul className="space-y-1.5">
-                  {topic.points.map((pt, i) => (
-                    <li key={i} className="text-xs text-muted-foreground leading-relaxed flex gap-2">
-                      <span className="text-teal-500 mt-0.5">•</span>{pt}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
-// ─── Weekly Check-in ──────────────────────────────────────────────────────────
-
-function WeeklyCheckInSection({ weekNumber, checkIn, onSave }: { weekNumber: number; checkIn: WeeklyCheckIn | null; onSave: (w: WeeklyCheckIn) => void }) {
-  const [local, setLocal] = useState<WeeklyCheckIn>(checkIn ?? {
-    weekNumber, date: new Date().toISOString().slice(0, 10),
-    painImproving: null, energyImproving: null, unusualSymptoms: null, attendedFollowup: null, emotionallyOkay: null, savedAt: "",
-  });
-
-  const setAnswer = (key: string, val: boolean) => {
-    const updated = { ...local, [key]: val };
-    setLocal(updated);
-    onSave(updated);
-  };
-
-  const answered = WEEKLY_QUESTIONS.filter(q => (local as any)[q.key] !== null).length;
-  const total = WEEKLY_QUESTIONS.length;
-
-  // Determine progress message
-  const progressMsg = useMemo(() => {
-    if (answered < total) return null;
-    const positive = [local.painImproving, local.energyImproving, local.emotionallyOkay].filter(Boolean).length;
-    const concerning = local.unusualSymptoms === true;
-    if (concerning) return { text: "Some symptoms need attention — consider contacting a healthcare worker", tone: "amber" as const };
-    if (positive >= 2) return { text: "Recovery appears stable based on your logs", tone: "emerald" as const };
-    return { text: "Keep tracking — your awareness helps your recovery", tone: "blue" as const };
-  }, [local, answered, total]);
-
-  return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
-      <div className="flex items-center gap-2.5 mb-4">
-        <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center"><Calendar className="w-4.5 h-4.5 text-indigo-600" /></div>
-        <div><h3 className="text-sm font-bold">Week {weekNumber} Check-in</h3><p className="text-[11px] text-muted-foreground">{answered}/{total} answered</p></div>
-      </div>
-      <div className="space-y-3">
-        {WEEKLY_QUESTIONS.map(q => {
-          const val = (local as any)[q.key];
+      <div className="grid gap-3">
+        {guidance.topics.map((topic, index) => {
+          const isOpen = expanded === index;
           return (
-            <div key={q.key} className="flex items-center justify-between p-3 rounded-xl border border-border">
-              <span className="text-sm flex items-center gap-2">{q.emoji} {q.question}</span>
-              <div className="flex gap-1.5 shrink-0">
-                <button onClick={() => setAnswer(q.key, true)}
-                  className={cn("px-3 py-1 rounded-lg text-xs font-semibold border transition-all",
-                    val === true ? "bg-emerald-100 border-emerald-300 text-emerald-700" : "border-border hover:bg-muted/50")}>Yes</button>
-                <button onClick={() => setAnswer(q.key, false)}
-                  className={cn("px-3 py-1 rounded-lg text-xs font-semibold border transition-all",
-                    val === false ? "bg-rose-100 border-rose-300 text-rose-700" : "border-border hover:bg-muted/50")}>No</button>
+            <div key={`${topic.title}-${index}`} className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-50/70 transition-all duration-200">
+              <button
+                onClick={() => setExpanded(isOpen ? null : index)}
+                className="flex w-full items-start gap-4 p-4 text-left transition hover:bg-white/70"
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white text-xl shadow-sm">{topic.emoji}</div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900">{topic.title}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-500">{topic.preview}</p>
+                    </div>
+                    {isOpen ? <ChevronUp className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" /> : <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />}
+                  </div>
+                </div>
+              </button>
+              <div className={cn("grid transition-all duration-300 ease-out", isOpen ? "grid-rows-[1fr]" : "grid-rows-[0fr]")}>
+                <div className="overflow-hidden">
+                  <div className="border-t border-slate-200 px-4 pb-4 pt-3">
+                    <ul className="space-y-2">
+                      {topic.points.map((point) => (
+                        <li key={point} className="flex gap-2 text-sm leading-6 text-slate-600">
+                          <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-teal-400" />
+                          <span>{point}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
           );
         })}
       </div>
-      {progressMsg && (
-        <div className={cn("mt-4 p-3 rounded-xl border text-sm font-medium",
-          progressMsg.tone === "emerald" ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-          : progressMsg.tone === "amber" ? "bg-amber-50 border-amber-200 text-amber-800"
-          : "bg-blue-50 border-blue-200 text-blue-800")}>
-          {progressMsg.tone === "emerald" ? "✅" : progressMsg.tone === "amber" ? "⚠️" : "💡"} {progressMsg.text}
-        </div>
-      )}
-    </div>
+    </section>
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+function WeeklyCheckInCard({ weekNumber, checkIn, onSave }: { weekNumber: number; checkIn: WeeklyCheckIn | null; onSave: (entry: WeeklyCheckIn) => void }) {
+  const [local, setLocal] = useState<WeeklyCheckIn>(
+    checkIn ?? {
+      weekNumber,
+      date: new Date().toISOString().slice(0, 10),
+      painImproving: null,
+      energyImproving: null,
+      unusualSymptoms: null,
+      attendedFollowup: null,
+      emotionallyOkay: null,
+      savedAt: "",
+    },
+  );
+
+  useEffect(() => {
+    setLocal(
+      checkIn ?? {
+        weekNumber,
+        date: new Date().toISOString().slice(0, 10),
+        painImproving: null,
+        energyImproving: null,
+        unusualSymptoms: null,
+        attendedFollowup: null,
+        emotionallyOkay: null,
+        savedAt: "",
+      },
+    );
+  }, [checkIn, weekNumber]);
+
+  const answered = WEEKLY_QUESTIONS.filter((question) => local[question.key] !== null).length;
+  const total = WEEKLY_QUESTIONS.length;
+  const progress = Math.round((answered / total) * 100);
+
+  const updateAnswer = (key: keyof Omit<WeeklyCheckIn, "weekNumber" | "date" | "savedAt">, value: boolean) => {
+    const updated = { ...local, [key]: value };
+    setLocal(updated);
+    onSave(updated);
+  };
+
+  const summary = useMemo(() => {
+    if (answered < total) return null;
+
+    const needsAttention =
+      local.unusualSymptoms === true ||
+      local.painImproving === false ||
+      local.energyImproving === false ||
+      local.emotionallyOkay === false;
+
+    if (needsAttention) {
+      return {
+        tone: "amber",
+        text: "Some answers may need attention. Consider contacting a healthcare professional.",
+      } as const;
+    }
+
+    return {
+      tone: "emerald",
+      text: "Recovery appears stable based on your answers.",
+    } as const;
+  }, [answered, total, local]);
+
+  return (
+    <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-700">
+            <Calendar className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">Weekly Check-in</h2>
+            <p className="mt-1 text-sm text-slate-500">Week {weekNumber} summary</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-semibold text-slate-900">{answered}/{total}</p>
+          <p className="text-xs text-slate-500">answered</p>
+        </div>
+      </div>
+
+      <div className="mb-5 h-2.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-sky-400 transition-all duration-500" style={{ width: `${progress}%` }} />
+      </div>
+
+      <div className="space-y-3">
+        {WEEKLY_QUESTIONS.map((question) => {
+          const value = local[question.key];
+          return (
+            <div key={question.key} className="rounded-3xl border border-slate-200 bg-slate-50/70 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-900">{question.question}</p>
+                </div>
+                <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1">
+                  <button
+                    onClick={() => updateAnswer(question.key, true)}
+                    className={cn(
+                      "rounded-xl px-4 py-2 text-sm font-medium transition-all",
+                      value === true ? "bg-emerald-100 text-emerald-800" : "text-slate-600 hover:bg-slate-50",
+                    )}
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => updateAnswer(question.key, false)}
+                    className={cn(
+                      "rounded-xl px-4 py-2 text-sm font-medium transition-all",
+                      value === false ? "bg-rose-100 text-rose-800" : "text-slate-600 hover:bg-slate-50",
+                    )}
+                  >
+                    No
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {summary ? (
+        <div
+          className={cn(
+            "mt-5 rounded-2xl border p-4 text-sm font-medium",
+            summary.tone === "emerald"
+              ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+              : "border-amber-200 bg-amber-50 text-amber-800",
+          )}
+        >
+          {summary.text}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function CareLogHelpSection() {
+  return (
+    <section className="rounded-[24px] border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-4">
+        <h2 className="text-base font-semibold text-slate-900">Need Help / Emergency</h2>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <a href="tel:104" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 transition hover:bg-slate-50">
+            Call 104
+          </a>
+          <a href="tel:108" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 transition hover:bg-slate-50">
+            Call 108
+          </a>
+          <Link to="/phc-nearby" className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 transition hover:bg-slate-50">
+            Find PHC
+          </Link>
+          <button disabled className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-medium text-slate-500">
+            Contact Doctor
+          </button>
+        </div>
+
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-3">
+          <p className="mb-2 text-xs font-semibold text-rose-700">SOS</p>
+          <div className="max-h-[150px] overflow-hidden">
+            <div className="origin-top scale-[0.72]">
+              <SOSButton />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SafetyDisclaimerCard() {
+  return (
+    <section className="rounded-[20px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="flex items-start gap-2.5">
+        <Shield className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+        <p className="text-xs leading-5 text-slate-500">{SAFETY_DISCLAIMER}</p>
+      </div>
+    </section>
+  );
+}
 
 export default function CareLog() {
   const care = useCareLog();
 
   if (!care.isOnboarded || !care.profile) {
-    return <CareLogOnboarding onComplete={data => { care.completeOnboarding(data); toast.success("Care Log set up successfully!"); }} />;
+    return (
+      <CareLogOnboarding
+        onComplete={(data) => {
+          care.completeOnboarding(data);
+          toast.success("Care Log set up successfully!");
+        }}
+      />
+    );
   }
 
   const todayDate = new Date().toISOString().slice(0, 10);
 
   return (
-    <div className="min-h-screen py-12 bg-background">
-      <div className="container max-w-3xl">
-        <div className="flex items-center justify-between mb-8">
-          <Link to="/family-planning" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-            <ArrowLeft className="w-4 h-4" /> Back
+    <div className="min-h-screen bg-slate-50 py-8 md:py-10">
+      <div className="container max-w-4xl px-4">
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <Link to="/family-planning" className="inline-flex items-center gap-2 text-sm text-slate-600 transition-colors hover:text-slate-900">
+            <ArrowLeft className="h-4 w-4" />
+            Back
           </Link>
-          <button onClick={() => { if (confirm("Reset your Care Log profile? This will clear all data.")) { care.resetProfile(); } }}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
-            <RotateCcw className="w-3 h-3" /> Reset
+          <button
+            onClick={() => {
+              if (confirm("Reset your Care Log profile? This will clear all data.")) {
+                care.resetProfile();
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:text-slate-900"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset
           </button>
         </div>
 
-        <div className="mb-6">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-100 text-teal-700 text-xs font-semibold mb-3">💗 Care Log</div>
-          <h1 className="text-2xl md:text-3xl font-bold">Your Recovery Journal</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">Track your daily recovery and stay informed.</p>
-        </div>
-
         <div className="space-y-5">
-          {/* 1. Recovery Summary */}
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">Care Log</h1>
+            <p className="mt-1 text-sm text-slate-500">Track recovery and know when to seek help.</p>
+          </div>
+
           <RecoverySummaryCard profile={care.profile} daysSince={care.daysSinceProcedure} stage={care.recoveryStage} />
-
-          {/* 2. Daily Care Checklist */}
           <DailyCareChecklist checklist={care.getChecklist(todayDate)} onSave={care.saveChecklist} />
-
-          {/* 3. Symptom Watch + Red Flags */}
-          <SymptomWatch log={care.getLog(todayDate)} onSave={care.saveLog} />
-
-          {/* 4. Procedure-Specific Guidance */}
-          <ProcedureGuidanceSection procedureType={care.profile.procedureType} />
-
-          {/* 5. Weekly Check-in */}
-          <WeeklyCheckInSection weekNumber={care.currentWeekNumber} checkIn={care.currentWeeklyCheckIn} onSave={care.saveWeeklyCheckIn} />
-
-          {/* 6. Emergency Help */}
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0"><Phone className="w-5 h-5 text-blue-600" /></div>
-            <div>
-              <h3 className="text-base font-bold text-blue-900 mb-1">Need Help?</h3>
-              <p className="text-sm text-blue-800 leading-relaxed mb-3">If you experience any concerning symptoms, contact a healthcare professional immediately.</p>
-              <div className="flex flex-wrap gap-2">
-                <a href="tel:104" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-semibold shadow hover:bg-blue-700 transition-all">📞 Call 104</a>
-                <a href="tel:108" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-blue-300 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-all">🚑 Call 108</a>
-                <Link to="/phc-nearby" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-blue-300 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-all">📍 Find PHC</Link>
-              </div>
-            </div>
-          </div>
-
-          {/* 7. SOS Action */}
-          <SOSButton />
-
-          {/* 8. Safety Disclaimer */}
-          <div className="rounded-2xl border border-border bg-muted/30 p-4 flex items-center gap-3">
-            <Shield className="w-5 h-5 text-muted-foreground shrink-0" />
-            <p className="text-[11px] text-muted-foreground leading-relaxed">{SAFETY_DISCLAIMER}</p>
-          </div>
+          <SymptomWatchPanel log={care.getLog(todayDate)} onSave={care.saveLog} />
+          <MoreRecoveryDetailsSection
+            daysSince={care.daysSinceProcedure}
+            procedureType={care.profile.procedureType}
+            weekNumber={care.currentWeekNumber}
+            checkIn={care.currentWeeklyCheckIn}
+            onSaveCheckIn={care.saveWeeklyCheckIn}
+            checklist={care.getChecklist(todayDate)}
+            onSaveChecklist={care.saveChecklist}
+            procedureDate={care.profile.procedureDate}
+            recoveryStage={care.recoveryStage}
+          />
+          <CareLogHelpSection />
+          <SafetyDisclaimerCard />
         </div>
       </div>
     </div>

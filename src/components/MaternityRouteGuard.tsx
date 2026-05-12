@@ -2,7 +2,7 @@
 // Protects maternity dashboard routes based on lifecycle state
 // STRICTLY isolated to Maternity Phase navigation logic
 
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 import {
   resolveMaternityLifecycle,
@@ -24,6 +24,7 @@ export default function MaternityRouteGuard({
   children,
 }: MaternityRouteGuardProps) {
   const { profile, activeEDD } = usePregnancyProfile();
+  const location = useLocation();
 
   const maternityProfile = toMaternityLifecycleProfile(profile, activeEDD);
 
@@ -33,14 +34,18 @@ export default function MaternityRouteGuard({
   // If user is not in the expected state, redirect to correct dashboard
   if (lifecycleState !== expectedState && lifecycleState !== "none") {
     const correctRoute = getMaternityDashboardRoute(lifecycleState);
+    // Prevent redirect loop: don't redirect to where we already are
+    if (correctRoute === location.pathname) return <>{children}</>;
     return <Navigate to={correctRoute} replace />;
   }
 
-  // If no valid lifecycle state, redirect to maternity landing
+  // If no valid lifecycle state, render children rather than redirect
+  // This prevents the infinite loop: AuthGate → /pregnancy-dashboard → Guard → /maternity → AuthGate
   if (lifecycleState === "none") {
-    return <Navigate to="/maternity" replace />;
+    return <>{children}</>;
   }
 
   // User is in the correct state, render children
   return <>{children}</>;
 }
+

@@ -7,6 +7,7 @@ import {
 } from "@/lib/maternalPhaseResolver";
 import type { Region } from "@/lib/nutritionData";
 import { supabase } from "@/integrations/supabase/client";
+import { saveLmpRecord, fetchLmpRecord } from "@/services/maternityLmpService";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -269,6 +270,8 @@ interface PregnancyProfileContextType {
   openGTTPopup: () => void;
   /** Close the GTT popup */
   closeGTTPopup: () => void;
+  /** Whether the LMP is locked in Supabase (immutable). */
+  lmpLocked: boolean;
 }
 
 // ─── Context ─────────────────────────────────────────────────────────────────
@@ -297,6 +300,7 @@ const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
   isGTTPopupOpen: false,
   openGTTPopup: () => {},
   closeGTTPopup: () => {},
+  lmpLocked: false,
 });
 
 // ─── Provider ────────────────────────────────────────────────────────────────
@@ -304,6 +308,7 @@ const PregnancyProfileContext = createContext<PregnancyProfileContextType>({
 export function PregnancyProfileProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<PregnancyProfile>(loadProfile);
   const [isGTTPopupOpen, setIsGTTPopupOpen] = useState(false);
+  const [lmpLocked, setLmpLocked] = useState(false);
   const userIdRef = useRef<string | null>(null);
 
   // Listen for auth state to get userId for Supabase sync
@@ -331,6 +336,24 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
             gdmStatus: cloud.gdmStatus !== undefined ? cloud.gdmStatus : prev.gdmStatus,
             gttQuestionCompleted: cloud.gttQuestionCompleted ?? prev.gttQuestionCompleted,
             deliveryTransitionCompleted: cloud.deliveryTransitionCompleted ?? prev.deliveryTransitionCompleted,
+          };
+        });
+      });
+
+      // Also check for persisted immutable LMP record
+      fetchLmpRecord(uid).then((record) => {
+        if (!record) return;
+        setLmpLocked(true);
+        setProfile((prev) => {
+          // Persisted LMP takes precedence over any local/cloud data
+          const calculatedEDD = addDays(record.lmpDate, 280);
+          const activeEDD = prev.userEDD || calculatedEDD;
+          return {
+            ...prev,
+            lmp: record.lmpDate,
+            calculatedEDD,
+            dueDate: activeEDD,
+            isSetup: true,
           };
         });
       });
@@ -385,6 +408,17 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
       gttQuestionCompleted: prev.gttQuestionCompleted || false,
       dueDate: calculatedEDD, // legacy compat
     }));
+
+    // Persist LMP to Supabase (immutable — will fail silently if already saved)
+    const uid = userIdRef.current;
+    if (uid && data.lmp) {
+      void saveLmpRecord(uid, data.lmp).then((record) => {
+        if (record) {
+          setLmpLocked(true);
+          console.log('[PregnancyProfile] LMP locked in Supabase:', record.lmpDate, '→ EDD:', record.eddDate);
+        }
+      });
+    }
   }, []);
 
   // Set or clear user EDD override
@@ -509,6 +543,7 @@ export function PregnancyProfileProvider({ children }: { children: ReactNode }) 
     isGTTPopupOpen,
     openGTTPopup,
     closeGTTPopup,
+    lmpLocked,
   };
 
   return createElement(PregnancyProfileContext.Provider, { value }, children);

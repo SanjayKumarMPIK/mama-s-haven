@@ -9,8 +9,10 @@ export function DueDateChecker() {
   const [showCelebration, setShowCelebration] = useState(false);
 
   useEffect(() => {
-    // Only check if we have an EDD (regardless of mode - handle postpartum mode too)
+    // Only check if we have an EDD AND the user is actually in a maternity mode with LMP set
     if (!activeEDD) return;
+    if (mode !== "pregnancy" && mode !== "postpartum") return;
+    if (!profile.lmp) return; // No LMP entered yet — EDD might be computed from defaults
 
     const todayDate = new Date();
     todayDate.setHours(0, 0, 0, 0);

@@ -94,6 +94,7 @@ export const RECOVERY_MESSAGES: Record<
 export interface GuidanceTopic {
   emoji: string;
   title: string;
+  preview: string;
   points: string[];
 }
 
@@ -105,64 +106,58 @@ export const PROCEDURE_GUIDANCE: Record<ProcedureType, {
     title: "Post-Hysterectomy Care",
     topics: [
       {
-        emoji: "🛏️",
-        title: "Rest & Recovery",
+        emoji: "📋",
+        title: "Follow Doctor's Instructions",
+        preview: "Use your discharge advice and follow-up plan as your main guide.",
         points: [
-          "Allow at least 6–8 weeks for full recovery",
-          "Avoid strenuous activity until cleared by your doctor",
-          "Gradually increase light walking as comfort allows",
-          "Listen to your body — rest when you feel tired",
+          "Keep your discharge instructions nearby and refer to them when needed",
+          "Attend scheduled follow-up visits and share any recovery concerns",
+          "Use your Care Log to note questions for your doctor",
+          "If advice from different sources differs, follow your treating doctor",
         ],
       },
       {
-        emoji: "🩹",
-        title: "Wound Care Awareness",
+        emoji: "📊",
+        title: "Track Your Symptoms",
+        preview: "Monitor how pain, bleeding, energy, and comfort change over time.",
         points: [
-          "Keep the incision area clean and dry",
-          "Watch for redness, swelling, or discharge around the wound",
-          "Follow your doctor's specific wound care instructions",
-          "Avoid submerging the wound in water until healed",
+          "Log daily pain, fatigue, bleeding, and any wound-related discomfort",
+          "Notice whether symptoms are steady, improving, or getting worse",
+          "Bring notes from this log to your next follow-up visit",
+          "Contact a healthcare professional if new concerning symptoms appear",
         ],
       },
       {
         emoji: "🚫",
         title: "Activity Restrictions",
+        preview: "Ease back into routine activity only as advised during recovery.",
         points: [
-          "Do not lift heavy objects (over 5 kg) until cleared",
-          "Avoid intense household chores in the first few weeks",
-          "Refrain from sexual activity until your doctor approves",
-          "Avoid driving until you can comfortably use the seatbelt",
+          "Avoid strain, heavy lifting, or demanding chores until cleared",
+          "Increase daily activity gradually if your doctor has advised it",
+          "Rest when your body feels tired rather than pushing through discomfort",
+          "Ask your doctor before returning to activities you are unsure about",
         ],
       },
       {
-        emoji: "📋",
-        title: "Follow-up Visits",
+        emoji: "⚠️",
+        title: "Watch for Red Flags",
+        preview: "Certain symptoms may need medical attention and should not be ignored.",
         points: [
-          "Attend all scheduled post-surgery check-ups",
-          "Keep a list of questions for your doctor",
-          "Report any unusual symptoms at follow-up visits",
-          "Bring your Care Log notes to appointments",
+          "Heavy bleeding or bleeding that seems to worsen",
+          "Fever, chills, or signs that may suggest infection",
+          "Severe pain, dizziness, or fainting",
+          "Unusual discharge, swelling, or symptoms that concern you",
         ],
       },
       {
         emoji: "💗",
         title: "Emotional Support",
+        preview: "Emotional recovery matters too, especially after a major procedure.",
         points: [
-          "It's normal to feel emotional after this procedure",
-          "Talk to someone you trust about how you feel",
-          "Hormonal changes may affect mood — this is expected",
-          "Seek professional help if sadness persists",
-        ],
-      },
-      {
-        emoji: "⚠️",
-        title: "When to Seek Help",
-        points: [
-          "Heavy or increasing bleeding",
-          "Fever above 100.4°F (38°C)",
-          "Severe or worsening pain",
-          "Foul-smelling vaginal discharge",
-          "Signs of infection at the incision site",
+          "Feeling emotional, tired, or unsettled can be part of recovery",
+          "Talk with someone you trust if you need support",
+          "Mention ongoing low mood, worry, or sleep difficulty at follow-up",
+          "Seek professional support if emotional distress continues",
         ],
       },
     ],
@@ -171,54 +166,58 @@ export const PROCEDURE_GUIDANCE: Record<ProcedureType, {
     title: "Post-Tubal Ligation Care",
     topics: [
       {
-        emoji: "💆‍♀️",
-        title: "Pain & Discomfort",
-        points: [
-          "Mild pain or cramping is normal for a few days",
-          "Take prescribed pain medication as directed",
-          "Use a heating pad on your abdomen if comfortable",
-          "Pain should gradually decrease — report if it worsens",
-        ],
-      },
-      {
-        emoji: "🩹",
-        title: "Incision Care",
-        points: [
-          "Keep the small incision(s) clean and dry",
-          "Change bandages as your doctor instructed",
-          "Watch for signs of infection (redness, warmth, pus)",
-          "Stitches may dissolve on their own if absorbable",
-        ],
-      },
-      {
-        emoji: "🛏️",
-        title: "Rest & Return to Activity",
-        points: [
-          "Rest for 1–2 days after the procedure",
-          "Avoid heavy lifting for about a week",
-          "Most activities can resume within a few days",
-          "Follow your doctor's advice on returning to work",
-        ],
-      },
-      {
         emoji: "📋",
-        title: "Follow-up Guidance",
+        title: "Follow Doctor's Instructions",
+        preview: "Keep your care advice and follow-up plan as your main reference.",
         points: [
-          "Attend the scheduled follow-up appointment",
-          "Report any concerns about the incision site",
-          "Ask about when to resume normal activities",
-          "Discuss any persistent pain with your doctor",
+          "Follow the discharge advice given by your healthcare team",
+          "Attend any scheduled follow-up and ask when normal routines can resume",
+          "Use your Care Log to remember questions or symptoms to mention",
+          "If anything feels unclear, confirm it with your doctor or health center",
+        ],
+      },
+      {
+        emoji: "📊",
+        title: "Track Your Symptoms",
+        preview: "Watch how discomfort, energy, and any spotting change day by day.",
+        points: [
+          "Log pain levels and any symptoms that continue or worsen",
+          "Track bleeding, fatigue, wound discomfort, or dizziness if present",
+          "Share your symptom notes during follow-up visits",
+          "Use the log to spot patterns instead of relying on memory",
+        ],
+      },
+      {
+        emoji: "🚫",
+        title: "Activity Precautions",
+        preview: "Return to activity gradually and avoid overexertion during recovery.",
+        points: [
+          "Avoid heavy lifting or demanding physical work until advised",
+          "Rest when needed and build back activity gradually",
+          "Do not assume all discomfort means you should push through activity",
+          "Ask your doctor before resuming activities you are unsure about",
         ],
       },
       {
         emoji: "⚠️",
-        title: "Warning Signs",
+        title: "Watch for Red Flags",
+        preview: "Some symptoms may need prompt review by a healthcare professional.",
         points: [
-          "Fever or chills",
-          "Increasing pain or swelling",
-          "Redness or drainage from incision",
-          "Fainting or dizziness",
-          "Abdominal bloating that doesn't improve",
+          "Fever, chills, or signs of possible infection",
+          "Increasing pain, swelling, or wound-related concerns",
+          "Heavy bleeding, dizziness, or fainting",
+          "Any symptom that feels unusual or is getting worse",
+        ],
+      },
+      {
+        emoji: "💗",
+        title: "Emotional Wellbeing",
+        preview: "Physical recovery can also affect mood, confidence, and rest.",
+        points: [
+          "Mood changes or tiredness can happen during recovery",
+          "Check in with yourself each week, not only with physical symptoms",
+          "Talk to someone you trust if you are feeling overwhelmed",
+          "Mention emotional concerns to a healthcare professional if they persist",
         ],
       },
     ],
@@ -229,26 +228,29 @@ export const PROCEDURE_GUIDANCE: Record<ProcedureType, {
       {
         emoji: "📋",
         title: "Follow Doctor's Instructions",
+        preview: "Your doctor knows your procedure details and recovery plan best.",
         points: [
-          "Take all prescribed medications as directed",
-          "Follow specific wound care instructions given to you",
+          "Follow the care plan shared by your healthcare team",
           "Attend all scheduled follow-up appointments",
           "Keep a record of your symptoms for your doctor",
+          "If you are unsure about an instruction, ask for clarification",
         ],
       },
       {
         emoji: "📊",
         title: "Track Your Symptoms",
+        preview: "Use daily logs to notice changes early and discuss them clearly.",
         points: [
           "Use the daily symptom log to track how you feel",
           "Note any new or worsening symptoms",
-          "Record pain levels honestly — it helps your recovery",
+          "Record pain levels honestly so changes are easy to notice",
           "Share this log with your healthcare provider",
         ],
       },
       {
         emoji: "🚫",
         title: "Activity Precautions",
+        preview: "Protect your recovery by avoiding strain until you are cleared.",
         points: [
           "Avoid strenuous activity until cleared by your doctor",
           "Do not lift heavy objects in the recovery period",
@@ -259,12 +261,24 @@ export const PROCEDURE_GUIDANCE: Record<ProcedureType, {
       {
         emoji: "⚠️",
         title: "Watch for Red Flags",
+        preview: "Certain symptoms may need medical attention rather than monitoring alone.",
         points: [
           "Fever, chills, or signs of infection",
           "Heavy or unexpected bleeding",
           "Severe or worsening pain",
           "Dizziness or fainting",
           "Any symptom that concerns you",
+        ],
+      },
+      {
+        emoji: "💗",
+        title: "Emotional Wellbeing",
+        preview: "Recovery can affect mood and confidence as well as physical comfort.",
+        points: [
+          "Feeling emotional or low on energy can happen during recovery",
+          "Talk to someone you trust if you need support",
+          "Use the weekly check-in to notice how you are coping",
+          "Contact a healthcare professional if emotional distress continues",
         ],
       },
     ],
@@ -275,16 +289,18 @@ export const PROCEDURE_GUIDANCE: Record<ProcedureType, {
       {
         emoji: "📋",
         title: "Follow Doctor's Instructions",
+        preview: "Personal medical advice should guide your recovery decisions.",
         points: [
-          "Take all prescribed medications as directed",
           "Follow specific care instructions given to you",
           "Attend all scheduled follow-up appointments",
           "Keep a record of your symptoms for your doctor",
+          "Ask a healthcare professional if any instruction feels unclear",
         ],
       },
       {
         emoji: "📊",
         title: "Track Your Symptoms",
+        preview: "Daily tracking makes it easier to notice changes and ask for help early.",
         points: [
           "Use the daily symptom log to track how you feel",
           "Note any new or worsening symptoms",
@@ -293,14 +309,37 @@ export const PROCEDURE_GUIDANCE: Record<ProcedureType, {
         ],
       },
       {
+        emoji: "🚫",
+        title: "Activity Precautions",
+        preview: "Build back activity slowly and avoid strain unless you were advised otherwise.",
+        points: [
+          "Avoid activities that strain your body during recovery",
+          "Rest when needed and return to normal routines gradually",
+          "Do not assume you should resume everything at once",
+          "Ask your doctor what is safe for your situation",
+        ],
+      },
+      {
         emoji: "⚠️",
         title: "Watch for Warning Signs",
+        preview: "Symptoms that worsen or feel unusual may need medical review.",
         points: [
           "Fever, chills, or signs of infection",
           "Heavy or unexpected bleeding",
           "Severe or worsening pain",
           "Dizziness or fainting",
           "Contact a healthcare professional if concerned",
+        ],
+      },
+      {
+        emoji: "💗",
+        title: "Emotional Wellbeing",
+        preview: "Support for stress, low mood, or worry is also part of recovery care.",
+        points: [
+          "Mood changes or worry can happen while recovering",
+          "Check in with yourself each week, not only with symptoms",
+          "Talk to someone you trust if you need support",
+          "Seek professional support if emotional distress continues",
         ],
       },
     ],
@@ -313,13 +352,14 @@ export const CHECKLIST_ITEMS: {
   key: keyof Omit<import("@/hooks/useCareLog").CareChecklist, "date" | "savedAt">;
   label: string;
   emoji: string;
+  reason: string;
 }[] = [
-  { key: "medicineTaken", label: "Took prescribed medicine", emoji: "💊" },
-  { key: "hydration", label: "Drank enough water", emoji: "💧" },
-  { key: "rest", label: "Rested properly", emoji: "🛏️" },
-  { key: "avoidedHeavyLifting", label: "Avoided heavy lifting", emoji: "🚫" },
-  { key: "woundChecked", label: "Checked wound area (if applicable)", emoji: "🩹" },
-  { key: "followupDone", label: "Attended follow-up (if scheduled)", emoji: "📋" },
+  { key: "medicineTaken", label: "Took prescribed medicine", emoji: "💊", reason: "Helps you stay aligned with the care plan given to you." },
+  { key: "hydration", label: "Drank enough water", emoji: "💧", reason: "Hydration supports general recovery and day-to-day comfort." },
+  { key: "rest", label: "Rested properly", emoji: "🛏️", reason: "Rest gives your body space to recover without extra strain." },
+  { key: "avoidedHeavyLifting", label: "Avoided heavy lifting", emoji: "🚫", reason: "Limiting strain may help protect healing tissues." },
+  { key: "woundChecked", label: "Checked wound area (if applicable)", emoji: "🩹", reason: "A quick check helps you notice changes you may want to report." },
+  { key: "followupDone", label: "Attended follow-up (if scheduled)", emoji: "📋", reason: "Follow-up visits help confirm recovery is staying on track." },
 ];
 
 // ─── Symptom Watch Items ──────────────────────────────────────────────────────
@@ -363,4 +403,4 @@ export const SAFETY_DISCLAIMER =
   "This guidance is for awareness only. Please follow your doctor's instructions and contact a healthcare professional for medical concerns.";
 
 export const RED_FLAG_WARNING =
-  "Please contact a healthcare professional immediately or visit the nearest health center.";
+  "Some symptoms may need medical attention. Please contact a healthcare professional or visit the nearest health center.";

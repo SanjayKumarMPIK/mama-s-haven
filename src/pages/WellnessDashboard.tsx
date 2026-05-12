@@ -5,8 +5,10 @@ import { useWellnessRecommendation } from "@/hooks/useWellnessRecommendation";
 import { usePhase } from "@/hooks/usePhase";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/hooks/useAuth";
-import { useHealthLog, PubertyEntry, FamilyPlanningEntry, MenopauseEntry } from "@/hooks/useHealthLog";
+import { useHealthLog, PubertyEntry, FamilyPlanningEntry, MenopauseEntry, calcFertileWindow, calcAverageCycleLength } from "@/hooks/useHealthLog";
 import VisualAnalytics from "@/components/dashboard/VisualAnalytics";
+import { MentalWellnessInsights, WellnessSuggestions } from "@/components/dashboard/PubertyMentalWellness";
+
 import {
   computeWellnessScore,
   generatePriorityActions,
@@ -272,6 +274,32 @@ export default function WellnessDashboard() {
   const bodySignals = useMemo(() => computeBodySignals(logs, phase), [logs, phase]);
   const predictions = useMemo(() => generateSmartPredictions(logs, phase), [logs, phase]);
 
+  const currentCyclePhase = useMemo(() => {
+    if (phase !== "puberty") return null;
+    const startDates = Object.entries(logs)
+      .filter(([, e]) => e.phase === "puberty" && (e as PubertyEntry).periodStarted && !(e as PubertyEntry)._periodAutoMarked)
+      .map(([d]) => d)
+      .sort((a, b) => b.localeCompare(a));
+    const lastPeriod = startDates[0] || null;
+    if (!lastPeriod) return null;
+    const avgCycle = calcAverageCycleLength(logs);
+    if (!avgCycle) return null;
+    const fertile = calcFertileWindow(lastPeriod, avgCycle);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const lp = new Date(lastPeriod);
+    lp.setHours(0, 0, 0, 0);
+    const daysSince = Math.round((today.getTime() - lp.getTime()) / 86400000);
+    if (daysSince < 0) return null;
+    if (fertile) {
+      const todayStr = today.toISOString().slice(0, 10);
+      if (todayStr >= fertile.fertileStart && todayStr <= fertile.fertileEnd) return "Ovulation Phase";
+    }
+    if (daysSince < 5) return "Menstrual Phase";
+    if (fertile && today.toISOString().slice(0, 10) < fertile.fertileStart) return "Follicular Phase";
+    return "Luteal Phase";
+  }, [logs, phase]);
+
   // ── Action completion state ─────────────────────────────
   const [completionStore, setCompletionStore] = useState(() => getCompletedActions());
   
@@ -407,6 +435,64 @@ export default function WellnessDashboard() {
           </div>
         </ScrollReveal>
 
+        {/* ── 1b. Smart Predictions ──────────────────────────────── */}
+        <ScrollReveal delay={5}>
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-center gap-2 mb-4 flex-wrap">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-md">
+                <Sparkles className="w-4 h-4 text-white" />
+              </div>
+              <h2 className="text-sm font-bold uppercase tracking-wider">Smart Predictions</h2>
+              {currentCyclePhase && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold rounded-full border border-pink-200 bg-pink-50 text-pink-700 px-2.5 py-0.5">
+                  {currentCyclePhase}
+                </span>
+              )}
+              <span className="ml-auto text-[10px] text-muted-foreground">Next 1-3 days</span>
+            </div>
+            <div className="space-y-4">
+              {predictions.map((pred) => (
+                <div key={pred.id} className="flex items-start gap-4 p-5 rounded-2xl bg-white border border-border/60 shadow-sm hover:shadow-md transition-all">
+                  <div className="w-12 h-12 rounded-2xl bg-muted/30 flex items-center justify-center shrink-0">
+                    <span className="text-2xl">{pred.emoji}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <p className="text-base font-bold text-slate-800">{pred.symptom}</p>
+                        {pred.probability > 0 && (
+                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${
+                            pred.probability >= 60 ? "bg-rose-100 text-rose-700" : 
+                            pred.probability >= 35 ? "bg-amber-100 text-amber-700" : 
+                            "bg-emerald-100 text-emerald-700"
+                          }`}>
+                            <Clock className="w-3 h-3" /> Likely {pred.timeframe}
+                          </span>
+                        )}
+                      </div>
+                      {pred.probability > 0 && (
+                        <span className={`text-sm font-black ${pred.probability >= 60 ? "text-rose-600" : pred.probability >= 35 ? "text-amber-600" : "text-emerald-600"}`}>
+                          {pred.probability}%
+                        </span>
+                      )}
+                    </div>
+                    {pred.probability > 0 && (
+                      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2.5">
+                        <div className={`h-full rounded-full ${predBarColor(pred.probability)}`} style={{ width: `${pred.probability}%` }} />
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center">
+                      <span className="text-xs font-semibold text-slate-500">
+                        {pred.reason}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </ScrollReveal>
+
         {/* ── 2. Priority Actions ────────────────────────────────── */}
         <ScrollReveal delay={10}>
           <div className="rounded-2xl border border-border bg-card p-5">
@@ -508,7 +594,10 @@ export default function WellnessDashboard() {
           </div>
         </ScrollReveal>
 
-        {/* ── 3b. Visual Analytics Charts ────────────────────────── */}
+        {/* ── 3b. Puberty Cycle Tracker (puberty only) ──────────── */}
+
+
+        {/* ── 3c. Visual Analytics Charts ────────────────────────── */}
         {pubertyLogs.length >= 2 && (
           <ScrollReveal delay={25}>
             <VisualAnalytics pubertyLogs={pubertyLogs} />
@@ -552,58 +641,21 @@ export default function WellnessDashboard() {
           </ScrollReveal>
         )}
 
-        {/* ── 4. Smart Predictions ───────────────────────────────── */}
-        <ScrollReveal delay={30}>
-          <div className="rounded-2xl border border-border bg-card p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-md">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <h2 className="text-sm font-bold uppercase tracking-wider">Smart Predictions</h2>
-              <span className="ml-auto text-[10px] text-muted-foreground">Next 1-3 days</span>
-            </div>
-            <div className="space-y-4">
-              {predictions.map((pred) => (
-                <div key={pred.id} className="flex items-start gap-4 p-5 rounded-2xl bg-white border border-border/60 shadow-sm hover:shadow-md transition-all">
-                  <div className="w-12 h-12 rounded-2xl bg-muted/30 flex items-center justify-center shrink-0">
-                    <span className="text-2xl">{pred.emoji}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <p className="text-base font-bold text-slate-800">{pred.symptom}</p>
-                        {pred.probability > 0 && (
-                          <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-md ${
-                            pred.probability >= 60 ? "bg-rose-100 text-rose-700" : 
-                            pred.probability >= 35 ? "bg-amber-100 text-amber-700" : 
-                            "bg-emerald-100 text-emerald-700"
-                          }`}>
-                            <Clock className="w-3 h-3" /> Likely {pred.timeframe}
-                          </span>
-                        )}
-                      </div>
-                      {pred.probability > 0 && (
-                        <span className={`text-sm font-black ${pred.probability >= 60 ? "text-rose-600" : pred.probability >= 35 ? "text-amber-600" : "text-emerald-600"}`}>
-                          {pred.probability}%
-                        </span>
-                      )}
-                    </div>
-                    {pred.probability > 0 && (
-                      <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2.5">
-                        <div className={`h-full rounded-full ${predBarColor(pred.probability)}`} style={{ width: `${pred.probability}%` }} />
-                      </div>
-                    )}
-                    <div className="flex flex-wrap items-center">
-                      <span className="text-xs font-semibold text-slate-500">
-                        {pred.reason}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </ScrollReveal>
+        {/* ── 3d. Mental Wellness Insights (puberty only) ──────────── */}
+        {phase === "puberty" && pubertyLogs.length > 0 && (
+          <ScrollReveal delay={30}>
+            <MentalWellnessInsights pubertyLogs={pubertyLogs} logs={logs} />
+          </ScrollReveal>
+        )}
+
+        {/* ── 3e. Personalized Wellness Suggestions (puberty only) ──── */}
+        {phase === "puberty" && pubertyLogs.length > 0 && (
+          <ScrollReveal delay={35}>
+            <WellnessSuggestions pubertyLogs={pubertyLogs} logs={logs} />
+          </ScrollReveal>
+        )}
+
+
 
         {/* ── 5. Quick Actions ──────────────────────────────────── */}
         <ScrollReveal delay={40}>

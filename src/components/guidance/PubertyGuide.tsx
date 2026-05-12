@@ -5,6 +5,7 @@ import { useProfile } from "@/hooks/useProfile";
 import { useHealthLog, calcFertileWindow, calcAverageCycleLength } from "@/hooks/useHealthLog";
 import type { PubertyEntry } from "@/hooks/useHealthLog";
 import ScrollReveal from "@/components/ScrollReveal";
+import PubertyFertilityInsights from "@/components/dashboard/PubertyFertilityInsights";
 import { createPubertyDashboardConfig, HormonalCondition, PubertyStatus } from "@/lib/pubertyDashboardConfig";
 import {
   computeWellnessScore,
@@ -450,9 +451,9 @@ export default function PubertyGuide() {
       <div className="bg-white border-b border-border/50">
         <div className="container py-6">
           <ScrollReveal>
-            <div className="rounded-2xl p-5 border-2 bg-gradient-to-br from-teal-50 to-emerald-50 border-teal-200">
+            <div className="rounded-2xl p-5 border-2 bg-gradient-to-br from-blue-50 to-sky-50 border-blue-200">
               <div className="flex items-start gap-4 flex-wrap">
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border bg-teal-100 border-teal-200">
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm border bg-blue-100 border-blue-200">
                   ✨
                 </div>
                 <div className="flex-1 min-w-0">
@@ -468,243 +469,13 @@ export default function PubertyGuide() {
 
       <div className="container py-6 space-y-8">
 
-        
-        {/* ═══ PUBERTY PROFILE STATUS ═══════════════════════════════════════ */}
+        {/* ═══ FERTILITY & CYCLE INSIGHTS ═══════════════════════════════════ */}
         <section>
-          <ScrollReveal delay={40}>
-            <div className="rounded-2xl border border-border/60 bg-card p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-pink-100 flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-pink-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold">Your Puberty Profile</h2>
-                  <p className="text-xs text-muted-foreground">
-                    {pubertyConfig.overrideReason || `Based on your ${pubertyConfig.profile?.pubertyStatus} puberty status`}
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid gap-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Status:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    pubertyConfig.profile?.pubertyStatus === PubertyStatus.early ? 'bg-amber-100 text-amber-700' :
-                    pubertyConfig.profile?.pubertyStatus === PubertyStatus.late ? 'bg-blue-100 text-blue-700' :
-                    'bg-green-100 text-green-700'
-                  }`}>
-                    {pubertyConfig.profile?.pubertyStatus === PubertyStatus.early ? 'Early Puberty' :
-                     pubertyConfig.profile?.pubertyStatus === PubertyStatus.late ? 'Late Puberty' :
-                     'Normal Puberty'}
-                  </span>
-                  {pubertyConfig.profile?.ageAtMenarche && (
-                    <span className="text-xs text-muted-foreground">
-                      (Age at menarche: {pubertyConfig.profile.ageAtMenarche} years)
-                    </span>
-                  )}
-                </div>
-                {pubertyConfig.profile?.hormonalCondition !== HormonalCondition.none && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Hormonal Condition:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      pubertyConfig.profile?.hormonalCondition === HormonalCondition.PCOS ? 'bg-red-100 text-red-700' :
-                      'bg-orange-100 text-orange-700'
-                    }`}>
-                      {pubertyConfig.profile?.hormonalCondition}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+          <ScrollReveal delay={20}>
+            <PubertyFertilityInsights />
           </ScrollReveal>
         </section>
 
-        {/* ═══ PCOD/PCOS COMPREHENSIVE MEAL PLAN ═══════════════════════════════════════ */}
-        {pubertyConfig.profile?.hormonalCondition === HormonalCondition.PCOS || pubertyConfig.profile?.hormonalCondition === HormonalCondition.PCOD ? (
-          <section>
-            <ScrollReveal delay={50}>
-              <div className="rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 p-6 shadow-sm border border-pink-200">
-                {/* Header */}
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
-                    <Utensils className="w-5 h-5 text-pink-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-lg font-bold text-gray-900">PCOD/PCOS Meal Plan</h2>
-                    <p className="text-sm text-gray-600">Insulin-resistance-friendly nutrition plan for hormonal balance</p>
-                  </div>
-                </div>
-
-                {/* Meal Plan Grid */}
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                  {/* Breakfast */}
-                  <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Sun className="w-4 h-4 text-yellow-500" />
-                      <h3 className="font-semibold text-gray-900">Breakfast (Never Skip!)</h3>
-                    </div>
-                    <ul className="space-y-2 text-sm text-gray-600">
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Protein-rich: Eggs, paneer, Greek yogurt
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Complex carbs: Oats, millets, quinoa
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Add berries for antioxidants
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Lunch */}
-                  <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Sun className="w-4 h-4 text-orange-500" />
-                      <h3 className="font-semibold text-gray-900">Lunch</h3>
-                    </div>
-                    <ul className="space-y-2 text-sm text-gray-600">
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Lean protein: Chicken, fish, legumes
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Brown rice + lots of vegetables
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Olive oil dressing
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Snack */}
-                  <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Clock className="w-4 h-4 text-purple-500" />
-                      <h3 className="font-semibold text-gray-900">Snack (Every 3-4 hours)</h3>
-                    </div>
-                    <ul className="space-y-2 text-sm text-gray-600">
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Handful of nuts & seeds
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Low-sugar fruit: Apple, pear, berries
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Greek yogurt or paneer cubes
-                      </li>
-                    </ul>
-                  </div>
-
-                  {/* Dinner */}
-                  <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Moon className="w-4 h-4 text-indigo-500" />
-                      <h3 className="font-semibold text-gray-900">Dinner (Light & Early)</h3>
-                    </div>
-                    <ul className="space-y-2 text-sm text-gray-600">
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Vegetable soup + salad
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Small portion of quinoa/millets
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 bg-pink-500 rounded-full mt-1.5 shrink-0" />
-                        Light protein: Fish or legumes
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Key Rules */}
-                <div className="bg-white/70 rounded-xl p-4 border border-pink-100">
-                  <div className="flex items-center gap-2 mb-3">
-                    <ShieldAlert className="w-4 h-4 text-red-500" />
-                    <h3 className="font-semibold text-gray-900">Key Rules to Follow</h3>
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4 text-sm">
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <span className="text-green-500">✅</span>
-                        <span className="text-gray-600">Small frequent meals every 3-4 hours</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-green-500">✅</span>
-                        <span className="text-gray-600">35% protein, 35% complex carbs, 30% healthy fats</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-green-500">✅</span>
-                        <span className="text-gray-600">6-8 glasses of water daily</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-start gap-2">
-                        <span className="text-red-500">❌</span>
-                        <span className="text-gray-600">No white rice, maida, refined sugar</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-red-500">❌</span>
-                        <span className="text-gray-600">No junk food, bakery items, fried food</span>
-                      </div>
-                      <div className="flex items-start gap-2">
-                        <span className="text-red-500">❌</span>
-                        <span className="text-gray-600">Limit caffeine and processed foods</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </ScrollReveal>
-          </section>
-        ) : null}
-
-        {/* ═══ PERSONALIZED NUTRITION TIPS ═══════════════════════════════════════ */}
-        <section>
-          <ScrollReveal delay={60}>
-            <div className="rounded-2xl bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-sm border border-green-100">
-              {/* Header */}
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                  <Leaf className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">Nutrition Tips</h2>
-                  <p className="text-sm text-gray-600">Personalized recommendations for your health journey.</p>
-                </div>
-              </div>
-
-              {/* Dynamic Content List */}
-              <div className="space-y-4">
-                {dynamicTips && dynamicTips.length > 0 ? dynamicTips.slice(0, 5).map((tip, index) => (
-                  <div key={tip.id} className="group flex items-center gap-3 p-3 rounded-xl hover:bg-white/50 transition-all duration-200 cursor-pointer">
-                    <div className={`w-8 h-8 rounded-full ${tip.color} flex items-center justify-center flex-shrink-0`}>
-                      {tip.icon}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-semibold text-gray-900">{tip.title}</h4>
-                      <p className="text-xs text-gray-500">{tip.description}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1 transition-all duration-200" />
-                  </div>
-                )) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-gray-500">Loading nutrition tips...</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </ScrollReveal>
-        </section>
       </div>
     </main>
   );

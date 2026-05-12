@@ -194,6 +194,63 @@ function buildTooltipForEntry(entry: HealthLogEntry | undefined): string | undef
   return `Logged: ${parts.join(", ")}`;
 }
 
+/**
+ * Compute predicted period dates (purely visual) for the next 3 cycles
+ * based on actual manual period starts, skipping dates that already have entries.
+ */
+function getPredictedPeriodDates(
+  logs: HealthLogs,
+  cycleLength: number | null,
+  periodDuration: number
+): string[] {
+  const todayISO = new Date().toISOString().slice(0, 10);
+
+  const manualStarts = Object.entries(logs)
+    .filter(([, e]) =>
+      e.phase === "puberty" &&
+      (e as any).periodStarted &&
+      !(e as any)._periodAutoMarked
+    )
+    .map(([d]) => d)
+    .sort();
+
+  if (manualStarts.length === 0) return [];
+
+  let avgCycleLen = cycleLength || 28;
+  if (manualStarts.length >= 2) {
+    const lastTwo = manualStarts.slice(-2);
+    const gap = Math.round(
+      (new Date(lastTwo[1] + "T12:00:00").getTime() - new Date(lastTwo[0] + "T12:00:00").getTime())
+      / (1000 * 60 * 60 * 24)
+    );
+    if (gap > 0) avgCycleLen = gap;
+  }
+
+  const lastStart = manualStarts[manualStarts.length - 1];
+  const lastStartDate = new Date(lastStart + "T12:00:00");
+  const predicted: string[] = [];
+
+  for (let cycle = 1; cycle <= 3; cycle++) {
+    const cycleStart = new Date(lastStartDate);
+    cycleStart.setDate(cycleStart.getDate() + cycle * avgCycleLen);
+
+    for (let dayOffset = 0; dayOffset < periodDuration; dayOffset++) {
+      const day = new Date(cycleStart);
+      day.setDate(day.getDate() + dayOffset);
+      const iso = day.toISOString().slice(0, 10);
+
+      if (iso <= todayISO) continue;
+
+      const existing = logs[iso];
+      if (existing && existing.phase === "puberty" && isPeriodDay(existing)) continue;
+
+      predicted.push(iso);
+    }
+  }
+
+  return predicted;
+}
+
 // ─── Calendar Page Component ──────────────────────────────────────────────────
 
 export default function CalendarPage() {
@@ -210,6 +267,11 @@ export default function CalendarPage() {
   const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const predictedPeriodDates = useMemo(
+    () => getPredictedPeriodDates(logs, profile.cycleLength, profile.periodDuration),
+    [logs, profile.cycleLength, profile.periodDuration]
+  );
 
   const symptomOptions = useMemo(() => {
     if (!phase) return [];
@@ -310,12 +372,13 @@ export default function CalendarPage() {
             const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(entry);
             const dotColor = entry ? (PHASE_DOT[entry.phase] ?? "bg-primary") : null;
             const isPeriod = isPeriodDay(entry);
+            const isPredicted = predictedPeriodDates.includes(iso);
 
             return (
               <button
                 key={iso}
                 type="button"
-                title={tooltip}
+                title={isPredicted ? "Predicted period date" : tooltip}
                 disabled={isFuture}
                 onClick={() => !isFuture && openModal(iso)}
                 className={cn(
@@ -326,16 +389,21 @@ export default function CalendarPage() {
                     ? "bg-primary/15 ring-2 ring-primary/40 border-primary/40"
                     : isPeriod
                     ? "bg-pink-100 hover:bg-pink-200"
+                    : isPredicted
+                    ? "border border-dashed border-pink-300/60 hover:bg-pink-50/50"
                     : "hover:bg-muted/50",
                   isToday ? "font-extrabold text-primary" : isFuture ? "" : "text-foreground"
                 )}
-                aria-label={`${iso}${hasData ? " (logged)" : ""}${isPeriod ? " (period)" : ""}${isFuture ? " (future)" : ""}`}
+                aria-label={`${iso}${hasData ? " (logged)" : ""}${isPredicted ? " (predicted)" : isPeriod ? " (period)" : ""}${isFuture ? " (future)" : ""}`}
               >
                 <span className="text-[11px] leading-none">{day}</span>
                 {isPeriod && (
                   <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-pink-500" />
                 )}
-                {hasData && !isPeriod && (
+                {isPredicted && !isPeriod && (
+                  <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-pink-300/60" />
+                )}
+                {hasData && !isPeriod && !isPredicted && (
                   <span
                     className={cn(
                       "absolute bottom-0.5 w-1.5 h-1.5 rounded-full",
@@ -370,11 +438,12 @@ export default function CalendarPage() {
     const tooltip = isFuture ? "Future date – not available yet" : buildTooltipForEntry(entry);
     const dotColor = entry ? (PHASE_DOT[entry.phase] ?? "bg-primary") : null;
     const isPeriod = isPeriodDay(entry);
+    const isPredicted = predictedPeriodDates.includes(dateISO);
 
     return (
       <button
         type="button"
-        title={tooltip}
+        title={isPredicted ? "Predicted period date" : tooltip}
         disabled={isFuture}
         onClick={() => !isFuture && openModal(dateISO)}
         className={cn(
@@ -383,6 +452,8 @@ export default function CalendarPage() {
             ? "text-muted-foreground/30 cursor-not-allowed bg-muted/10"
             : isPeriod
             ? "bg-pink-50 hover:bg-pink-100 cursor-pointer"
+            : isPredicted
+            ? "bg-pink-50/30 border border-dashed border-pink-300/50 hover:bg-pink-50/60 cursor-pointer"
             : "hover:bg-muted/55 cursor-pointer",
           isSelected ? "bg-primary/10 ring-2 ring-inset ring-primary/50" : "",
           isToday ? "font-extrabold text-primary" : ""
@@ -403,7 +474,10 @@ export default function CalendarPage() {
         {isPeriod && (
           <span className="absolute bottom-1.5 w-2 h-2 rounded-full bg-pink-500" />
         )}
-        {hasData && !isPeriod && (
+        {isPredicted && !isPeriod && (
+          <span className="absolute bottom-1.5 w-2 h-2 rounded-full bg-pink-300/60" />
+        )}
+        {hasData && !isPeriod && !isPredicted && (
           <span
             className={cn(
               "absolute bottom-1.5 w-2 h-2 rounded-full",
@@ -509,6 +583,12 @@ export default function CalendarPage() {
               <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <span className="w-2 h-2 rounded-full bg-pink-500" />
                 Period day
+              </span>
+            )}
+            {phase === "puberty" && predictedPeriodDates.length > 0 && (
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="w-2 h-2 rounded-full bg-pink-300/60" />
+                Predicted
               </span>
             )}
             <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -946,6 +1026,9 @@ function SymptomLogPanel({
         if ((existingEntry as any)._periodAutoMarked) {
           (entry as any)._periodAutoMarked = true;
         }
+        if ((existingEntry as any)._periodGroupId) {
+          (entry as any)._periodGroupId = (existingEntry as any)._periodGroupId;
+        }
       }
     }
 
@@ -979,54 +1062,45 @@ function SymptomLogPanel({
           description: "This date is too close to another period start. Adjust the existing cycle or choose a different date.",
         });
       } else {
-        // Mark current cycle and next 3 months (3 future cycles) using settings from profile
+        const groupId = `cycle_${dateISO}`;
         const bulkEntries: Record<string, HealthLogEntry> = {};
-        const cyclesToPredict = 3;
-        const actualCycleLength = cycleLength || 28;
 
-        for (let cycle = 0; cycle <= cyclesToPredict; cycle++) {
-          const cycleStartDate = new Date(dateISO + "T12:00:00");
-          cycleStartDate.setDate(cycleStartDate.getDate() + cycle * actualCycleLength);
+        // Tag the start day with group ID
+        const startEntry: any = { ...entry };
+        startEntry._periodGroupId = groupId;
+        onSave(dateISO, startEntry as HealthLogEntry);
 
-          for (let dayOffset = 0; dayOffset < periodDuration; dayOffset++) {
-            const periodDay = new Date(cycleStartDate);
-            periodDay.setDate(periodDay.getDate() + dayOffset);
-            const periodISO = periodDay.toISOString().slice(0, 10);
+        // Only auto-mark continuation days for the current cycle (no future predictions)
+        for (let dayOffset = 1; dayOffset < periodDuration; dayOffset++) {
+          const periodDay = new Date(dateISO + "T12:00:00");
+          periodDay.setDate(periodDay.getDate() + dayOffset);
+          const periodISO = periodDay.toISOString().slice(0, 10);
 
-            // Skip updating the very first day of the initial cycle as it was already handled by onSave
-            if (cycle === 0 && dayOffset === 0) continue;
-
-            const existingLog = logs[periodISO];
-            // Don't overwrite manually-set start days from older logs
-            if (existingLog && existingLog.phase === "puberty" && (existingLog as PubertyEntry).periodStarted && !(existingLog as any)._periodAutoMarked) {
-              continue;
-            }
-
-            // Merge with existing entry data or create new
-            const base: any = existingLog?.phase === "puberty" ? { ...existingLog } : {
-              phase: "puberty",
-              periodStarted: false,
-              periodEnded: false,
-              flowIntensity: null,
-              symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
-              mood: null,
-            };
-            base._periodAutoMarked = true;
-            // The start day of autogenerated FUTURE cycle is treated as periodStarted logically
-            base.periodStarted = dayOffset === 0; 
-            base.periodEnded = dayOffset === periodDuration - 1;
-            bulkEntries[periodISO] = base as HealthLogEntry;
+          const existingLog = logs[periodISO];
+          if (existingLog && existingLog.phase === "puberty") {
+            if ((existingLog as any).periodStarted && !(existingLog as any)._periodAutoMarked) continue;
           }
+
+          const base: any = existingLog?.phase === "puberty" ? { ...existingLog } : {
+            phase: "puberty",
+            periodStarted: false,
+            periodEnded: false,
+            flowIntensity: null,
+            symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
+            mood: null,
+          };
+          base._periodAutoMarked = true;
+          base._periodGroupId = groupId;
+          base.periodStarted = false;
+          base.periodEnded = dayOffset === periodDuration - 1;
+          bulkEntries[periodISO] = base as HealthLogEntry;
         }
 
         if (Object.keys(bulkEntries).length > 0) {
           onSaveBulk(bulkEntries);
         }
 
-        const totalDaysMarked = Object.keys(bulkEntries).length + 1; // +1 for the start day
-        toast.success(`Period marked for ${periodDuration} days/cycle`, {
-          description: `Predicted cycles for the next 3 months based on a ${actualCycleLength}-day cycle length.`,
-        });
+        toast.success(`Period marked for ${periodDuration} days`, {});
       }
     } else if (phase === "puberty" && periodStarted && isExistingPeriodStart && !periodToggleChanged) {
       // Re-saving an existing period start without toggling — just save symptoms, no re-projection

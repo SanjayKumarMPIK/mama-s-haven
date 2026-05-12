@@ -16,7 +16,7 @@ export default function PubertyActivitiesPage() {
                 <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">Activities</h1>
+                <h1 className="text-2xl font-bold tracking-tight">Lifestyle</h1>
               </div>
             </div>
           </ScrollReveal>

@@ -56,9 +56,9 @@ export default function PubertyNutritionGuide() {
               <FeatureCard 
                 to="/puberty/nutrition-guide/activities"
                 icon={<div className="w-16 h-16 rounded-full bg-purple-50 flex items-center justify-center shrink-0"><ClipboardList className="w-8 h-8 text-purple-600" /></div>}
-                title="Activities"
+                title="Lifestyle"
                 titleColor="text-purple-700"
-                desc="Explore your daily wellness plan, set health goals, and enjoy fun activities."
+                desc="Personalized lifestyle recommendations based on your symptoms, health profile, and cycle phase."
               />
               <FeatureCard 
                 to="/puberty/nutrition-guide/fitness-health-calculator"

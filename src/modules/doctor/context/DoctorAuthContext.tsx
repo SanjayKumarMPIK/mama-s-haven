@@ -62,10 +62,6 @@ export function DoctorAuthProvider({ children }: { children: ReactNode }) {
 
       if (mounted) {
         setDoctorProfile(profile);
-        // If we found a doctor profile but role wasn't set, set it now
-        if (profile) {
-          sessionStorage.setItem('ss-role', 'doctor');
-        }
         setIsDoctorLoading(false);
       }
     }

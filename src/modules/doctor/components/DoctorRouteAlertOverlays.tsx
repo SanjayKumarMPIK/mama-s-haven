@@ -17,11 +17,14 @@ import type { SOSStatus } from "@/lib/sosStore";
 interface RouteAlertCounts {
   pendingSos: number;
   maternityHillstation: number;
+  /** Whether the Supabase Realtime channel for maternity alerts is actively connected. */
+  realtimeConnected: boolean;
 }
 
 const CountsContext = createContext<RouteAlertCounts>({
   pendingSos: 0,
   maternityHillstation: 0,
+  realtimeConnected: false,
 });
 
 export function useDoctorRouteAlertCounts(): RouteAlertCounts {
@@ -50,6 +53,7 @@ export function DoctorRouteAlertProvider({ children }: { children: ReactNode }) 
     alerts: maternityHillstationAlerts,
     acknowledge: acknowledgeMaternityAlert,
     refresh: refreshMaternityAlerts,
+    realtimeConnected,
   } = useMaternityHillstationAlerts(
     doctorProfile?.id,
     doctorProfile?.phc_center,
@@ -92,8 +96,9 @@ export function DoctorRouteAlertProvider({ children }: { children: ReactNode }) 
     () => ({
       pendingSos: pendingSOSAlerts.length,
       maternityHillstation: maternityHillstationAlerts.length,
+      realtimeConnected,
     }),
-    [pendingSOSAlerts.length, maternityHillstationAlerts.length],
+    [pendingSOSAlerts.length, maternityHillstationAlerts.length, realtimeConnected],
   );
 
   const handleSOSAction = useCallback((_sosId: string, _status: SOSStatus) => {

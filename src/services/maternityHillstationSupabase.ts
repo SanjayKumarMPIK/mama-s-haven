@@ -4,6 +4,7 @@ import { loadStoredDoctorPhcProfiles, patientPhcMatchesDoctorPhc } from '@/lib/p
 import { HILLSTATION_MATERNITY_ALERT_MAX_DAYS_BEFORE_DUE } from '@/lib/maternityHillstationConstants';
 import { computeDaysLeftToDueDate } from '@/lib/maternityHillstationAlertWindow';
 import type { MaternityHillstationAlert } from '@/services/maternityAlertStore';
+import { logAlertAudit } from '@/services/maternityAlertAudit';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const userDb = supabaseUserClient as any;
@@ -71,6 +72,46 @@ export async function hasDoctorForPatientPhc(nearbyPhc: string): Promise<boolean
   return (data as { phc_center?: string; phc_location?: string }[]).some((d) =>
     patientPhcMatchesDoctorPhc(nearbyPhc, d.phc_center, d.phc_location),
   );
+}
+
+/**
+ * Check if the patient has an accepted doctor connection.
+ * Returns the connected doctor's ID and code, or null.
+ * This enables connection-aware routing (not just PHC matching).
+ */
+export async function findConnectedDoctorForPatient(
+  patientId: string,
+): Promise<{ doctorId: string; doctorCode: string } | null> {
+  try {
+    const { data, error } = await userDb
+      .from('doctor_connections')
+      .select('doctor_id, doctor_code')
+      .eq('patient_id', patientId)
+      .eq('status', 'accepted')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (error || !data?.length) return null;
+    const row = data[0] as { doctor_id: string; doctor_code: string };
+    return { doctorId: row.doctor_id, doctorCode: row.doctor_code };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Check if the patient has ANY doctor (connected or PHC-matched).
+ * Returns true if the patient can safely publish an alert.
+ */
+export async function hasAnyDoctorForPatient(
+  patientId: string,
+  nearbyPhc: string,
+): Promise<boolean> {
+  // First check direct connection
+  const connected = await findConnectedDoctorForPatient(patientId);
+  if (connected) return true;
+  // Fall back to PHC matching
+  return hasDoctorForPatientPhc(nearbyPhc);
 }
 
 /** Insert or refresh an active hillstation delivery alert for this patient (Supabase). */
@@ -166,8 +207,18 @@ export async function publishPatientHillstationAlert(input: PublishHillstationIn
 
   if (error) {
     console.error('[HillstationAlert] publish failed:', error.message);
+    void logAlertAudit('alert_publish_failed', {
+      actorId: patientId,
+      actorRole: 'patient',
+      detail: { error: error.message, nearbyPhc },
+    });
     return false;
   }
+  void logAlertAudit('alert_created', {
+    actorId: patientId,
+    actorRole: 'patient',
+    detail: { nearbyPhc, daysLeft: daysLeftSql, dueDate: dueDateSql },
+  });
   return true;
 }
 
@@ -177,6 +228,11 @@ export async function revokePatientHillstationAlerts(patientId: string): Promise
     .update({ status: 'resolved' })
     .eq('patient_id', patientId)
     .eq('status', 'active');
+  void logAlertAudit('alert_revoked', {
+    actorId: patientId,
+    actorRole: 'patient',
+    detail: { reason: 'conditions_no_longer_met' },
+  });
 }
 
 /** Active alerts for doctors whose PHC matches the alert row's PHC (normalized). */
@@ -222,5 +278,11 @@ export async function acknowledgeHillstationAlertOnServer(alertId: string, docto
     console.error('[HillstationAlert] acknowledge:', error.message);
     return false;
   }
+  void logAlertAudit('alert_acknowledged', {
+    alertId,
+    actorId: doctorId,
+    actorRole: 'doctor',
+    detail: { source: 'supabase_server' },
+  });
   return true;
 }

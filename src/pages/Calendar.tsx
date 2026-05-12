@@ -649,6 +649,63 @@ function PubertyAdditionalSymptoms({
   );
 }
 
+/**
+ * Compute predicted period dates (purely visual) for the next 3 cycles
+ * based on actual manual period starts, skipping dates that already have entries.
+ */
+function getPredictedPeriodDates(
+  logs: HealthLogs,
+  cycleLength: number | null,
+  periodDuration: number
+): string[] {
+  const todayISO = new Date().toISOString().slice(0, 10);
+
+  const manualStarts = Object.entries(logs)
+    .filter(([, e]) =>
+      (e as any).periodStarted &&
+      !(e as any)._periodAutoMarked &&
+      !(e as any)._irregular
+    )
+    .map(([d]) => d)
+    .sort();
+
+  if (manualStarts.length === 0) return [];
+
+  let avgCycleLen = cycleLength || 28;
+  if (manualStarts.length >= 2) {
+    const lastTwo = manualStarts.slice(-2);
+    const gap = Math.round(
+      (new Date(lastTwo[1] + "T12:00:00").getTime() - new Date(lastTwo[0] + "T12:00:00").getTime())
+      / (1000 * 60 * 60 * 24)
+    );
+    if (gap > 0) avgCycleLen = gap;
+  }
+
+  const lastStart = manualStarts[manualStarts.length - 1];
+  const lastStartDate = new Date(lastStart + "T12:00:00");
+  const predicted: string[] = [];
+
+  for (let cycle = 1; cycle <= 3; cycle++) {
+    const cycleStart = new Date(lastStartDate);
+    cycleStart.setDate(cycleStart.getDate() + cycle * avgCycleLen);
+
+    for (let dayOffset = 0; dayOffset < periodDuration; dayOffset++) {
+      const day = new Date(cycleStart);
+      day.setDate(day.getDate() + dayOffset);
+      const iso = day.toISOString().slice(0, 10);
+
+      if (iso <= todayISO) continue;
+
+      const existing = logs[iso];
+      if (existing && ((existing as any).periodStarted || (existing as any)._periodAutoMarked || (existing as any)._irregular)) continue;
+
+      predicted.push(iso);
+    }
+  }
+
+  return predicted;
+}
+
 // ─── Calendar Page Component ──────────────────────────────────────────────────
 
 export default function CalendarPage() {
@@ -690,6 +747,11 @@ function PubertyCalendarView() {
   const [showSymptomCustomizer, setShowSymptomCustomizer] = useState(false);
 
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const predictedPeriodDates = useMemo(
+    () => getPredictedPeriodDates(phaseLogs, profile.cycleLength, profile.periodDuration),
+    [phaseLogs, profile.cycleLength, profile.periodDuration]
+  );
 
   const symptomOptions = useMemo(() => {
     const phaseSymptoms = KEY_SYMPTOMS_BY_PHASE[phase] ?? [];
@@ -742,12 +804,13 @@ function PubertyCalendarView() {
             const dotColor = phaseEntry ? (PHASE_DOT[phaseEntry.phase] ?? "bg-primary") : null;
             const isPeriod = isPeriodDay(periodEntry);
             const isIrregular = isIrregularPeriodDay(periodEntry);
+            const isPredicted = predictedPeriodDates.includes(iso);
 
             return (
               <button
                 key={iso}
                 type="button"
-                title={isIrregular ? "Irregular entry — not affecting predictions" : tooltip}
+                title={isIrregular ? "Irregular entry — not affecting predictions" : isPredicted ? "Predicted period date" : tooltip}
                 disabled={isFuture}
                 onClick={() => !isFuture && openModal(iso)}
                 className={cn(
@@ -760,10 +823,12 @@ function PubertyCalendarView() {
                     ? "bg-orange-100 hover:bg-orange-200 border border-dashed border-orange-300"
                     : isPeriod
                     ? "bg-pink-100 hover:bg-pink-200"
+                    : isPredicted
+                    ? "border border-dashed border-pink-300/60 hover:bg-pink-50/50"
                     : "hover:bg-muted/50",
                   isToday ? "font-extrabold text-primary" : isFuture ? "" : "text-foreground"
                 )}
-                aria-label={`${iso}${hasData ? " (logged)" : ""}${isIrregular ? " (irregular)" : isPeriod ? " (period)" : ""}${isFuture ? " (future)" : ""}`}
+                aria-label={`${iso}${hasData ? " (logged)" : ""}${isPredicted ? " (predicted)" : isIrregular ? " (irregular)" : isPeriod ? " (period)" : ""}${isFuture ? " (future)" : ""}`}
               >
                 <span className="text-[11px] leading-none">{day}</span>
                 {isIrregular && (
@@ -772,7 +837,10 @@ function PubertyCalendarView() {
                 {isPeriod && !isIrregular && (
                   <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-pink-500" />
                 )}
-                {hasData && !isPeriod && (
+                {isPredicted && !isPeriod && !isIrregular && (
+                  <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-pink-300/60" />
+                )}
+                {hasData && !isPeriod && !isPredicted && (
                   <span
                     className={cn(
                       "absolute bottom-0.5 w-1.5 h-1.5 rounded-full",
@@ -809,11 +877,12 @@ function PubertyCalendarView() {
     const dotColor = phaseEntry ? (PHASE_DOT[phaseEntry.phase] ?? "bg-primary") : null;
     const isPeriod = isPeriodDay(periodEntry);
     const isIrregular = isIrregularPeriodDay(periodEntry);
+    const isPredicted = predictedPeriodDates.includes(dateISO);
 
     return (
       <button
         type="button"
-        title={isIrregular ? "Irregular entry — not affecting predictions" : tooltip}
+        title={isIrregular ? "Irregular entry — not affecting predictions" : isPredicted ? "Predicted period date" : tooltip}
         disabled={isFuture}
         onClick={() => !isFuture && openModal(dateISO)}
         className={cn(
@@ -824,6 +893,8 @@ function PubertyCalendarView() {
             ? "bg-orange-50 hover:bg-orange-100 cursor-pointer border-dashed !border-orange-300"
             : isPeriod
             ? "bg-pink-50 hover:bg-pink-100 cursor-pointer"
+            : isPredicted
+            ? "bg-pink-50/30 border border-dashed border-pink-300/50 hover:bg-pink-50/60 cursor-pointer"
             : "hover:bg-muted/55 cursor-pointer",
           isSelected ? "bg-primary/10 ring-2 ring-inset ring-primary/50" : "",
           isToday ? "font-extrabold text-primary" : ""
@@ -847,7 +918,10 @@ function PubertyCalendarView() {
         {isPeriod && !isIrregular && (
           <span className="absolute bottom-1.5 w-2 h-2 rounded-full bg-pink-500" />
         )}
-        {hasData && !isPeriod && (
+        {isPredicted && !isPeriod && !isIrregular && (
+          <span className="absolute bottom-1.5 w-2 h-2 rounded-full bg-pink-300/60" />
+        )}
+        {hasData && !isPeriod && !isPredicted && (
           <span
             className={cn(
               "absolute bottom-1.5 w-2 h-2 rounded-full",
@@ -959,6 +1033,12 @@ function PubertyCalendarView() {
               <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
                 <span className="w-2 h-2 rounded-full bg-orange-500" />
                 Irregular
+              </span>
+            )}
+            {(phase === "puberty" || phase === "family-planning") && predictedPeriodDates.length > 0 && (
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                <span className="w-2 h-2 rounded-full bg-pink-300/60" />
+                Predicted
               </span>
             )}
             <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
@@ -1552,72 +1632,63 @@ function SymptomLogPanel({
       } else {
         const groupId = `cycle_${dateISO}`;
         const bulkEntries: Record<string, HealthLogEntry> = {};
-        const cyclesToPredict = 3;
-        const actualCycleLength = cycleLength || 28;
 
         // Tag the start day with group ID
         const startEntry: any = { ...entry };
         startEntry._periodGroupId = groupId;
         onSave(dateISO, startEntry as HealthLogEntry);
 
-        for (let cycle = 0; cycle <= cyclesToPredict; cycle++) {
-          const cycleStartDate = new Date(dateISO + "T12:00:00");
-          cycleStartDate.setDate(cycleStartDate.getDate() + cycle * actualCycleLength);
+        // Only auto-mark continuation days for the current cycle (no future predictions)
+        for (let dayOffset = 1; dayOffset < periodDuration; dayOffset++) {
+          const periodDay = new Date(dateISO + "T12:00:00");
+          periodDay.setDate(periodDay.getDate() + dayOffset);
+          const periodISO = periodDay.toISOString().slice(0, 10);
 
-          for (let dayOffset = 0; dayOffset < periodDuration; dayOffset++) {
-            const periodDay = new Date(cycleStartDate);
-            periodDay.setDate(periodDay.getDate() + dayOffset);
-            const periodISO = periodDay.toISOString().slice(0, 10);
-
-            // Skip the very first day (already saved above)
-            if (cycle === 0 && dayOffset === 0) continue;
-
-            const existingLog = logs[periodISO];
-            // Don't overwrite manually-set start days or irregular entries
-            if (existingLog && (existingLog.phase === "puberty" || existingLog.phase === "family-planning")) {
-              if ((existingLog as any).periodStarted && !(existingLog as any)._periodAutoMarked) continue;
-              if ((existingLog as any)._irregular) continue;
-            }
-
-            let base: any;
-            if (existingLog?.phase === phase) {
-              base = { ...existingLog };
-            } else if (phase === "family-planning") {
-              base = {
-                phase: "family-planning",
-                periodStarted: false,
-                lastPeriodDate: dateISO,
-                cycleLength: actualCycleLength,
-                symptoms: { irregularCycle: false, ovulationPain: false, moodChanges: false, fatigue: false, stress: false, sleepIssues: false },
-                mood: null,
-                sleepHours: null,
-                sleepQuality: null,
-              };
-            } else {
-              base = {
-                phase: "puberty",
-                periodStarted: false,
-                periodEnded: false,
-                flowIntensity: null,
-                symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
-                mood: null,
-              };
-            }
-            base._periodAutoMarked = true;
-            base._periodGroupId = groupId;
-            base.periodStarted = dayOffset === 0; 
-            base.periodEnded = dayOffset === periodDuration - 1;
-            bulkEntries[periodISO] = base as HealthLogEntry;
+          const existingLog = logs[periodISO];
+          if (existingLog && (existingLog.phase === "puberty" || existingLog.phase === "family-planning")) {
+            if ((existingLog as any).periodStarted && !(existingLog as any)._periodAutoMarked) continue;
+            if ((existingLog as any)._irregular) continue;
           }
+
+          let base: any;
+          if (existingLog?.phase === phase) {
+            base = { ...existingLog };
+          } else if (phase === "family-planning") {
+            base = {
+              phase: "family-planning",
+              periodStarted: false,
+              lastPeriodDate: dateISO,
+              cycleLength: cycleLength || 28,
+              symptoms: { irregularCycle: false, ovulationPain: false, moodChanges: false, fatigue: false, stress: false, sleepIssues: false },
+              mood: null,
+              sleepHours: null,
+              sleepQuality: null,
+            };
+          } else {
+            base = {
+              phase: "puberty",
+              periodStarted: false,
+              periodEnded: false,
+              flowIntensity: null,
+              symptoms: { cramps: false, fatigue: false, moodSwings: false, headache: false, acne: false, breastTenderness: false },
+              mood: null,
+            };
+          }
+          base._periodAutoMarked = true;
+          base._periodGroupId = groupId;
+          base.periodStarted = false;
+          base.periodEnded = dayOffset === periodDuration - 1;
+          if ((entry as any).bleedingLevel) {
+            base.bleedingLevel = (entry as any).bleedingLevel;
+          }
+          bulkEntries[periodISO] = base as HealthLogEntry;
         }
 
         if (Object.keys(bulkEntries).length > 0) {
           onSaveBulk(bulkEntries);
         }
 
-        toast.success(`Period marked for ${periodDuration} days/cycle`, {
-          description: `Predicted cycles for the next 3 months based on a ${actualCycleLength}-day cycle length.`,
-        });
+        toast.success(`Period marked for ${periodDuration} days`, {});
       }
     } else if (isPeriodRelevantPhase && periodStarted && isExistingPeriodStart && !periodToggleChanged) {
       toast.success(`Symptoms updated for ${formatDisplayDate(dateISO)}`, {
@@ -1722,8 +1793,8 @@ function SymptomLogPanel({
             </section>
           )}
 
-          {/* Bleeding Level (only when period is ON) */}
-          {phase === "puberty" && periodStarted && (
+          {/* Bleeding Level (for any period day) */}
+          {phase === "puberty" && (periodStarted || isExistingContinuation || isWithinExistingRange || isExistingIrregular) && (
             <section className="rounded-xl border border-border bg-card p-4 space-y-3">
               <div className="space-y-1">
                 <h3 className="text-sm font-semibold">Bleeding Level</h3>

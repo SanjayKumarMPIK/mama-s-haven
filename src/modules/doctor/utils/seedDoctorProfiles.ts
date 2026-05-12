@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseDoctorClient } from '@/lib/supabase-doctor';
 import type { DoctorProfile, DoctorProfileInsert } from '../types/doctorProfile';
 
 // ─── Doctor Code Generator ────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ export async function fetchOrSeedDoctorProfile(
   email: string,
 ): Promise<DoctorProfile | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any;
+  const db = supabaseDoctorClient as any;
 
   // 1. Try to fetch an existing row first
   const { data: existing, error: fetchError } = await db
@@ -104,7 +104,7 @@ export async function fetchOrSeedDoctorProfile(
 // ─── Generic fetch by user ID (no seeding) ───────────────────────────────────
 export async function fetchDoctorProfile(userId: string): Promise<DoctorProfile | null> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const db = supabase as any;
+  const db = supabaseDoctorClient as any;
   const { data, error } = await db
     .from('doctor_profiles')
     .select('*')

@@ -7,7 +7,8 @@ import {
   type ReactNode,
 } from 'react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseDoctorClient } from '@/lib/supabase-doctor';
+import { clearDoctorSessionCaches } from '@/lib/authSessionCleanup';
 import { fetchOrSeedDoctorProfile } from '../utils/seedDoctorProfiles';
 import type { DoctorProfile } from '../types/doctorProfile';
 
@@ -45,7 +46,7 @@ export function DoctorAuthProvider({ children }: { children: ReactNode }) {
       // but a valid Supabase session exists, the doctor should stay logged in.
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await supabaseDoctorClient.auth.getSession();
 
       if (!session?.user) {
         if (mounted) setIsDoctorLoading(false);
@@ -72,7 +73,7 @@ export function DoctorAuthProvider({ children }: { children: ReactNode }) {
     restoreSession();
 
     // Also listen for sign-out events to clear state
-    const { data: listener } = supabase.auth.onAuthStateChange((event) => {
+    const { data: listener } = supabaseDoctorClient.auth.onAuthStateChange((event) => {
       if (event === 'SIGNED_OUT') {
         if (mounted) {
           setDoctorProfile(null);
@@ -93,7 +94,7 @@ export function DoctorAuthProvider({ children }: { children: ReactNode }) {
       setIsDoctorLoading(true);
 
       // 1. Authenticate with Supabase
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabaseDoctorClient.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password,
       });
@@ -115,12 +116,17 @@ export function DoctorAuthProvider({ children }: { children: ReactNode }) {
         toast.error(
           'This account is not registered as a doctor. Please contact the administrator.',
         );
-        await supabase.auth.signOut();
+        await supabaseDoctorClient.auth.signOut();
         setIsDoctorLoading(false);
         return false;
       }
 
       setDoctorProfile(profile);
+      try {
+        sessionStorage.setItem('ss-role', 'doctor');
+      } catch {
+        /* ignore */
+      }
       setIsDoctorLoading(false);
       toast.success(`Welcome back, ${profile.full_name}!`);
       return true;
@@ -131,9 +137,12 @@ export function DoctorAuthProvider({ children }: { children: ReactNode }) {
   // ── logoutDoctor ───────────────────────────────────────────────────────────
   const logoutDoctor = useCallback(async () => {
     setDoctorProfile(null);
-    await supabase.auth.signOut();
-    sessionStorage.removeItem('ss-role');
-    localStorage.removeItem('ss-role');
+    try {
+      await supabaseDoctorClient.auth.signOut({ scope: 'global' });
+    } catch {
+      await supabaseDoctorClient.auth.signOut({ scope: 'local' });
+    }
+    clearDoctorSessionCaches();
     toast.info('Logged out successfully.');
     setTimeout(() => {
       window.location.href = '/';
@@ -144,7 +153,7 @@ export function DoctorAuthProvider({ children }: { children: ReactNode }) {
   const refreshDoctorProfile = useCallback(async () => {
     const {
       data: { session },
-    } = await supabase.auth.getSession();
+    } = await supabaseDoctorClient.auth.getSession();
     if (!session?.user) return;
     const profile = await fetchOrSeedDoctorProfile(
       session.user.id,

@@ -7,6 +7,7 @@ import type { Language } from "@/lib/i18n";
 import { LANGUAGES } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useDoctorAuth } from "@/modules/doctor/hooks/useDoctorAuth";
 import { usePhase } from "@/hooks/usePhase";
 import { useRole } from "@/hooks/useRole";
 import { useOnboarding } from "@/hooks/useOnboarding";
@@ -36,6 +37,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/dashboard", label: "Dashboard", icon: Calendar },
   { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
   { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
+  { to: "/maternity/schemes", label: "Schemes", icon: ShieldCheck },
   { to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList },
   { to: "/connect", label: "Connect", icon: Stethoscope },
 ];
@@ -45,6 +47,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
 const MATERNITY_ONLY_ROUTES = new Set([
   "/medicine-reminder",
   "/pregnancy-dashboard",
+  "/maternity/schemes",
 ]);
 
 // Routes to show only in family planning phase
@@ -76,8 +79,12 @@ export default function HamburgerMenu({
 }: HamburgerMenuProps) {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const { doctorProfile, isDoctorLoggedIn, logoutDoctor } = useDoctorAuth();
   const { phase } = usePhase();
-  const { role } = useRole();
+  const { role, clearRole } = useRole();
+  const doctorSession = role === "doctor" && isDoctorLoggedIn;
+  const showLoggedIn = !!user || doctorSession;
+  const displayName = user?.name ?? doctorProfile?.full_name ?? "Doctor";
   const { setShowOnboarding, config } = useOnboarding();
   const [isProfileExpanded, setIsProfileExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -158,8 +165,8 @@ export default function HamburgerMenu({
 
         <div className="flex flex-col h-[calc(100%-57px)]">
           <div className="flex-1 overflow-y-auto space-y-5 px-5 py-4">
-            {/* User Profile Accordion (if logged in) */}
-            {user && (
+            {/* User / doctor profile accordion (if logged in) */}
+            {showLoggedIn && (
               <div className="rounded-lg border border-border bg-card overflow-hidden shadow-sm">
                 <button
                   onClick={() => setIsProfileExpanded(!isProfileExpanded)}
@@ -167,10 +174,10 @@ export default function HamburgerMenu({
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-semibold text-lg">
-                      {user.name.charAt(0).toUpperCase()}
+                      {displayName.charAt(0).toUpperCase()}
                     </div>
                     <div className="text-left">
-                      <p className="text-sm font-semibold text-foreground">{user.name}</p>
+                      <p className="text-sm font-semibold text-foreground">{displayName}</p>
                       <p className="text-xs text-muted-foreground">My Profile</p>
                     </div>
                   </div>
@@ -188,6 +195,7 @@ export default function HamburgerMenu({
                         <User className="w-4 h-4 text-primary/70" />
                         View Profile
                       </Link>
+                      {!doctorSession && (
                       <button
                         onClick={() => { setShowOnboarding(true); onClose(); }}
                         className="w-full text-left flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-slate-600 hover:bg-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -197,6 +205,7 @@ export default function HamburgerMenu({
                           ? `Change Purpose & Goals`
                           : `Set up your preferences`}
                       </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -252,9 +261,20 @@ export default function HamburgerMenu({
 
           {/* Auth section at bottom */}
           <div className="border-t border-border px-5 py-4">
-            {user ? (
+            {showLoggedIn ? (
               <button
-                onClick={() => { logout(); onClose(); }}
+                type="button"
+                onClick={() => {
+                  void (async () => {
+                    if (doctorSession) {
+                      await logoutDoctor();
+                    } else {
+                      await logout();
+                    }
+                    clearRole();
+                    onClose();
+                  })();
+                }}
                 className="w-full inline-flex h-10 items-center justify-center gap-2 rounded-md border border-border bg-white px-4 text-sm font-semibold shadow-sm transition-colors hover:bg-slate-50 text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <LogOut className="w-4 h-4" />

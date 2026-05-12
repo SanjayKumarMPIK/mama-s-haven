@@ -1,12 +1,16 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabaseUserClient } from '@/lib/supabase-user';
+import { supabaseDoctorClient } from '@/lib/supabase-doctor';
 import type { ConnectionRequest, ConnectionStatus, PatientProfileData } from './connectionStore';
 
 // ─── Supabase-backed Connection Store ────────────────────────────────────────
-// Replaces the localStorage connectionStore for doctor-patient connections.
-// Medical reports remain in localStorage (separate concern).
+// Patient flows use supabaseUserClient (JWT in swasthya-user-auth).
+// Doctor flows use supabaseDoctorClient (JWT in swasthya-doctor-auth).
+// The shared integration client uses a different storage key and has no user JWT — do not use it here.
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = supabase as any;
+const patientDb = supabaseUserClient as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const doctorDb = supabaseDoctorClient as any;
 
 // ── Map DB row → ConnectionRequest ────────────────────────────────────────────
 function mapRow(row: Record<string, unknown>): ConnectionRequest {
@@ -24,18 +28,25 @@ function mapRow(row: Record<string, unknown>): ConnectionRequest {
   };
 }
 
-// ── Look up a doctor by their unique 6-char code ──────────────────────────────
+// ── Look up a doctor by their unique code (case-insensitive) ─────────────────
 export async function lookupDoctorByCode(
   doctorCode: string,
-): Promise<{ id: string; full_name: string; designation: string } | null> {
-  const { data, error } = await db
+): Promise<{ id: string; full_name: string; designation: string; doctor_code: string } | null> {
+  const raw = doctorCode.trim();
+  if (!raw) return null;
+
+  const { data, error } = await patientDb
     .from('doctor_profiles')
-    .select('id, full_name, designation')
-    .eq('doctor_code', doctorCode.trim())
+    .select('id, full_name, designation, doctor_code')
+    .ilike('doctor_code', raw)
     .maybeSingle();
 
-  if (error || !data) return null;
-  return data as { id: string; full_name: string; designation: string };
+  if (error) {
+    console.error('[ConnectionStore] lookupDoctorByCode:', error.message);
+    return null;
+  }
+  if (!data) return null;
+  return data as { id: string; full_name: string; designation: string; doctor_code: string };
 }
 
 // ── Patient: send a connection request to a doctor ────────────────────────────
@@ -44,26 +55,28 @@ export async function createSupabaseRequest(
   patientId: string,
   profile?: PatientProfileData,
 ): Promise<ConnectionRequest | null> {
-  // 1. Look up doctor
   const doctor = await lookupDoctorByCode(doctorCode);
   if (!doctor) return null;
 
-  // 2. Check for existing request from this patient to this doctor
-  const { data: existing } = await db
+  const canonicalCode = doctor.doctor_code || doctorCode.trim();
+
+  const { data: existing, error: existingErr } = await patientDb
     .from('doctor_connections')
     .select('*')
     .eq('doctor_id', doctor.id)
     .eq('patient_id', patientId)
     .maybeSingle();
 
+  if (existingErr) {
+    console.error('[ConnectionStore] existing check:', existingErr.message);
+  }
   if (existing) return mapRow(existing as Record<string, unknown>);
 
-  // 3. Insert new request
-  const { data: inserted, error } = await db
+  const { data: inserted, error } = await patientDb
     .from('doctor_connections')
     .insert({
       doctor_id: doctor.id,
-      doctor_code: doctorCode.trim(),
+      doctor_code: canonicalCode,
       patient_id: patientId,
       patient_name: profile?.fullName ?? 'Patient',
       patient_phase: profile?.lifeStage ?? 'Maternity',
@@ -75,7 +88,7 @@ export async function createSupabaseRequest(
     .single();
 
   if (error || !inserted) {
-    console.error('[ConnectionStore] Insert error:', error?.message);
+    console.error('[ConnectionStore] Insert error:', error?.message, error?.details, error?.hint);
     return null;
   }
   return mapRow(inserted as Record<string, unknown>);
@@ -86,14 +99,21 @@ export async function getSupabaseRequestByCode(
   doctorCode: string,
   patientId: string,
 ): Promise<ConnectionRequest | null> {
-  const { data, error } = await db
+  const raw = doctorCode.trim();
+  if (!raw) return null;
+
+  const { data, error } = await patientDb
     .from('doctor_connections')
     .select('*')
-    .eq('doctor_code', doctorCode.trim())
+    .ilike('doctor_code', raw)
     .eq('patient_id', patientId)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    console.error('[ConnectionStore] getSupabaseRequestByCode:', error.message);
+    return null;
+  }
+  if (!data) return null;
   return mapRow(data as Record<string, unknown>);
 }
 
@@ -101,13 +121,17 @@ export async function getSupabaseRequestByCode(
 export async function getSupabaseRequestsByDoctor(
   doctorId: string,
 ): Promise<ConnectionRequest[]> {
-  const { data, error } = await db
+  const { data, error } = await doctorDb
     .from('doctor_connections')
     .select('*')
     .eq('doctor_id', doctorId)
     .order('created_at', { ascending: false });
 
-  if (error || !data) return [];
+  if (error) {
+    console.error('[ConnectionStore] getSupabaseRequestsByDoctor:', error.message);
+    return [];
+  }
+  if (!data) return [];
   return (data as Record<string, unknown>[]).map(mapRow);
 }
 
@@ -116,10 +140,14 @@ export async function updateSupabaseConnectionStatus(
   requestId: string,
   status: ConnectionStatus,
 ): Promise<boolean> {
-  const { error } = await db
+  const { error } = await doctorDb
     .from('doctor_connections')
     .update({ status })
     .eq('id', requestId);
 
-  return !error;
+  if (error) {
+    console.error('[ConnectionStore] updateSupabaseConnectionStatus:', error.message);
+    return false;
+  }
+  return true;
 }

@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import type { StoredUserData } from "@/hooks/useAuth";
 import {
   createSupabaseRequest,
   getSupabaseRequestByCode,
@@ -12,37 +13,60 @@ import type { PatientProfileData } from "@/lib/connectionStore";
 import type { ConnectionStatus } from "@/lib/connectionStore";
 import MyDoctorDashboard from "@/components/connect/MyDoctorDashboard";
 
-function buildPatientProfile(): PatientProfileData | undefined {
+function mapStoredUserToPatientProfile(fp: StoredUserData): PatientProfileData {
+  const age = parseInt(fp.basic.age, 10) || 0;
+  const lifeStage = fp.health.lifeStage || "Maternity";
+  let trimester: number | undefined;
+  let pregnancyWeek: number | undefined;
+  let expectedDueDate: string | undefined;
+
+  if (fp.health.trimester) trimester = parseInt(String(fp.health.trimester), 10);
+  if (fp.health.expectedDueDate) expectedDueDate = fp.health.expectedDueDate;
+
   try {
-    const userRaw = localStorage.getItem("swasthyasakhi_user");
-    if (!userRaw) return undefined;
-    const userData = JSON.parse(userRaw);
-    const age = parseInt(userData.basic.age) || 0;
-    const lifeStage = userData.health.lifeStage || "Maternity";
-    let trimester: number | undefined;
-    let pregnancyWeek: number | undefined;
-    let expectedDueDate: string | undefined;
-
-    if (userData.health.trimester) trimester = parseInt(userData.health.trimester);
-    if (userData.health.expectedDueDate) expectedDueDate = userData.health.expectedDueDate;
-
     const pregRaw = localStorage.getItem("mh-profile");
     if (pregRaw) {
-      const pregProfile = JSON.parse(pregRaw);
-      const edd = pregProfile.dueDate || pregProfile.calculatedEDD || pregProfile.userEDD;
+      const pregProfile = JSON.parse(pregRaw) as Record<string, unknown>;
+      const edd = (pregProfile.dueDate || pregProfile.calculatedEDD || pregProfile.userEDD) as string | undefined;
       if (edd) {
         expectedDueDate = edd;
         const weeksLeft = Math.ceil((new Date(edd).getTime() - Date.now()) / (7 * 24 * 60 * 60 * 1000));
         pregnancyWeek = Math.max(1, 40 - weeksLeft);
       }
-      if (!trimester && pregProfile.currentTrimester) trimester = pregProfile.currentTrimester;
+      if (!trimester && pregProfile.currentTrimester != null) {
+        trimester = Number(pregProfile.currentTrimester);
+      }
     }
-    return { fullName: userData.basic.fullName, age, lifeStage, trimester, pregnancyWeek, expectedDueDate };
-  } catch { return undefined; }
+  } catch {
+    /* ignore */
+  }
+
+  return {
+    fullName: fp.basic.fullName,
+    age,
+    lifeStage,
+    trimester,
+    pregnancyWeek,
+    expectedDueDate,
+  };
+}
+
+/** Prefer live auth profile; fall back to localStorage cache. */
+function buildPatientProfile(fullProfile: StoredUserData | null): PatientProfileData | undefined {
+  if (fullProfile?.basic?.fullName) {
+    return mapStoredUserToPatientProfile(fullProfile);
+  }
+  try {
+    const userRaw = localStorage.getItem("swasthyasakhi_user");
+    if (!userRaw) return undefined;
+    return mapStoredUserToPatientProfile(JSON.parse(userRaw) as StoredUserData);
+  } catch {
+    return undefined;
+  }
 }
 
 export default function ConnectPage() {
-  const { user } = useAuth();
+  const { user, fullProfile } = useAuth();
   const [doctorCode, setDoctorCode] = useState("");
   const [requestStatus, setRequestStatus] = useState<"idle" | "invalid" | "submitting">("idle");
   const [connection, setConnection] = useState<{ status: ConnectionStatus; code: string } | null>(null);
@@ -76,12 +100,12 @@ export default function ConnectPage() {
     if (!doctorCode.trim() || !user?.id) return;
     setRequestStatus("submitting");
 
-    const profile = buildPatientProfile();
+    const profile = buildPatientProfile(fullProfile);
     const req = await createSupabaseRequest(doctorCode.trim(), user.id, profile);
 
     if (req) {
-      sessionStorage.setItem("ss-active-doctor-code", doctorCode.trim());
-      setConnection({ status: req.status, code: doctorCode.trim() });
+      sessionStorage.setItem("ss-active-doctor-code", req.doctorCode);
+      setConnection({ status: req.status, code: req.doctorCode });
       setRequestStatus("idle");
     } else {
       setRequestStatus("invalid");

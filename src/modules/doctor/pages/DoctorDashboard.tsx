@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Users, Calendar, FileText, AlertCircle, Search, Clock, ChevronRight, Bell, Stethoscope } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { Users, Calendar, FileText, AlertCircle, Search, Clock, ChevronRight, Bell, Stethoscope, ShieldAlert } from "lucide-react";
 import { useDoctorAuth } from "@/modules/doctor/hooks/useDoctorAuth";
 import { Link } from "react-router-dom";
 import { getRequestsByDoctor } from "@/lib/connectionStore";
 import { getReportsByDoctor } from "@/components/connect/medicalReportStore";
+import { useDoctorRouteAlertCounts } from "@/modules/doctor/components/DoctorRouteAlertOverlays";
 
 const DOCTOR_ID = "doctor-demo-123";
 const DOCTOR_ALERTS_KEY = "ss-maternity-doctor-alerts";
@@ -100,9 +100,12 @@ const statusColors: Record<string, string> = {
 };
 
 export default function DoctorDashboard() {
-  const { user } = useAuth();
-  const { doctorProfile } = useDoctorAuth();
-  const displayName = doctorProfile?.full_name ?? user?.name ?? "Doctor";
+  const { doctorProfile, refreshDoctorProfile } = useDoctorAuth();
+  const displayName = doctorProfile?.full_name ?? "Doctor";
+
+  useEffect(() => {
+    void refreshDoctorProfile();
+  }, [refreshDoctorProfile]);
   const [patients, setPatients] = useState<PatientRecord[]>(loadPatients);
   const [appointments, setAppointments] = useState<ScheduleItem[]>(loadTodayAppointments);
   const [pendingReports, setPendingReports] = useState(loadPendingReportsCount);
@@ -110,7 +113,11 @@ export default function DoctorDashboard() {
   const [notificationCount, setNotificationCount] = useState(0);
   const mountedRef = useRef(true);
 
+  const { pendingSos: totalActiveSOS, maternityHillstation: totalMaternityHillstationAlerts } =
+    useDoctorRouteAlertCounts();
+
   const totalPatients = useMemo(() => patients.length, [patients]);
+  const effectiveAlertCount = activeAlerts + totalActiveSOS + totalMaternityHillstationAlerts;
 
   const refresh = useCallback(() => {
     if (!mountedRef.current) return;
@@ -185,14 +192,18 @@ export default function DoctorDashboard() {
                 <Search className="h-4 w-4" />
                 Search Patient
               </Link>
-              <button className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
-                <Bell className="h-4 w-4" />
-                {notificationCount > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center">
-                    {notificationCount > 9 ? "9+" : notificationCount}
-                  </span>
-                )}
-              </button>
+                <button className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
+                  {totalActiveSOS > 0 || totalMaternityHillstationAlerts > 0 ? (
+                    <ShieldAlert className="h-4 w-4 animate-pulse" />
+                  ) : (
+                    <Bell className="h-4 w-4" />
+                  )}
+                  {(notificationCount + totalActiveSOS + totalMaternityHillstationAlerts) > 0 && (
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold flex items-center justify-center">
+                      {(notificationCount + totalActiveSOS + totalMaternityHillstationAlerts) > 9 ? "9+" : (notificationCount + totalActiveSOS + totalMaternityHillstationAlerts)}
+                    </span>
+                  )}
+                </button>
             </div>
           </div>
         </div>
@@ -222,13 +233,19 @@ export default function DoctorDashboard() {
             color="amber"
             trend={pendingReports > 0 ? `${pendingReports} need review` : "All reviewed"}
           />
-          <StatCard
-            icon={AlertCircle}
-            label="Active Alerts"
-            value={String(activeAlerts)}
-            color="red"
-            trend={activeAlerts > 0 ? "Requires attention" : "No active alerts"}
-          />
+           <StatCard
+              icon={totalActiveSOS > 0 || totalMaternityHillstationAlerts > 0 ? ShieldAlert : AlertCircle}
+              label="Active Alerts"
+              value={String(effectiveAlertCount)}
+              color="red"
+              trend={totalActiveSOS > 0 
+                ? `${totalActiveSOS} SOS emergency${totalActiveSOS > 1 ? "s" : ""} pending`
+                : totalMaternityHillstationAlerts > 0
+                  ? `${totalMaternityHillstationAlerts} hillstation delivery alert${totalMaternityHillstationAlerts > 1 ? "s" : ""}`
+                  : effectiveAlertCount > 0 
+                    ? "Requires attention" 
+                    : "No active alerts"}
+            />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -288,13 +305,19 @@ export default function DoctorDashboard() {
               <Link to="/doctor/history" className="block">
                 <QuickAction icon={FileText} label="Generate Reports" description="Create health summaries" />
               </Link>
-              <Link to="/doctor/alerts" className="block">
-                <QuickAction
-                  icon={AlertCircle}
-                  label="Review Alerts"
-                  description={activeAlerts > 0 ? `${activeAlerts} pending alerts` : "No pending alerts"}
-                />
-              </Link>
+                <Link to="/doctor/alerts" className="block">
+                  <QuickAction
+                    icon={effectiveAlertCount > 0 ? ShieldAlert : AlertCircle}
+                    label="Review Alerts"
+                    description={totalActiveSOS > 0 
+                      ? `${totalActiveSOS} SOS emergency${totalActiveSOS > 1 ? "ies" : ""} — ${activeAlerts} symptom alerts`
+                      : totalMaternityHillstationAlerts > 0
+                        ? `${totalMaternityHillstationAlerts} hillstation delivery alert${totalMaternityHillstationAlerts > 1 ? "s" : ""}`
+                        : activeAlerts > 0 
+                          ? `${activeAlerts} pending alerts` 
+                          : "No pending alerts"}
+                  />
+                </Link>
             </div>
           </div>
         </div>
@@ -355,11 +378,12 @@ export default function DoctorDashboard() {
               <p className="text-xs text-slate-400 mt-1">Patient records will appear when patients connect</p>
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
+         </div>
+       </div>
+
+     </div>
+   );
+ }
 
 function StatCard({ icon: Icon, label, value, color, trend }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string; color: string; trend: string }) {
   const colorMap: Record<string, { bg: string; iconBg: string; iconText: string }> = {

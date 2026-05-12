@@ -4,6 +4,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { useMaternitySymptomWarning } from "@/hooks/useMaternitySymptomWarning";
+import { useMaternityPopupQueue } from "@/hooks/useMaternityPopupQueue";
 import { toast } from "@/hooks/use-toast";
 import {
   AlertTriangle,
@@ -18,33 +19,41 @@ import {
 export default function MaternitySymptomWarningPopup() {
   const { activeWarning, visible, ignoreWarning, sendDoctorAlert, isHighRisk } =
     useMaternitySymptomWarning();
+  const { activePopup, requestShow, notifyDismissed, cancelRequest } = useMaternityPopupQueue();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
     if (visible && activeWarning) {
+      requestShow("symptom");
       setOpen(true);
     } else {
+      notifyDismissed("symptom");
       const timer = setTimeout(() => setOpen(false), 200);
-      return () => clearTimeout(timer);
+      return () => {
+        clearTimeout(timer);
+        cancelRequest("symptom");
+      };
     }
-  }, [visible, activeWarning]);
+  }, [visible, activeWarning, requestShow, notifyDismissed, cancelRequest]);
 
   const handleIgnore = useCallback(() => {
     setOpen(false);
+    notifyDismissed("symptom");
     setTimeout(() => ignoreWarning(), 200);
-  }, [ignoreWarning]);
+  }, [ignoreWarning, notifyDismissed]);
 
   const handleSendAlert = useCallback(() => {
     sendDoctorAlert();
     setOpen(false);
+    notifyDismissed("symptom");
     toast({
       title: "Doctor Alert Sent",
       description: "Your symptom alert has been recorded and will be reviewed.",
       variant: "default",
     });
-  }, [sendDoctorAlert]);
+  }, [sendDoctorAlert, notifyDismissed]);
 
-  if (!open || !activeWarning) return null;
+  if (!open || !activeWarning || (activePopup !== "symptom" && activePopup !== null)) return null;
 
   const triggerLabel = {
     "consecutive-3": "3 Consecutive Days",

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useProfile } from "@/hooks/useProfile";
 import { usePhase } from "@/hooks/usePhase";
 import { useAuth } from "@/hooks/useAuth";
+import { useRole } from "@/hooks/useRole";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
@@ -22,6 +23,7 @@ import {
   Droplets,
   Info,
   Clock,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -233,7 +235,8 @@ function InfoRow({
 export default function ProfilePage() {
   const { profile, updateWeight, updateHeight, updateCycleConfig, updatePersonalInfo, updateLifestyle } = useProfile();
   const { phase, phaseName, phaseEmoji, phaseColor } = usePhase();
-  const { user, logout } = useAuth();
+  const { user, fullProfile, saveFullProfile, logout } = useAuth();
+  const { clearRole } = useRole();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -251,6 +254,9 @@ export default function ProfilePage() {
   const [draftState, setDraftState] = useState(profile.state || "");
   const [draftNearbyPhc, setDraftNearbyPhc] = useState<"Anna Nagar PHC" | "Tambaram PHC">(profile.nearbyPhc || "Anna Nagar PHC");
   const [draftRegionType, setDraftRegionType] = useState<"rural" | "urban" | "hillstation">(profile.regionType || "urban");
+  const [isSaving, setIsSaving] = useState(false);
+  const originalRef = useRef<string | null>(null);
+
   const availableStates = REGION_STATE_OPTIONS[draftRegion as RegionKey] ?? REGION_STATE_OPTIONS.north;
   useEffect(() => {
     setDraftDob(profile.dob || "");
@@ -268,6 +274,133 @@ export default function ProfilePage() {
       setDraftState(availableStates[0]);
     }
   }, [availableStates, draftState]);
+
+  // Initialize original snapshot once profile is available
+  useEffect(() => {
+    if (profile.isProfileAvailable && !originalRef.current) {
+      originalRef.current = JSON.stringify({
+        weight: profile.weight,
+        height: profile.height,
+        activityLevel: profile.activityLevel,
+        climate: profile.climate,
+        periodDuration: profile.periodDuration,
+        cycleLength: profile.cycleLength,
+        dob: profile.dob,
+        bloodGroup: profile.bloodGroup,
+        medicalConditions: profile.medicalConditions,
+        region: profile.region,
+        state: profile.state,
+        nearbyPhc: profile.nearbyPhc,
+        regionType: profile.regionType,
+        menarcheDate: profile.menarcheDate,
+        dietType: profile.dietType,
+        lastPeriodDate: profile.lastPeriodDate,
+      });
+    }
+  }, [profile.isProfileAvailable]);
+
+  function buildSnapshot(): string {
+    return JSON.stringify({
+      weight: profile.weight,
+      height: profile.height,
+      activityLevel: profile.activityLevel,
+      climate: profile.climate,
+      periodDuration: profile.periodDuration,
+      cycleLength: profile.cycleLength,
+      dob: draftDob || profile.dob,
+      bloodGroup: draftBloodGroup || profile.bloodGroup,
+      medicalConditions: draftMedicalConditions,
+      region: draftRegion,
+      state: draftState,
+      nearbyPhc: draftNearbyPhc,
+      regionType: draftRegionType,
+      menarcheDate: draftMenarcheDate ?? profile.menarcheDate,
+      dietType: profile.dietType,
+      lastPeriodDate: profile.lastPeriodDate,
+    });
+  }
+
+  const hasChanges = !!(originalRef.current && buildSnapshot() !== originalRef.current);
+
+  function computeAgeFromDOB(dob: string): number | null {
+    if (!dob) return null;
+    const birthDate = new Date(dob);
+    if (isNaN(birthDate.getTime())) return null;
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
+    return age > 0 ? age : null;
+  }
+
+  async function handleSave() {
+    if (!fullProfile || isSaving) return;
+
+    if (!draftDob) {
+      toast.error("Date of birth is required.", { description: "Please enter your date of birth before saving." });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const dob = draftDob || fullProfile.basic.dob;
+      const newAge = computeAgeFromDOB(dob);
+      const medicalConditions = draftMedicalConditions;
+
+      const updatedProfile = {
+        ...fullProfile,
+        basic: {
+          ...fullProfile.basic,
+          dob,
+          age: newAge !== null ? String(newAge) : fullProfile.basic.age,
+          bloodGroup: draftBloodGroup || fullProfile.basic.bloodGroup,
+          weight: profile.weight !== null ? String(profile.weight) : fullProfile.basic.weight,
+          height: profile.height !== null ? String(profile.height) : fullProfile.basic.height,
+        },
+        location: {
+          ...fullProfile.location,
+          region: draftRegion,
+          state: draftState,
+          nearbyPhc: draftNearbyPhc,
+          regionType: draftRegionType,
+        },
+        health: {
+          ...fullProfile.health,
+          lifeStage: fullProfile.health.lifeStage,
+          dietType: profile.dietType as import("@/hooks/useAuth").StoredUserData["health"]["dietType"],
+          lastPeriodDate: profile.lastPeriodDate || fullProfile.health.lastPeriodDate,
+          haemoglobin: profile.haemoglobin || fullProfile.health.haemoglobin,
+          medicalConditions,
+          knownConditions:
+            medicalConditions.length > 0
+              ? medicalConditions.join(", ")
+              : fullProfile.health.knownConditions,
+          cycleLength:
+            profile.cycleLength !== null ? String(profile.cycleLength) : fullProfile.health.cycleLength,
+          menarcheDate: draftMenarcheDate ?? profile.menarcheDate ?? fullProfile.health.menarcheDate ?? null,
+          periodDurationDays: profile.periodDuration,
+          activityLevel: profile.activityLevel,
+          climate: profile.climate,
+        },
+      } as import("@/hooks/useAuth").StoredUserData;
+
+      await saveFullProfile(updatedProfile);
+
+      originalRef.current = buildSnapshot();
+      setEditingPersonal(false);
+
+      toast.success("Profile saved successfully!", {
+        description: "All changes have been saved to your account.",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      toast.error("Failed to save profile", {
+        description: message,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }
   
   const handleFinishSetup = () => {
     if (profile.weight === null || profile.height === null) {
@@ -344,11 +477,17 @@ export default function ProfilePage() {
     });
     setEditingPersonal(false);
     toast.success("Profile health details updated.");
+    if (originalRef.current) {
+      originalRef.current = buildSnapshot();
+    }
   };
 
   const handleLogout = () => {
-    logout();
-    navigate("/login");
+    void (async () => {
+      await logout();
+      clearRole();
+      navigate("/login");
+    })();
   };
 
   if (!user || !profile.isProfileAvailable) {
@@ -418,7 +557,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="container py-6 space-y-5">
+      <div className="container py-6 space-y-5 pb-28">
         {/* ── Personal Information ─────────────────────────────── */}
         <section className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-border/60 bg-muted/20">
@@ -1071,6 +1210,35 @@ export default function ProfilePage() {
           </button>
         </div>
       </div>
+
+      {/* ── Sticky Save Bar ─────────────────────────── */}
+      {profile.isProfileAvailable && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm shadow-lg">
+          <div className="container flex items-center justify-between py-3">
+            <div className="flex items-center gap-2">
+              {hasChanges ? (
+                <>
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-sm font-medium text-amber-700">Unsaved changes</span>
+                </>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {originalRef.current ? "All changes saved" : ""}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!hasChanges || isSaving}
+              className="inline-flex items-center gap-2 rounded-xl bg-primary text-primary-foreground px-6 py-2.5 text-sm font-semibold shadow-lg shadow-primary/30 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-[0.98]"
+            >
+              {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isSaving ? "Saving..." : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -1,11 +1,13 @@
 // ─── GTT Question Popup ─────────────────────────────────────────────────────────────
-// Specialized popup for GTT (Glucose Tolerance Test) result tracking at 24 weeks.
+// Specialized popup for GTT (Glucose Tolerance Test) result tracking at 25+ weeks.
 // Extends the existing maternal test reminder system with GDM status handling.
+// STRICTLY scoped to maternity phase + pregnancy mode only.
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { usePregnancyProfile, type GDMStatus } from "@/hooks/usePregnancyProfile";
 import { useMaternalTestReminders } from "@/hooks/useMaternalTestReminders";
-import { shouldShowGTTPopup } from "@/lib/utils";
+import { useMaternityPopupQueue } from "@/hooks/useMaternityPopupQueue";
+import { shouldShowGTTPopup, isMaternityRoute } from "@/lib/utils";
 import { X, CheckCircle2, Calendar, AlertCircle, Stethoscope } from "lucide-react";
 
 type GTTView = "question" | "result" | "reminder" | "confirmation";
@@ -13,43 +15,105 @@ type GTTView = "question" | "result" | "reminder" | "confirmation";
 export function GTTQuestionPopup() {
   const { profile, currentWeek, mode, setGDMStatus, markGTTQuestionCompleted, isGTTPopupOpen, openGTTPopup, closeGTTPopup } = usePregnancyProfile();
   const { completeTest, scheduleReminder } = useMaternalTestReminders();
+  const { activePopup, requestShow, notifyDismissed, cancelRequest } = useMaternityPopupQueue();
   
   const [slideIn, setSlideIn] = useState(false);
   const [view, setView] = useState<GTTView>("question");
 
+  // Refs for stable timer/state management
+  const triggerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
+
+  // Track mount status for safe async operations
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   // Auto-trigger condition using centralized helper
   useEffect(() => {
+    // Hard route guard: never trigger outside maternity routes
+    if (!isMaternityRoute()) return;
+
     if (shouldShowGTTPopup(
       mode,
       currentWeek,
       profile.gdmStatus,
       profile.isSetup,
       isGTTPopupOpen,
-      profile.gttQuestionCompleted
+      profile.gttQuestionCompleted,
+      profile.delivery.isDelivered
     )) {
+      // Clear any existing trigger timer
+      if (triggerTimerRef.current !== null) {
+        clearTimeout(triggerTimerRef.current);
+        triggerTimerRef.current = null;
+      }
       // Small delay so it doesn't pop up instantly on first load
-      const timer = setTimeout(() => {
-        openGTTPopup();
+      triggerTimerRef.current = setTimeout(() => {
+        if (mountedRef.current) {
+          requestShow("gtt");
+        }
       }, 1500);
-      return () => clearTimeout(timer);
     }
-  }, [currentWeek, mode, profile.isSetup, profile.gttQuestionCompleted, profile.gdmStatus, isGTTPopupOpen, openGTTPopup]);
+    return () => {
+      if (triggerTimerRef.current !== null) {
+        clearTimeout(triggerTimerRef.current);
+        triggerTimerRef.current = null;
+      }
+    };
+  }, [currentWeek, mode, profile.isSetup, profile.gttQuestionCompleted, profile.gdmStatus, isGTTPopupOpen, requestShow, profile.delivery.isDelivered]);
+
+  // Open popup when queue allows
+  useEffect(() => {
+    if (activePopup === "gtt" && !isGTTPopupOpen) {
+      openGTTPopup();
+    }
+  }, [activePopup, isGTTPopupOpen, openGTTPopup]);
 
   // Handle slide animation
   useEffect(() => {
     if (isGTTPopupOpen) {
-      // Reset view when opening
       setView("question");
-      requestAnimationFrame(() => setSlideIn(true));
+      requestAnimationFrame(() => {
+        if (mountedRef.current) setSlideIn(true);
+      });
     } else {
       setSlideIn(false);
     }
   }, [isGTTPopupOpen]);
 
   const handleClose = useCallback(() => {
+    notifyDismissed("gtt");
     setSlideIn(false);
-    setTimeout(() => closeGTTPopup(), 300);
-  }, [closeGTTPopup]);
+    if (closeTimerRef.current !== null) {
+      clearTimeout(closeTimerRef.current);
+    }
+    closeTimerRef.current = setTimeout(() => {
+      if (mountedRef.current) {
+        closeGTTPopup();
+      }
+    }, 300);
+  }, [closeGTTPopup, notifyDismissed]);
+
+  // Cleanup all timers on unmount + close popup state
+  useEffect(() => {
+    return () => {
+      if (triggerTimerRef.current !== null) {
+        clearTimeout(triggerTimerRef.current);
+        triggerTimerRef.current = null;
+      }
+      if (closeTimerRef.current !== null) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
+      closeGTTPopup();
+      cancelRequest("gtt");
+    };
+  }, [closeGTTPopup, cancelRequest]);
 
   // ─── Handlers ─────────────────────────────────────────────────────────
 
@@ -98,12 +162,15 @@ export function GTTQuestionPopup() {
 
   if (!isGTTPopupOpen) return null;
 
+  // Hard route guard defense-in-depth: never render outside maternity routes
+  if (!isMaternityRoute()) return null;
+
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-auto">
       {/* Backdrop */}
       <div
         className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300 ${
-          slideIn ? "opacity-100" : "opacity-0"
+          slideIn ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
         onClick={handleClose}
       />
@@ -123,7 +190,7 @@ export function GTTQuestionPopup() {
         {/* Close button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-all z-10"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-200 transition-all z-10 pointer-events-auto"
         >
           <X className="w-4 h-4" />
         </button>

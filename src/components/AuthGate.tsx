@@ -73,7 +73,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
     location.pathname === "/"
   ) {
     if (effectiveRole === "doctor") {
-      return <Navigate to="/doctor/dashboard" replace />;
+      if (isDoctorLoggedIn) {
+        return <Navigate to="/doctor/dashboard" replace />;
+      }
+      // If we are on an auth page but profile check failed, stay here to allow login/re-selection
+      return <>{children}</>;
     }
     if (phase === "postpartum") {
       return <Navigate to="/postpartum-dashboard" replace />;

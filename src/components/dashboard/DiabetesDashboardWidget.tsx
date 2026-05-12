@@ -64,7 +64,8 @@ export function DiabetesDashboardWidget({ currentWeek }: { currentWeek: number }
     profile.gdmStatus,
     profile.isSetup,
     false, // Not checking if popup is open for widget
-    profile.gttQuestionCompleted
+    profile.gttQuestionCompleted,
+    profile.delivery.isDelivered
   );
 
   const updateStage = useCallback((stage: DiabetesStage) => {

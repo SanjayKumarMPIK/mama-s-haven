@@ -107,6 +107,37 @@ function getRecentLogs(logs: HealthLogs, days: number = 30): [string, any][] {
   return Object.entries(logs).filter(([date]) => date >= cutoffISO).sort((a, b) => b[0].localeCompare(a[0]));
 }
 
+function extractSymptoms(logs: [string, any][]): Map<string, string[]> {
+  const symptomDates = new Map<string, string[]>();
+  for (const [date, entry] of logs) {
+    const symptoms = entry.symptoms;
+    if (!symptoms) continue;
+    for (const [key, val] of Object.entries(symptoms)) {
+      if (val === true) {
+        const existing = symptomDates.get(key) ?? [];
+        existing.push(date);
+        symptomDates.set(key, existing);
+      }
+    }
+    // Also check fatigue via fatigueLevel
+    if (entry.fatigueLevel && entry.fatigueLevel !== "Low") {
+      const existing = symptomDates.get("fatigue") ?? [];
+      if (!existing.includes(date)) { existing.push(date); symptomDates.set("fatigue", existing); }
+    }
+    // Check mood for mood-related symptoms
+    if (entry.mood === "Low") {
+      const existing = symptomDates.get("moodSwings") ?? [];
+      if (!existing.includes(date)) { existing.push(date); symptomDates.set("moodSwings", existing); }
+    }
+    // Check sleep
+    if (entry.sleepQuality === "Poor" || (entry.sleepHours !== null && entry.sleepHours < 6)) {
+      const existing = symptomDates.get("sleepIssues") ?? [];
+      if (!existing.includes(date)) { existing.push(date); symptomDates.set("sleepIssues", existing); }
+    }
+  }
+  return symptomDates;
+}
+
 function getAllSymptomDefs(phase: Phase) {
   return [...CORE_SYMPTOMS, ...(PHASE_SYMPTOMS[phase] ?? [])];
 }

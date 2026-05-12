@@ -201,17 +201,6 @@ export default function CalendarPage() {
   const { phase } = usePhase();
   const { profile } = useProfile();
 
-  // Defensive guard: ensure phase is defined before proceeding
-  if (!phase) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">Loading calendar...</p>
-        </div>
-      </div>
-    );
-  }
-
   const now = new Date();
   const [mode, setMode] = useState<CalendarMode>("year");
   const [year, setYear] = useState(now.getFullYear());
@@ -223,14 +212,10 @@ export default function CalendarPage() {
   const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   const symptomOptions = useMemo(() => {
+    if (!phase) return [];
     const phaseSymptoms = KEY_SYMPTOMS_BY_PHASE[phase] ?? [];
     return phaseSymptoms.map((s) => ({ id: s.id, label: s.label }));
   }, [phase]);
-
-  function openModal(dateISO: string) {
-    setSelectedDateISO(dateISO);
-    setModalOpen(true);
-  }
 
   // Irregular cycle detection counting
   const irregularCycleCount = useMemo(() => {
@@ -265,9 +250,25 @@ export default function CalendarPage() {
     }
   }, [irregularCycleCount]);
 
+  // Defensive guard: ensure phase is defined before proceeding
+  if (!phase) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Loading calendar...</p>
+        </div>
+      </div>
+    );
+  }
+
   function handleAcknowledgeWarning() {
     localStorage.setItem("acknowledgedIrregularCyleCount", irregularCycleCount.toString());
     setShowWarningModal(false);
+  }
+
+  function openModal(dateISO: string) {
+    setSelectedDateISO(dateISO);
+    setModalOpen(true);
   }
 
   // ─── Mini Month (Year View) ───────────────────────────────────────────────

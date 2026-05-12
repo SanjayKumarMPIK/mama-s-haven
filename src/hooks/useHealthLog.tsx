@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 export type MoodType = "Good" | "Okay" | "Low";
 export type FlowIntensity = "Light" | "Medium" | "Heavy";
+export type BleedingLevel = "Mild" | "Moderate" | "Heavy";
 export type FatigueLevel = "Low" | "Medium" | "High";
 export type SleepQuality = "Good" | "Okay" | "Poor";
 export type PeriodBloodColor =
@@ -30,6 +31,8 @@ export interface PubertyEntry {
   periodStarted: boolean;
   periodEnded: boolean;
   flowIntensity: FlowIntensity | null;
+  /** Bleeding level: Mild / Moderate / Heavy. Only set when periodStarted is true. */
+  bleedingLevel?: BleedingLevel;
   /** Daily period blood color (when applicable) */
   bloodColor?: PeriodBloodColor;
   /** Infection-related symptoms for smart alerts (optional) */

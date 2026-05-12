@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Droplets } from "lucide-react";
 import type { PubertyEntry } from "@/hooks/useHealthLog";
 import {
   LineChart,
@@ -8,6 +8,9 @@ import {
   Area,
   BarChart,
   Bar,
+  PieChart,
+  Pie,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -270,6 +273,68 @@ export default function VisualAnalytics({ pubertyLogs }: { pubertyLogs: PubertyL
           </p>
         </div>
       )}
+
+      {/* Bleeding Level Distribution */}
+      {filteredLogs.some((l) => l.entry.bleedingLevel) && (
+        <BleedingLevelChart filteredLogs={filteredLogs} />
+      )}
     </section>
+  );
+}
+
+function BleedingLevelChart({ filteredLogs }: { filteredLogs: { date: string; entry: PubertyEntry }[] }) {
+  const bleedData = useMemo(() => {
+    const counts: Record<string, number> = { Mild: 0, Moderate: 0, Heavy: 0 };
+    const dayCounts: Record<string, string> = {};
+    for (const log of filteredLogs) {
+      const level = log.entry.bleedingLevel;
+      if (level && level in counts) {
+        counts[level]++;
+        if (!dayCounts[level]) dayCounts[level] = log.date;
+      }
+    }
+    const total = counts.Mild + counts.Moderate + counts.Heavy;
+    return Object.entries(counts)
+      .filter(([, v]) => v > 0)
+      .map(([name, value]) => ({ name, value, pct: total > 0 ? Math.round((value / total) * 100) : 0 }));
+  }, [filteredLogs]);
+
+  const COLORS = ["#4ade80", "#fbbf24", "#f87171"];
+
+  return (
+    <div className="mt-6 rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center shadow-md shadow-pink-500/20">
+          <Droplets className="w-4 h-4 text-white" />
+        </div>
+        <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Bleeding Level</h3>
+      </div>
+      <div className="flex items-center gap-6">
+        <div className="h-32 w-32">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={bleedData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={50} innerRadius={25}>
+                {bleedData.map((entry, i) => (
+                  <Cell key={entry.name} fill={COLORS[i]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="flex-1 space-y-2">
+          {bleedData.map((d, i) => (
+            <div key={d.name} className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[i] }} />
+              <span className="text-xs font-medium text-slate-600 w-16">{d.name}</span>
+              <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${d.pct}%`, backgroundColor: COLORS[i] }} />
+              </div>
+              <span className="text-xs font-bold text-slate-500 w-8 text-right">{d.pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

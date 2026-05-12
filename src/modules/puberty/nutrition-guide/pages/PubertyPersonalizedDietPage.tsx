@@ -149,7 +149,7 @@ export default function PubertyPersonalizedDietPage() {
           .eq("phase", "puberty");
           
         if (!error && data) {
-          setCompletedTasks(data.map(d => d.task_id));
+          setCompletedTasks((data as any[]).map(d => d.task_id));
         }
       } catch (e) {
         console.warn("Could not fetch checklist logs.", e);
@@ -172,7 +172,7 @@ export default function PubertyPersonalizedDietPage() {
     try {
       const today = new Date().toISOString().slice(0, 10);
       if (!isCompleted) {
-        await supabase.from("nutrition_checklist_logs").upsert({
+        await (supabase.from("nutrition_checklist_logs") as any).upsert({
           user_id: user.id,
           task_id: taskId,
           task_title: title,

@@ -1,8 +1,8 @@
 import { createContext, useContext, useCallback, useRef, useState, createElement, type ReactNode } from "react";
 
-type PopupId = "symptom" | "gtt";
+type PopupId = "symptom" | "test-reminder" | "gtt";
 
-const PRIORITY: Record<PopupId, number> = { symptom: 0, gtt: 1 };
+const PRIORITY: Record<PopupId, number> = { symptom: 0, "test-reminder": 1, gtt: 2 };
 
 interface MaternityPopupQueueContextType {
   activePopup: PopupId | null;

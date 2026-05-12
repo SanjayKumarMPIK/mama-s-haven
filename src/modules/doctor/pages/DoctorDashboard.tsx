@@ -113,7 +113,7 @@ export default function DoctorDashboard() {
   const [notificationCount, setNotificationCount] = useState(0);
   const mountedRef = useRef(true);
 
-  const { pendingSos: totalActiveSOS, maternityHillstation: totalMaternityHillstationAlerts } =
+  const { pendingSos: totalActiveSOS, maternityHillstation: totalMaternityHillstationAlerts, realtimeConnected } =
     useDoctorRouteAlertCounts();
 
   const totalPatients = useMemo(() => patients.length, [patients]);
@@ -192,6 +192,16 @@ export default function DoctorDashboard() {
                 <Search className="h-4 w-4" />
                 Search Patient
               </Link>
+              <div className="flex items-center gap-1.5">
+                {/* Realtime connection indicator */}
+                <span
+                  title={realtimeConnected ? "Live alert monitoring active" : "Alert monitoring via polling"}
+                  className={`inline-block h-2 w-2 rounded-full ${
+                    realtimeConnected
+                      ? "bg-emerald-400 animate-pulse shadow-[0_0_4px_rgba(52,211,153,0.6)]"
+                      : "bg-amber-400"
+                  }`}
+                />
                 <button className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 hover:bg-white/30 transition-colors">
                   {totalActiveSOS > 0 || totalMaternityHillstationAlerts > 0 ? (
                     <ShieldAlert className="h-4 w-4 animate-pulse" />
@@ -204,6 +214,7 @@ export default function DoctorDashboard() {
                     </span>
                   )}
                 </button>
+              </div>
             </div>
           </div>
         </div>

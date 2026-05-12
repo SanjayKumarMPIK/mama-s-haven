@@ -7,11 +7,19 @@ import {
   CheckCircle2,
   Eye,
   RotateCcw,
+  Mountain,
+  MapPin,
+  Calendar,
+  Phone,
+  User,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useDoctorRouteAlertCounts } from "@/modules/doctor/components/DoctorRouteAlertOverlays";
+import { useMaternityHillstationAlerts } from "@/hooks/useMaternityHillstationAlerts";
+import { useDoctorAuth } from "@/modules/doctor/hooks/useDoctorAuth";
 
 const DOCTOR_ALERTS_KEY = "ss-maternity-doctor-alerts";
 
@@ -155,6 +163,17 @@ const priorityFilterInactive = "bg-white text-slate-600 border-slate-200 hover:b
 export default function DoctorAlerts() {
   const [alerts, setAlerts] = useState<DoctorAlert[]>(() => loadDoctorAlerts());
   const [filter, setFilter] = useState<FilterType>("all");
+  const { doctorProfile } = useDoctorAuth();
+  const { realtimeConnected } = useDoctorRouteAlertCounts();
+
+  const {
+    alerts: hillstationAlerts,
+    acknowledge: acknowledgeHillstationAlert,
+  } = useMaternityHillstationAlerts(
+    doctorProfile?.id,
+    doctorProfile?.phc_center,
+    doctorProfile?.phc_location,
+  );
 
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
@@ -238,7 +257,7 @@ export default function DoctorAlerts() {
               </div>
             </div>
             <Badge className="bg-white/20 text-white border-0 text-sm px-3 py-1">
-              {activeCount} Active
+              {activeCount + hillstationAlerts.length} Active
             </Badge>
           </div>
         </div>
@@ -262,7 +281,130 @@ export default function DoctorAlerts() {
             ))}
           </div>
 
-          {/* Alert List */}
+          {/* Hillstation Delivery Alerts — HIGH PRIORITY */}
+          {hillstationAlerts.length > 0 && (
+            <div className="mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Mountain className="h-5 w-5 text-red-600" />
+                <h2 className="text-sm font-bold text-red-700 uppercase tracking-wider">
+                  Hillstation Delivery Alerts
+                </h2>
+                <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px]">
+                  {hillstationAlerts.length} URGENT
+                </Badge>
+                {realtimeConnected && (
+                  <span className="ml-auto flex items-center gap-1 text-[10px] text-emerald-600">
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Live
+                  </span>
+                )}
+              </div>
+              <div className="space-y-3">
+                {hillstationAlerts.map((alert) => {
+                  const hasDue = alert.days_left >= 0 && Number.isFinite(alert.days_left);
+                  const daysText = !hasDue
+                    ? "Unknown"
+                    : alert.days_left === 0
+                      ? "Today"
+                      : alert.days_left === 1
+                        ? "1 day"
+                        : `${alert.days_left} days`;
+                  const dueDateLabel =
+                    alert.due_date && String(alert.due_date).trim().length >= 8
+                      ? new Date(alert.due_date + "T00:00:00").toLocaleDateString("en-IN", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "Not on file";
+                  return (
+                    <Card
+                      key={alert.id}
+                      className="border-l-4 border-l-red-500 bg-gradient-to-r from-red-50/80 to-orange-50/40"
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-100 shrink-0">
+                            <Mountain className="h-5 w-5 text-red-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <User className="h-3.5 w-3.5 text-red-500" />
+                                  <h4 className="text-sm font-bold text-slate-900">
+                                    {alert.patient_name}
+                                  </h4>
+                                </div>
+                                <p className="text-xs text-red-600 font-semibold mt-0.5">
+                                  Hillstation Near Delivery
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <Badge className="bg-red-100 text-red-700 border-red-200">
+                                  HIGH PRIORITY
+                                </Badge>
+                              </div>
+                            </div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <Calendar className="h-3 w-3" />
+                                <span>Due: <strong className="text-slate-900">{daysText}</strong></span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <Calendar className="h-3 w-3" />
+                                <span>EDD: <strong className="text-slate-900">{dueDateLabel}</strong></span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <MapPin className="h-3 w-3" />
+                                <span className="truncate">{alert.phc_location}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-slate-600">
+                                <MapPin className="h-3 w-3" />
+                                <span className="truncate">{alert.village_town}</span>
+                              </div>
+                              {alert.emergency_contact && (
+                                <div className="flex items-center gap-1.5 text-slate-600 col-span-2">
+                                  <Phone className="h-3 w-3" />
+                                  <span>{alert.emergency_contact}</span>
+                                </div>
+                              )}
+                            </div>
+                            {alert.alert_message && (
+                              <p className="mt-2 text-[11px] text-slate-500 leading-relaxed bg-white/60 rounded px-2 py-1">
+                                {alert.alert_message}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between mt-3">
+                              <div className="flex items-center gap-1 text-xs text-slate-400">
+                                <Clock className="h-3 w-3" />
+                                {new Date(alert.created_at).toLocaleDateString("en-IN", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </div>
+                              <Button
+                                size="sm"
+                                className="h-7 text-xs bg-gradient-to-r from-red-600 to-orange-600 text-white hover:from-red-700 hover:to-orange-700"
+                                onClick={() => void acknowledgeHillstationAlert(alert.id)}
+                              >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                Acknowledge — I Will Attend
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Symptom Alert List */}
           {filteredAlerts.length > 0 ? (
             <div className="space-y-3">
               {filteredAlerts.map((alert) => {

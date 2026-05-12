@@ -8,8 +8,10 @@ import {
   Baby,
   CheckCircle2,
   Mountain,
+  Clock,
 } from "lucide-react";
 import type { MaternityHillstationAlert } from "@/services/maternityAlertStore";
+import { getRegionRiskLevel } from "@/lib/regionalRiskZones";
 
 interface MaternityHillstationPopupProps {
   alert: MaternityHillstationAlert;
@@ -93,12 +95,29 @@ export function MaternityHillstationPopup({
         <div className="p-5 space-y-4">
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-3">
             <Mountain className="w-5 h-5 text-red-600 shrink-0" />
-            <div>
+            <div className="flex-1">
               <p className="text-xs text-red-500 font-semibold uppercase tracking-wider">
                 Risk Badge
               </p>
               <p className="font-bold text-red-800">Hillstation Near Delivery</p>
             </div>
+            {(() => {
+              const riskLevel = getRegionRiskLevel(
+                'hillstation',
+                alert.village_town,
+              );
+              const riskColors: Record<string, string> = {
+                critical: 'bg-red-600 text-white',
+                high: 'bg-orange-500 text-white',
+                medium: 'bg-amber-500 text-white',
+                low: 'bg-yellow-400 text-slate-900',
+              };
+              return riskLevel ? (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${riskColors[riskLevel] ?? riskColors.high}`}>
+                  {riskLevel} risk
+                </span>
+              ) : null;
+            })()}
           </div>
 
           <div className="grid gap-3">
@@ -206,13 +225,36 @@ export function MaternityHillstationPopup({
             </div>
           </div>
 
-          <button
-            onClick={() => onAcknowledge(alert.id)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-xl font-bold text-sm hover:from-red-700 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98]"
-          >
-            <CheckCircle2 className="w-5 h-5" />
-            Acknowledge Alert — I Will Attend
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={() => onAcknowledge(alert.id)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-xl font-bold text-sm hover:from-red-700 hover:to-orange-700 transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98]"
+            >
+              <CheckCircle2 className="w-5 h-5" />
+              Acknowledge Alert — I Will Attend
+            </button>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                <Clock className="w-3 h-3" />
+                Alert created{" "}
+                {new Date(alert.created_at).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </div>
+              <span className="text-[10px] text-slate-400">
+                Expires{" "}
+                {new Date(alert.expires_at).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

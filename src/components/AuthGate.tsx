@@ -74,9 +74,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   ) {
     if (effectiveRole === "doctor") {
       if (isDoctorLoggedIn) {
+        // Let the root route render RoleEntry so the user can choose a role,
+        // rather than auto-redirecting to the doctor dashboard from a stale session.
+        if (location.pathname === "/") {
+          return <>{children}</>;
+        }
         return <Navigate to="/doctor/dashboard" replace />;
       }
-      // If we are on an auth page but profile check failed, stay here to allow login/re-selection
       return <>{children}</>;
     }
     if (phase === "postpartum") {

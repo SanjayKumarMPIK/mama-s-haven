@@ -140,7 +140,7 @@ export function getMaternityAnalyticsFromCalendar(
       }
 
       // Sleep Trend - from calendar sleep logs
-      if (entry?.sleepHours !== null && entry.sleepHours !== undefined) {
+      if (entry?.sleepHours != null) {
         sleep.push({ date, dayLabel, hours: entry.sleepHours });
       } else {
         sleep.push({ date, dayLabel, hours: 0 });

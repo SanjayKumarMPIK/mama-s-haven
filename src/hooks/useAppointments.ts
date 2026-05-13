@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Appointment,
   AppointmentStatus,
@@ -20,6 +21,25 @@ function saveAppointments(appointments: Appointment[]) {
   try {
     localStorage.setItem(APPOINTMENTS_STORAGE_KEY, JSON.stringify(appointments));
   } catch {}
+}
+
+// ─── Supabase Cloud Sync ─────────────────────────────────────────────────────────
+
+async function upsertAppointmentsCloud(appointments: Appointment[]): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+    await (supabase as any).from("maternity_appointments").upsert(
+      {
+        user_id: session.user.id,
+        appointments,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" }
+    );
+  } catch {
+    /* silent — localStorage is the fallback */
+  }
 }
 
 // ─── Status Logic ────────────────────────────────────────────────────────────────
@@ -57,9 +77,31 @@ export function useAppointments() {
     return updateStatusForPastAppointments(loaded);
   });
 
-  // Save to localStorage whenever appointments change
+  // Load from Supabase on auth (cloud → local merge)
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      const uid = data.session?.user?.id;
+      if (!uid) return;
+      try {
+        const { data: row, error } = await (supabase as any)
+          .from("maternity_appointments")
+          .select("*")
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (error || !row) return;
+        if (row.appointments && (row.appointments as Appointment[]).length > 0) {
+          const cloudAppts = updateStatusForPastAppointments(row.appointments as Appointment[]);
+          setAppointments(cloudAppts);
+          saveAppointments(cloudAppts);
+        }
+      } catch { /* silent */ }
+    });
+  }, []);
+
+  // Save to localStorage + Supabase whenever appointments change
   useEffect(() => {
     saveAppointments(appointments);
+    upsertAppointmentsCloud(appointments);
   }, [appointments]);
 
   // ── CRUD Operations ─────────────────────────────────────────────────────────────

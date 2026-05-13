@@ -146,8 +146,11 @@ function shouldShowRecommendation(
   // Test is not yet in window
   if (currentWeek < test.weekStart) return false;
 
-  // Test window has passed
-  if (currentWeek > test.weekEnd + 2) return false;
+  // GTT has its own dedicated popup (GTTQuestionPopup) — skip it here
+  if (test.id === "gtt") return false;
+
+  // Test window has passed — strictly at weekEnd, not weekEnd+2
+  if (currentWeek > test.weekEnd) return false;
 
   // Already permanently dismissed / ignored
   if (state.ignoredTests.includes(test.id)) return false;
@@ -344,7 +347,7 @@ export function useMaternalTestReminders() {
       for (const test of MATERNAL_TESTS) {
         if (
           gestationalWeek >= test.weekStart &&
-          gestationalWeek <= test.weekEnd + 2 &&
+          gestationalWeek <= test.weekEnd &&
           !prev.ignoredTests.includes(test.id) &&
           !prev.completedTests.includes(test.id) &&
           !prev.dismissedRecommendations.includes(test.id)

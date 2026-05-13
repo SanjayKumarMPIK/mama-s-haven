@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, lazy, Suspense } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { usePhase } from "@/hooks/usePhase";
 import {
   useMedicineReminder,
@@ -788,7 +788,14 @@ type Tab = "today" | "medicines" | "history" | "tests" | "appointments" | "anc";
 
 export default function MedicineReminder() {
   const { phase, setPhase } = usePhase();
-  const [activeTab, setActiveTab] = useState<Tab | "landing">("landing");
+  const [searchParams] = useSearchParams();
+  const VALID_TABS: (Tab | "landing")[] = ["landing", "today", "medicines", "history", "tests", "appointments", "anc"];
+  const initialTab = (() => {
+    const param = searchParams.get("tab");
+    if (param && VALID_TABS.includes(param as Tab)) return param as Tab | "landing";
+    return "landing";
+  })();
+  const [activeTab, setActiveTab] = useState<Tab | "landing">(initialTab);
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingMedicine, setEditingMedicine] = useState<Medicine | null>(null);
 

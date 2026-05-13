@@ -7,10 +7,26 @@ import { postpartumMilestones, getMilestoneForWeek } from "./postpartumMilestone
 
 export function usePostpartumRecovery() {
   const { maternityLogs } = useHealthLog();
-  const { profile } = usePregnancyProfile();
+  const { profile, activeEDD } = usePregnancyProfile();
 
-  // If no delivery date exists (edge case), default to today
-  const deliveryDateISO = profile.delivery?.birthDate || new Date().toISOString().split("T")[0];
+  // If the user manually logged birthDate, use it.
+  // Otherwise, if the EDD is passed, use the EDD to calculate postpartum recovery time.
+  // Fall back to today if neither exists.
+  const deliveryDateISO = useMemo(() => {
+    if (profile.delivery?.birthDate) {
+      return profile.delivery.birthDate;
+    }
+    if (activeEDD) {
+      const eddDate = new Date(activeEDD + "T00:00:00");
+      const today = new Date();
+      if (eddDate <= today) {
+        // Log for debugging lifecycle logic
+        console.log("[Postpartum] Using passed activeEDD for recovery start:", activeEDD);
+        return activeEDD;
+      }
+    }
+    return new Date().toISOString().split("T")[0];
+  }, [profile.delivery?.birthDate, activeEDD]);
 
   // Calculate true current postpartum week based on delivery date
   const currentWeek = useMemo(() => {

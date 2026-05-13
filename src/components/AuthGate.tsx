@@ -41,10 +41,10 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   }
 
   // ── 2. Derive effective role ───────────────────────────────────────────────
-  // isDoctorLoggedIn is the authoritative source for the doctor role.
-  // This handles the case where ss-role is missing from sessionStorage (new tab)
-  // but the Supabase session + doctor_profiles row are both present.
-  const effectiveRole = isDoctorLoggedIn ? "doctor" : role;
+  // Respect the explicitly chosen role from sessionStorage first.
+  // Only fall back to isDoctorLoggedIn when no role is chosen (new tab,
+  // cleared storage) but a Supabase doctor session still exists.
+  const effectiveRole = role ?? (isDoctorLoggedIn ? "doctor" : null);
 
   // ── 3. Enforce role selection ─────────────────────────────────────────────
   if (!effectiveRole) {
@@ -59,7 +59,11 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   const isPublicRoute = publicPaths.includes(location.pathname);
 
   // ── 4. Not logged in ──────────────────────────────────────────────────────
-  if (!user && !isDoctorLoggedIn) {
+  // Use role-specific auth state: for "doctor", check doctor session;
+  // for "user", check the regular user session.
+  const hasValidSession =
+    effectiveRole === "doctor" ? isDoctorLoggedIn : !!user;
+  if (!hasValidSession) {
     if (isPublicRoute) {
       return <>{children}</>;
     }
@@ -74,9 +78,13 @@ export default function AuthGate({ children }: { children: ReactNode }) {
   ) {
     if (effectiveRole === "doctor") {
       if (isDoctorLoggedIn) {
+        // Let the root route render RoleEntry so the user can choose a role,
+        // rather than auto-redirecting to the doctor dashboard from a stale session.
+        if (location.pathname === "/") {
+          return <>{children}</>;
+        }
         return <Navigate to="/doctor/dashboard" replace />;
       }
-      // If we are on an auth page but profile check failed, stay here to allow login/re-selection
       return <>{children}</>;
     }
     if (phase === "postpartum") {

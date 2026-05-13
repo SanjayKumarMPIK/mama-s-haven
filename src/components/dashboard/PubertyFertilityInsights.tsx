@@ -17,29 +17,24 @@ function formatDate(date: Date): string {
 
 // ─── Daily Guidance Hero ──────────────────────────────────────────────────────
 
-function DailyGuidanceCard({ hasData, nextPeriod, avgCycle, currentPhase }: {
-  hasData: boolean; nextPeriod: Date | null; avgCycle: number | null; currentPhase: string;
+function DailyGuidanceCard({ hasData, currentPhase }: {
+  hasData: boolean; currentPhase: string;
 }) {
-  const today = new Date();
-  const cycleDay = nextPeriod
-    ? Math.ceil((nextPeriod.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) % (avgCycle || 28)
-    : null;
-
   let emoji = "📊";
   let headline = "Track Your Cycle";
   let message = "Log your periods in the Calendar to unlock personalized daily insights.";
   let tone: "info" | "positive" | "neutral" | "follicular" | "luteal" = "info";
 
-  if (hasData && cycleDay !== null) {
-    const fertileWindow = avgCycle ? cycleDay >= (avgCycle - 19) && cycleDay <= (avgCycle - 10) : false;
-    if (cycleDay <= 5) {
-      emoji = "🩸"; headline = "You're in your Menstrual Phase"; message = "Rest when needed, stay hydrated with warm fluids, and consider iron-rich foods like spinach and lentils."; tone = "caution" as any;
-    } else if (fertileWindow) {
-      emoji = "🌱"; headline = "You're in your Ovulatory Phase"; message = "Your body is preparing for ovulation. This is a great time for light activity and nourishing meals."; tone = "positive";
-    } else if (cycleDay <= 14) {
-      emoji = "☀️"; headline = "You're in your Follicular Phase"; message = "Energy levels are rising. Focus on protein-rich meals and gentle movement."; tone = "follicular";
-    } else {
-      emoji = "🌙"; headline = "You're in your Luteal Phase"; message = "Your body is in the second half of the cycle. Prioritize rest, complex carbs, and stress management."; tone = "luteal";
+  if (hasData && currentPhase !== "unknown") {
+    switch (currentPhase) {
+      case "menstrual":
+        emoji = "🩸"; headline = "You're in your Menstrual Phase"; message = "Rest when needed, stay hydrated with warm fluids, and consider iron-rich foods like spinach and lentils."; tone = "caution" as any; break;
+      case "ovulation":
+        emoji = "🌱"; headline = "You're in your Ovulatory Phase"; message = "Your body is preparing for ovulation. This is a great time for light activity and nourishing meals."; tone = "positive"; break;
+      case "follicular":
+        emoji = "☀️"; headline = "You're in your Follicular Phase"; message = "Energy levels are rising. Focus on protein-rich meals and gentle movement."; tone = "follicular"; break;
+      case "luteal":
+        emoji = "🌙"; headline = "You're in your Luteal Phase"; message = "Your body is in the second half of the cycle. Prioritize rest, complex carbs, and stress management."; tone = "luteal"; break;
     }
   }
 
@@ -626,8 +621,6 @@ export default function PubertyFertilityInsights() {
       <ScrollReveal delay={20}>
         <DailyGuidanceCard
           hasData={hasData}
-          nextPeriod={nextPeriod}
-          avgCycle={avgCycleLength}
           currentPhase={currentPhase}
         />
       </ScrollReveal>

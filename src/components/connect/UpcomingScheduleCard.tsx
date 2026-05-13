@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { CalendarDays, Clock, MapPin, ChevronRight } from "lucide-react";
-import { getScheduleRequestsByCode } from "@/lib/scheduleStore";
+import { getScheduleRequestsByCode, type ScheduleRequest } from "@/lib/scheduleStore";
 
 interface Props {
   doctorCode: string;
@@ -14,18 +14,20 @@ function formatDate(dateStr: string): string {
 
 export default function UpcomingScheduleCard({ doctorCode }: Props) {
   const navigate = useNavigate();
-  const [requests, setRequests] = useState(() => getScheduleRequestsByCode(doctorCode));
+  const [requests, setRequests] = useState<ScheduleRequest[]>([]);
   const mountedRef = useRef(true);
 
-  const refresh = useCallback(() => {
-    if (mountedRef.current) {
-      setRequests(getScheduleRequestsByCode(doctorCode));
+  const refresh = useCallback(async () => {
+    if (mountedRef.current && doctorCode) {
+      const data = await getScheduleRequestsByCode(doctorCode);
+      if (mountedRef.current) setRequests(data);
     }
   }, [doctorCode]);
 
   useEffect(() => {
     mountedRef.current = true;
-    const interval = setInterval(refresh, 5000);
+    void refresh();
+    const interval = setInterval(() => void refresh(), 5000);
     return () => {
       mountedRef.current = false;
       clearInterval(interval);

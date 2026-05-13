@@ -31,11 +31,11 @@ export default function DoctorProposeSchedule({ doctorName, doctorCode, onClose,
   const [priority, setPriority] = useState<Priority>("Normal");
   const [notes, setNotes] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientName.trim() || !preferredDate || !preferredTime) return;
 
-    createScheduleRequest({
+    await createScheduleRequest({
       patientName: patientName.trim(),
       doctorName,
       phase,

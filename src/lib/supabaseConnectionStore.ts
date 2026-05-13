@@ -151,3 +151,68 @@ export async function updateSupabaseConnectionStatus(
   }
   return true;
 }
+
+// ── Patient: fetch the connected doctor's full profile from Supabase ──────────
+export interface ConnectedDoctorProfile {
+  name: string;
+  specialty: string;
+  hospital: string;
+  location: string;
+  phone: string;
+  workingHours: string;
+  gender: string | null;
+}
+
+export async function fetchDoctorProfileByCode(
+  doctorCode: string,
+): Promise<ConnectedDoctorProfile | null> {
+  const raw = doctorCode.trim();
+  if (!raw) return null;
+
+  const { data, error } = await patientDb
+    .from('doctor_profiles')
+    .select('full_name, designation, specialization, phc_center, phc_location, phone_no, working_hours, gender')
+    .ilike('doctor_code', raw)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[ConnectionStore] fetchDoctorProfileByCode:', error.message);
+    return null;
+  }
+  if (!data) return null;
+
+  return {
+    name: data.full_name || 'Your Doctor',
+    specialty: data.designation || 'Healthcare Provider',
+    hospital: data.phc_center || 'Registered Healthcare Facility',
+    location: data.phc_location || '',
+    phone: data.phone_no || '',
+    workingHours: data.working_hours || '',
+    gender: data.gender || null,
+  };
+}
+
+// ── Patient: find their existing connection (if any) on login ─────────────────
+// Returns the most recent accepted/pending connection for this specific patient_id.
+// This is user-scoped: user1 sees Dr. Anita, user2 sees Dr. Shymala.
+export async function getExistingConnectionForPatient(
+  patientId: string,
+): Promise<ConnectionRequest | null> {
+  if (!patientId) return null;
+
+  const { data, error } = await patientDb
+    .from('doctor_connections')
+    .select('*')
+    .eq('patient_id', patientId)
+    .in('status', ['accepted', 'pending'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[ConnectionStore] getExistingConnectionForPatient:', error.message);
+    return null;
+  }
+  if (!data) return null;
+  return mapRow(data as Record<string, unknown>);
+}

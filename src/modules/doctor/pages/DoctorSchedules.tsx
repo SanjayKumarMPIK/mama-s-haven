@@ -8,7 +8,7 @@ import ScheduleCard from "../components/ScheduleCard";
 import DoctorProposeSchedule from "../components/DoctorProposeSchedule";
 import type { Schedule, ScheduleFormData } from "../types/schedule";
 import {
-  getScheduleRequestsByCode,
+  getDoctorScheduleRequestsByCode,
   updateScheduleRequestStatus,
   type ScheduleRequest,
 } from "@/lib/scheduleStore";
@@ -94,33 +94,35 @@ export default function DoctorSchedules() {
   useEffect(() => {
     if (!doctorInfo.code) return;
     mountedRef.current = true;
-    const load = () => {
+    const load = async () => {
       if (mountedRef.current) {
-        const allRequests = getScheduleRequestsByCode(doctorInfo.code).filter(
+        const allRequests = (await getDoctorScheduleRequestsByCode(doctorInfo.code)).filter(
           (r) => r.requestType === "user_to_doctor"
         );
-        setAllPatientRequests(allRequests);
-        setIncomingRequests(allRequests.filter((r) => r.status === "pending"));
+        if (mountedRef.current) {
+          setAllPatientRequests(allRequests);
+          setIncomingRequests(allRequests.filter((r) => r.status === "pending"));
+        }
       }
     };
-    load();
-    const interval = setInterval(load, 5000);
+    void load();
+    const interval = setInterval(() => void load(), 5000);
     return () => {
       mountedRef.current = false;
       clearInterval(interval);
     };
   }, [doctorInfo.code]);
 
-  const handleAcceptRequest = useCallback((id: string) => {
-    updateScheduleRequestStatus(id, "confirmed");
+  const handleAcceptRequest = useCallback(async (id: string) => {
+    await updateScheduleRequestStatus(id, "confirmed", true);
     setAllPatientRequests((prev) =>
       prev.map((r) => (r.id === id ? { ...r, status: "confirmed" as const } : r))
     );
     setIncomingRequests((prev) => prev.filter((r) => r.id !== id));
   }, []);
 
-  const handleDeclineRequest = useCallback((id: string) => {
-    updateScheduleRequestStatus(id, "declined");
+  const handleDeclineRequest = useCallback(async (id: string) => {
+    await updateScheduleRequestStatus(id, "declined", true);
     setAllPatientRequests((prev) =>
       prev.map((r) => (r.id === id ? { ...r, status: "declined" as const } : r))
     );

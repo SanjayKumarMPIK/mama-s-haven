@@ -1,5 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
-import { getRequestByCode } from "@/lib/connectionStore";
+import { useAuth } from "@/hooks/useAuth";
+import {
+  fetchDoctorProfileByCode,
+  getSupabaseRequestByCode,
+} from "@/lib/supabaseConnectionStore";
 import DoctorProfileSummary from "@/components/connect/DoctorProfileSummary";
 import QuickActions from "@/components/connect/QuickActions";
 import UpcomingScheduleCard from "@/components/connect/UpcomingScheduleCard";
@@ -7,6 +11,8 @@ import DoctorActivityFeed from "@/components/connect/DoctorActivityFeed";
 
 interface Props {
   doctorCode: string;
+  doctorId?: string;
+  connectedAt?: string;
   onDisconnect: () => void;
 }
 
@@ -16,47 +22,85 @@ interface DoctorInfo {
   hospital: string;
 }
 
-function loadDoctorProfile(): DoctorInfo | null {
-  try {
-    const raw = localStorage.getItem("ss-doctor-profile");
-    if (!raw) return null;
-    const profile = JSON.parse(raw);
-    return {
-      name: profile.name || "Your Doctor",
-      specialty: profile.specialty || "Healthcare Provider",
-      hospital: profile.hospital || "Registered Healthcare Facility",
-    };
-  } catch {
-    return null;
-  }
-}
-
-export default function MyDoctorDashboard({ doctorCode, onDisconnect }: Props) {
-  const [doctor, setDoctor] = useState<DoctorInfo | null>(loadDoctorProfile);
+export default function MyDoctorDashboard({ doctorCode, doctorId, connectedAt, onDisconnect }: Props) {
+  const { user } = useAuth();
+  const [doctor, setDoctor] = useState<DoctorInfo | null>(null);
+  const [connectedDate, setConnectedDate] = useState("Today");
+  const [resolvedDoctorId, setResolvedDoctorId] = useState<string | undefined>(doctorId);
+  const [resolvedConnectedAt, setResolvedConnectedAt] = useState<string | undefined>(connectedAt);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const fresh = loadDoctorProfile();
-      setDoctor((prev) => {
-        if (JSON.stringify(prev) !== JSON.stringify(fresh)) return fresh;
-        return prev;
-      });
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
+    setResolvedDoctorId(doctorId);
+  }, [doctorId]);
 
-  const connectedDate = useMemo(() => {
-    try {
-      const req = getRequestByCode(doctorCode);
-      if (req?.createdAt) {
-        const d = new Date(req.createdAt);
-        return d.toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" });
+  useEffect(() => {
+    setResolvedConnectedAt(connectedAt);
+  }, [connectedAt]);
+
+  // Fetch the real doctor profile from Supabase on mount
+  useEffect(() => {
+    if (!doctorCode) return;
+
+    const fetchProfile = async () => {
+      setLoading(true);
+      try {
+        const profile = await fetchDoctorProfileByCode(doctorCode);
+        if (profile) {
+          setDoctor({
+            name: profile.name,
+            specialty: profile.specialty,
+            hospital: profile.hospital,
+          });
+        }
+      } catch (err) {
+        console.warn('[MyDoctorDashboard] Failed to fetch doctor profile:', err);
       }
-    } catch {
-      /* ignore */
-    }
-    return "Today";
+      setLoading(false);
+    };
+
+    fetchProfile();
   }, [doctorCode]);
+
+  // Fetch the connected date from the Supabase connection record
+  useEffect(() => {
+    if (!doctorCode || !user?.id) return;
+
+    const fetchConnectionDate = async () => {
+      try {
+        const req = await getSupabaseRequestByCode(doctorCode, user.id);
+        if (req?.doctorId) {
+          setResolvedDoctorId(req.doctorId);
+        }
+        if (req?.createdAt) {
+          setResolvedConnectedAt(req.createdAt);
+          const d = new Date(req.createdAt);
+          setConnectedDate(
+            d.toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })
+          );
+        } else if (connectedAt) {
+          const d = new Date(connectedAt);
+          if (!Number.isNaN(d.getTime())) {
+            setConnectedDate(
+              d.toLocaleDateString("en-IN", { year: "numeric", month: "long", day: "numeric" })
+            );
+          }
+        }
+      } catch (err) {
+        console.warn('[MyDoctorDashboard] Failed to fetch connection date:', err);
+      }
+    };
+
+    fetchConnectionDate();
+  }, [connectedAt, doctorCode, user?.id]);
+
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto flex items-center justify-center py-12">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">
@@ -67,7 +111,12 @@ export default function MyDoctorDashboard({ doctorCode, onDisconnect }: Props) {
       <DoctorProfileSummary doctor={doctor} connectedDate={connectedDate} onChangeDoctor={onDisconnect} />
       <QuickActions />
       <UpcomingScheduleCard doctorCode={doctorCode} />
-      <DoctorActivityFeed connectedDate={connectedDate} doctorCode={doctorCode} />
+      <DoctorActivityFeed
+        connectedAt={resolvedConnectedAt ?? connectedAt ?? new Date().toISOString()}
+        connectedDate={connectedDate}
+        doctorCode={doctorCode}
+        doctorId={resolvedDoctorId}
+      />
     </div>
   );
 }

@@ -66,21 +66,21 @@ function formatDate(dateStr: string): string {
 export default function RequestSchedulePanel({ doctorCode, doctorName, patientName, phase }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>("upcoming");
   const [showForm, setShowForm] = useState(false);
-  const [requests, setRequests] = useState<ScheduleRequest[]>(() =>
-    getScheduleRequestsByCode(doctorCode)
-  );
+  const [requests, setRequests] = useState<ScheduleRequest[]>([]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const mountedRef = useRef(true);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     if (mountedRef.current) {
-      setRequests(getScheduleRequestsByCode(doctorCode));
+      const data = await getScheduleRequestsByCode(doctorCode);
+      if (mountedRef.current) setRequests(data);
     }
   }, [doctorCode]);
 
   useEffect(() => {
     mountedRef.current = true;
-    const interval = setInterval(refresh, 5000);
+    void refresh();
+    const interval = setInterval(() => void refresh(), 5000);
     return () => {
       mountedRef.current = false;
       clearInterval(interval);
@@ -95,8 +95,8 @@ export default function RequestSchedulePanel({ doctorCode, doctorName, patientNa
   }, [successMsg]);
 
   const handleFormSubmit = useCallback(
-    (data: { appointmentReason: string; preferredDate: string; preferredTime: string; consultationMode: string; priority: string; notes: string; symptomsSummary: string }) => {
-      createScheduleRequest({
+    async (data: { appointmentReason: string; preferredDate: string; preferredTime: string; consultationMode: string; priority: string; notes: string; symptomsSummary: string }) => {
+      await createScheduleRequest({
         patientName,
         doctorName,
         phase,
@@ -113,31 +113,31 @@ export default function RequestSchedulePanel({ doctorCode, doctorName, patientNa
       });
       setShowForm(false);
       setSuccessMsg("Appointment request sent successfully.");
-      refresh();
+      void refresh();
     },
     [doctorCode, doctorName, patientName, phase, refresh]
   );
 
   const handleAccept = useCallback(
-    (id: string) => {
-      updateScheduleRequestStatus(id, "confirmed");
-      refresh();
+    async (id: string) => {
+      await updateScheduleRequestStatus(id, "confirmed");
+      void refresh();
     },
     [refresh]
   );
 
   const handleDecline = useCallback(
-    (id: string) => {
-      updateScheduleRequestStatus(id, "declined");
-      refresh();
+    async (id: string) => {
+      await updateScheduleRequestStatus(id, "declined");
+      void refresh();
     },
     [refresh]
   );
 
   const handleReschedule = useCallback(
-    (id: string) => {
-      updateScheduleRequestStatus(id, "rescheduled");
-      refresh();
+    async (id: string) => {
+      await updateScheduleRequestStatus(id, "rescheduled");
+      void refresh();
     },
     [refresh]
   );

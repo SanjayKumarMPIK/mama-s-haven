@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { getRequestByCode } from "@/lib/connectionStore";
 import type { ScheduleRequest, ScheduleRequestStatus } from "@/lib/scheduleStore";
 import {
   getScheduleRequestsByCode,
@@ -94,28 +93,23 @@ export default function RequestSchedulePage() {
 
   const { doctorCode, doctorName, patientName, phase } = useMemo(() => loadProfile(), []);
 
-  const isConnected = useMemo(() => {
-    if (!doctorCode) return false;
-    try {
-      const req = getRequestByCode(doctorCode);
-      return req?.status === "accepted";
-    } catch { return false; }
-  }, [doctorCode]);
+  // For now, assume connected if doctorCode exists (connection checked elsewhere)
+  const isConnected = !!doctorCode;
 
-  const [requests, setRequests] = useState<ScheduleRequest[]>(() =>
-    doctorCode ? getScheduleRequestsByCode(doctorCode) : []
-  );
+  const [requests, setRequests] = useState<ScheduleRequest[]>([]);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     if (mountedRef.current && doctorCode) {
-      setRequests(getScheduleRequestsByCode(doctorCode));
+      const data = await getScheduleRequestsByCode(doctorCode);
+      if (mountedRef.current) setRequests(data);
     }
   }, [doctorCode]);
 
   useEffect(() => {
     mountedRef.current = true;
     if (!doctorCode) return;
-    const interval = setInterval(refresh, 5000);
+    void refresh();
+    const interval = setInterval(() => void refresh(), 5000);
     return () => {
       mountedRef.current = false;
       clearInterval(interval);
@@ -130,9 +124,9 @@ export default function RequestSchedulePage() {
   }, [successMsg]);
 
   const handleFormSubmit = useCallback(
-    (data: { appointmentReason: string; preferredDate: string; preferredTime: string; consultationMode: string; priority: string; notes: string; symptomsSummary: string }) => {
+    async (data: { appointmentReason: string; preferredDate: string; preferredTime: string; consultationMode: string; priority: string; notes: string; symptomsSummary: string }) => {
       if (!doctorCode) return;
-      createScheduleRequest({
+      await createScheduleRequest({
         patientName,
         doctorName,
         phase,
@@ -149,31 +143,31 @@ export default function RequestSchedulePage() {
       });
       setShowForm(false);
       setSuccessMsg("Appointment request sent successfully.");
-      refresh();
+      void refresh();
     },
     [doctorCode, doctorName, patientName, phase, refresh]
   );
 
   const handleAccept = useCallback(
-    (id: string) => {
-      updateScheduleRequestStatus(id, "confirmed");
-      refresh();
+    async (id: string) => {
+      await updateScheduleRequestStatus(id, "confirmed");
+      void refresh();
     },
     [refresh]
   );
 
   const handleDecline = useCallback(
-    (id: string) => {
-      updateScheduleRequestStatus(id, "declined");
-      refresh();
+    async (id: string) => {
+      await updateScheduleRequestStatus(id, "declined");
+      void refresh();
     },
     [refresh]
   );
 
   const handleReschedule = useCallback(
-    (id: string) => {
-      updateScheduleRequestStatus(id, "rescheduled");
-      refresh();
+    async (id: string) => {
+      await updateScheduleRequestStatus(id, "rescheduled");
+      void refresh();
     },
     [refresh]
   );

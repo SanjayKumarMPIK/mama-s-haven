@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Types ──────────────────────────────────────────────────────────────────────
 
@@ -89,6 +90,31 @@ function uid(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// ─── Supabase Cloud Sync ────────────────────────────────────────────────────────
+
+/** Upsert medicines + dose logs to Supabase (fire-and-forget, silent on error). */
+async function upsertMedicineCloud(payload: {
+  medicines?: Medicine[];
+  dose_logs?: DoseLog[];
+}): Promise<void> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user?.id) return;
+    await (supabase as any).from("medicine_reminders").upsert(
+      {
+        user_id: session.user.id,
+        ...payload,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" }
+    );
+  } catch {
+    /* silent — localStorage is the fallback */
+  }
+}
+
+
+
 // ─── Notification helpers ───────────────────────────────────────────────────────
 
 function canNotify(): boolean {
@@ -150,9 +176,39 @@ export function useMedicineReminder() {
   useEffect(() => { medsRef.current = medicines; }, [medicines]);
   useEffect(() => { logsRef.current = doseLogs; }, [doseLogs]);
 
-  // Persist on change
-  useEffect(() => { saveJson(MEDICINES_KEY, medicines); }, [medicines]);
-  useEffect(() => { saveJson(DOSE_LOGS_KEY, doseLogs); }, [doseLogs]);
+  // ── Load from Supabase on auth (cloud → local merge) ──────────────────────
+  useEffect(() => {
+    supabase.auth.getSession().then(async ({ data }) => {
+      const uid = data.session?.user?.id;
+      if (!uid) return;
+      try {
+        const { data: row, error } = await (supabase as any)
+          .from("medicine_reminders")
+          .select("*")
+          .eq("user_id", uid)
+          .maybeSingle();
+        if (error || !row) return;
+        if (row.medicines && (row.medicines as Medicine[]).length > 0) {
+          setMedicines(row.medicines as Medicine[]);
+          saveJson(MEDICINES_KEY, row.medicines);
+        }
+        if (row.dose_logs && (row.dose_logs as DoseLog[]).length > 0) {
+          setDoseLogs(row.dose_logs as DoseLog[]);
+          saveJson(DOSE_LOGS_KEY, row.dose_logs);
+        }
+      } catch { /* silent — localStorage is the fallback */ }
+    });
+  }, []);
+
+  // Persist on change (localStorage + Supabase cloud sync)
+  useEffect(() => {
+    saveJson(MEDICINES_KEY, medicines);
+    upsertMedicineCloud({ medicines });
+  }, [medicines]);
+  useEffect(() => {
+    saveJson(DOSE_LOGS_KEY, doseLogs);
+    upsertMedicineCloud({ dose_logs: doseLogs });
+  }, [doseLogs]);
 
   // ── Notification permission ─────────────────────────────────────────────────
   const requestNotificationPermission = useCallback(async () => {

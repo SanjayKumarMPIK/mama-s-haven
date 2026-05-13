@@ -1,6 +1,7 @@
 import { type ReactNode } from "react";
-import { Flame, Leaf, Moon, Shield, Sparkles, Sun } from "lucide-react";
+import { Flame, Leaf, Moon, Shield, Sparkles, Sun, TrendingUp } from "lucide-react";
 import type { ComputedDeficiencyInsights } from "@/services/deficiency/types";
+import type { DeficiencyAnalysis, DeficiencyResult } from "@/services/deficiency/deficiencyRulesEngine";
 
 function Badge({ text }: { text: string }) {
   return (
@@ -141,8 +142,180 @@ function getEnergyImpact(insights: ComputedDeficiencyInsights): string {
   return "Low";
 }
 
-export default function DeficiencyInsightsSection({ insights }: { insights: ComputedDeficiencyInsights }) {
-  if (!insights.hasData) return null;
+// ─── Radial Progress Ring ──────────────────────────────────────────────────
+
+function RadialRing({ value, size = 72, stroke = 6, color }: {
+  value: number; size?: number; stroke?: number; color: string;
+}) {
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (Math.min(value, 100) / 100) * circumference;
+  return (
+    <svg width={size} height={size} className="-rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none"
+        stroke="#f3eef8" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none"
+        stroke={color} strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={circumference} strokeDashoffset={offset}
+        style={{ transition: "stroke-dashoffset 0.8s ease-out" }} />
+    </svg>
+  );
+}
+
+// ─── Severity Design Tokens ────────────────────────────────────────────────
+
+const LEVEL_STYLES: Record<string, {
+  bg: string; border: string; ringColor: string;
+  textColor: string; barGradient: string; badgeBg: string; badgeText: string;
+}> = {
+  High: {
+    bg: "bg-gradient-to-br from-rose-50/80 to-pink-50/60",
+    border: "border-rose-200/70",
+    ringColor: "#e11d48",
+    textColor: "text-rose-600",
+    barGradient: "from-rose-400 to-rose-500",
+    badgeBg: "bg-rose-100",
+    badgeText: "text-rose-700",
+  },
+  Moderate: {
+    bg: "bg-gradient-to-br from-amber-50/80 to-yellow-50/60",
+    border: "border-amber-200/70",
+    ringColor: "#d97706",
+    textColor: "text-amber-600",
+    barGradient: "from-amber-400 to-amber-500",
+    badgeBg: "bg-amber-100",
+    badgeText: "text-amber-700",
+  },
+  Mild: {
+    bg: "bg-gradient-to-br from-blue-50/80 to-sky-50/60",
+    border: "border-blue-200/70",
+    ringColor: "#2563eb",
+    textColor: "text-blue-600",
+    barGradient: "from-blue-400 to-blue-500",
+    badgeBg: "bg-blue-100",
+    badgeText: "text-blue-700",
+  },
+  Low: {
+    bg: "bg-gradient-to-br from-slate-50/80 to-gray-50/60",
+    border: "border-slate-200/70",
+    ringColor: "#94a3b8",
+    textColor: "text-slate-500",
+    barGradient: "from-slate-300 to-slate-400",
+    badgeBg: "bg-slate-100",
+    badgeText: "text-slate-600",
+  },
+};
+
+// ─── Top 3 Analytics Card ──────────────────────────────────────────────────
+
+function TopDeficiencyCard({ result, rank }: { result: DeficiencyResult; rank: number }) {
+  const styles = LEVEL_STYLES[result.confidenceLevel] || LEVEL_STYLES.Low;
+  const icon = nutrientIcon[result.label] || <Sparkles className="h-5 w-5 text-[#8d73c7]" />;
+
+  return (
+    <div className={`rounded-[22px] border ${styles.border} ${styles.bg} p-4 shadow-[0_2px_16px_rgba(0,0,0,0.04)] transition-all hover:shadow-md`}>
+      {/* Header row */}
+      <div className="flex items-start gap-3.5">
+        {/* Radial progress ring */}
+        <div className="relative flex-shrink-0">
+          <RadialRing value={result.confidence} color={styles.ringColor} />
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-lg font-bold leading-none text-foreground">{result.confidence}</span>
+            <span className="text-[9px] text-muted-foreground font-medium">%</span>
+          </div>
+        </div>
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/80 border border-gray-200/40 shadow-sm">
+              {icon}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-bold text-foreground truncate">{result.label}</h3>
+              <p className="text-[10px] text-muted-foreground">Possible deficiency indicator</p>
+            </div>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${styles.badgeBg} ${styles.badgeText}`}>
+              #{rank} {result.confidenceLevel}
+            </span>
+          </div>
+
+          {/* Confidence bar */}
+          <div className="flex items-center gap-2 mt-2">
+            <div className="h-[6px] flex-1 rounded-full bg-white/70 border border-gray-200/30 overflow-hidden">
+              <div
+                className={`h-full rounded-full bg-gradient-to-r ${styles.barGradient}`}
+                style={{ width: `${Math.min(result.confidence, 100)}%`, transition: "width 0.8s ease-out" }}
+              />
+            </div>
+            <span className={`text-[11px] font-bold ${styles.textColor} w-7 text-right`}>{result.confidence}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Matched symptoms */}
+      <div className="mt-3 pt-3 border-t border-gray-200/40">
+        <p className="text-[10px] font-semibold text-muted-foreground mb-1.5 uppercase tracking-wider">Based on your symptoms</p>
+        <div className="flex flex-wrap gap-1.5">
+          {result.reasons.map((reason, i) => (
+            <span key={i} className="rounded-lg bg-white/90 px-2 py-0.5 text-[10px] font-medium text-foreground/75 border border-gray-200/50 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+              {reason}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Food recommendations */}
+      <div className="mt-2.5 rounded-xl bg-white/60 border border-gray-100/60 p-2.5">
+        <p className="text-[10px] font-semibold text-foreground/60 mb-1.5 flex items-center gap-1">
+          <TrendingUp className="w-3 h-3" /> Recommended Foods
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {result.foods.slice(0, 4).map((food, i) => (
+            <span key={i} className="rounded-md bg-purple-50/70 px-1.5 py-0.5 text-[10px] font-medium text-purple-700 border border-purple-100/50">
+              {food.emoji} {food.name}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Lifestyle tip */}
+      {result.lifestyleTips.length > 0 && (
+        <p className="mt-2 text-[10px] text-muted-foreground leading-relaxed">
+          💡 {result.lifestyleTips[0]}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ────────────────────────────────────────────────────────
+
+export default function DeficiencyInsightsSection({ insights }: { insights: ComputedDeficiencyInsights & { analysis?: DeficiencyAnalysis } }) {
+  if (!insights.hasData) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 mb-3 mt-1">
+          <span className="text-base">🔍</span>
+          <h2 className="text-base font-bold tracking-tight">Deficiency Insights</h2>
+        </div>
+        <div className="flex flex-col items-center justify-center text-center py-14 rounded-2xl border-2 border-dashed border-[#eee7f3] bg-[#fefcff]">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-100 to-violet-100 flex items-center justify-center mb-4 opacity-60">
+            <span className="text-2xl">🧪</span>
+          </div>
+          <h3 className="text-base font-semibold text-foreground mb-1.5">Not enough nutrition signals yet</h3>
+          <p className="text-sm text-muted-foreground max-w-xs leading-relaxed mb-1">
+            Log your symptoms and health data in the Calendar to get personalized deficiency insights.
+          </p>
+          <ul className="text-xs text-muted-foreground mt-3 space-y-1">
+            <li>• Log symptoms regularly</li>
+            <li>• Track sleep & mood</li>
+            <li>• Update hydration</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
 
   const likelyCount = insights.deficiencies.filter(
     (d) => d.severity === "high" || d.severity === "moderate"
@@ -222,25 +395,48 @@ export default function DeficiencyInsightsSection({ insights }: { insights: Comp
           </div>
         </div>
 
+        {/* ─── Top 3 Visual Analytics ─── */}
         <div className="space-y-3 rounded-[24px] border border-[#eee7f3] bg-white p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-1">
             <h2 className="text-base font-semibold">Top Deficiency Insights</h2>
-            <button type="button" className="text-xs font-semibold text-[#b26d95]">View All</button>
+            <span className="text-[10px] font-medium text-muted-foreground px-2 py-0.5 rounded-full bg-purple-50 border border-purple-100">Top 3</span>
           </div>
-          {insights.topDeficiencies.map((d) => (
-            <DeficiencyItem
-              key={d.nutrientId}
-              icon={nutrientIcon[d.label] || <Sparkles className="h-5 w-5 text-[#8d73c7]" />}
-              title={`${d.label} Deficiency`}
-              risk={`${d.severity.charAt(0).toUpperCase() + d.severity.slice(1)} Risk`}
-              probability={`${d.score}%`}
-              symptoms={d.symptomSources.slice(0, 4).join(", ")}
-              why={`Based on your symptoms and phase context. Confidence: ${Math.min(d.score, 95)}%`}
-              bar={nutrientBarColor[d.label] || "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]"}
-              tone={severityToneMap[d.severity] || "text-[#41a25f]"}
-              recommendations={d.recommendedFoods.map((f) => `${f.emoji} ${f.name}`)}
-            />
-          ))}
+          {(() => {
+            // Use new engine if available, fall back to legacy
+            const analysisResults = insights.analysis?.results;
+            if (analysisResults && analysisResults.length > 0) {
+              return (
+                <div className="space-y-3">
+                  {analysisResults.slice(0, 3).map((result, i) => (
+                    <TopDeficiencyCard key={result.nutrientId} result={result} rank={i + 1} />
+                  ))}
+                </div>
+              );
+            }
+            // Fallback: use legacy deficiencies (top 3 regardless of severity)
+            const top3 = insights.deficiencies.slice(0, 3);
+            if (top3.length === 0) {
+              return (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">No deficiency signals detected yet</p>
+                </div>
+              );
+            }
+            return top3.map((d) => (
+              <DeficiencyItem
+                key={d.nutrientId}
+                icon={nutrientIcon[d.label] || <Sparkles className="h-5 w-5 text-[#8d73c7]" />}
+                title={`${d.label} Deficiency`}
+                risk={`${d.severity.charAt(0).toUpperCase() + d.severity.slice(1)} Risk`}
+                probability={`${d.score}%`}
+                symptoms={d.symptomSources.slice(0, 4).join(", ")}
+                why={`Based on your symptoms and phase context. Confidence: ${Math.min(d.score, 95)}%`}
+                bar={nutrientBarColor[d.label] || "bg-gradient-to-r from-[#8b73c7] to-[#b8a3e8]"}
+                tone={severityToneMap[d.severity] || "text-[#41a25f]"}
+                recommendations={d.recommendedFoods.map((f) => `${f.emoji} ${f.name}`)}
+              />
+            ));
+          })()}
         </div>
       </section>
 

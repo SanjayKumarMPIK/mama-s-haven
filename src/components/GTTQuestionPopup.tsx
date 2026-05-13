@@ -8,14 +8,16 @@ import { usePregnancyProfile, type GDMStatus } from "@/hooks/usePregnancyProfile
 import { useMaternalTestReminders } from "@/hooks/useMaternalTestReminders";
 import { useMaternityPopupQueue } from "@/hooks/useMaternityPopupQueue";
 import { shouldShowGTTPopup, isMaternityRoute } from "@/lib/utils";
-import { X, CheckCircle2, Calendar, AlertCircle, Stethoscope } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import { X, CheckCircle2, Calendar, AlertCircle, Stethoscope, BellOff } from "lucide-react";
 
 type GTTView = "question" | "result" | "reminder" | "confirmation";
 
 export function GTTQuestionPopup() {
   const { profile, currentWeek, mode, setGDMStatus, markGTTQuestionCompleted, isGTTPopupOpen, openGTTPopup, closeGTTPopup } = usePregnancyProfile();
-  const { completeTest, scheduleReminder } = useMaternalTestReminders();
+  const { completeTest, scheduleReminder, ignoreTest } = useMaternalTestReminders();
   const { activePopup, requestShow, notifyDismissed, cancelRequest } = useMaternityPopupQueue();
+  const location = useLocation();
   
   const [slideIn, setSlideIn] = useState(false);
   const [view, setView] = useState<GTTView>("question");
@@ -36,7 +38,7 @@ export function GTTQuestionPopup() {
   // Auto-trigger condition using centralized helper
   useEffect(() => {
     // Hard route guard: never trigger outside maternity routes
-    if (!isMaternityRoute()) return;
+    if (!isMaternityRoute(location.pathname)) return;
 
     if (shouldShowGTTPopup(
       mode,
@@ -65,7 +67,7 @@ export function GTTQuestionPopup() {
         triggerTimerRef.current = null;
       }
     };
-  }, [currentWeek, mode, profile.isSetup, profile.gttQuestionCompleted, profile.gdmStatus, isGTTPopupOpen, requestShow, profile.delivery.isDelivered]);
+  }, [currentWeek, mode, profile.isSetup, profile.gttQuestionCompleted, profile.gdmStatus, isGTTPopupOpen, requestShow, profile.delivery.isDelivered, location.pathname]);
 
   // Open popup when queue allows
   useEffect(() => {
@@ -160,10 +162,16 @@ export function GTTQuestionPopup() {
     setView("confirmation");
   }, [scheduleReminder, markGTTQuestionCompleted]);
 
+  const handleIgnore = useCallback(() => {
+    markGTTQuestionCompleted();
+    ignoreTest("gtt");
+    handleClose();
+  }, [markGTTQuestionCompleted, ignoreTest, handleClose]);
+
   if (!isGTTPopupOpen) return null;
 
   // Hard route guard defense-in-depth: never render outside maternity routes
-  if (!isMaternityRoute()) return null;
+  if (!isMaternityRoute(location.pathname)) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 pointer-events-auto">
@@ -202,6 +210,7 @@ export function GTTQuestionPopup() {
               onYes={handleAnswerYes}
               onNo={handleAnswerNo}
               onNotSure={handleAnswerNotSure}
+              onIgnore={handleIgnore}
             />
           )}
 
@@ -232,10 +241,12 @@ function QuestionView({
   onYes,
   onNo,
   onNotSure,
+  onIgnore,
 }: {
   onYes: () => void;
   onNo: () => void;
   onNotSure: () => void;
+  onIgnore: () => void;
 }) {
   return (
     <>
@@ -286,6 +297,14 @@ function QuestionView({
           className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-gray-400 text-sm font-medium hover:text-gray-600 hover:bg-gray-50 transition-all"
         >
           Not Sure
+        </button>
+
+        <button
+          onClick={onIgnore}
+          className="w-full flex items-center justify-center gap-1.5 py-2 rounded-2xl text-gray-350 text-xs font-medium hover:text-gray-500 hover:bg-gray-50 transition-all"
+        >
+          <BellOff className="w-3.5 h-3.5" />
+          Don't remind me about GTT
         </button>
       </div>
     </>

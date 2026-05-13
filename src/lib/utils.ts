@@ -50,8 +50,8 @@ export function shouldShowGTTPopup(
     return false;
   }
 
-  // Rule 2: ONLY between weeks 25 and 36 inclusive
-  if (pregnancyWeek < 25 || pregnancyWeek > 36) {
+  // Rule 2: ONLY between weeks 25 and 35 inclusive
+  if (pregnancyWeek < 25 || pregnancyWeek > 35) {
     return false;
   }
 
@@ -86,17 +86,51 @@ export function shouldShowGTTPopup(
 
 /**
  * Checks if the current route is a maternity-specific route.
- * Uses a whitelist approach to prevent notification leakage into
- * doctor routes, other health phases, auth pages, onboarding, etc.
+ * Uses BOTH a whitelist AND a blacklist approach to prevent notification
+ * leakage into doctor routes, other health phases, auth pages, onboarding, etc.
+ *
+ * @param pathname - Optional pathname to check. If not provided, reads from window.location.
  */
-export function isMaternityRoute(): boolean {
-  if (typeof window === 'undefined') return false;
-  const path = window.location.pathname;
-  return (
-    path === '/maternity' ||
-    path.startsWith('/maternity/') ||
-    path === '/pregnancy-dashboard' ||
-    path === '/maternal-guide' ||
-    path.startsWith('/maternal-guide/')
-  );
+export function isMaternityRoute(pathname?: string): boolean {
+  const path = pathname ?? (typeof window !== 'undefined' ? window.location.pathname : '');
+  if (!path) return false;
+
+  // ─── BLACKLIST: NEVER allow on these routes ─────────────────────────────
+  const BLOCKED_PREFIXES = [
+    '/doctor',
+    '/login',
+    '/register',
+    '/puberty',
+    '/menopause',
+    '/family-planning',
+    '/postpartum',
+    '/about',
+    '/contact',
+    '/shopping',
+    '/stress-relief',
+  ];
+  for (const prefix of BLOCKED_PREFIXES) {
+    if (path === prefix || path.startsWith(prefix + '/')) return false;
+  }
+
+  // ─── WHITELIST: Only allow on known maternity routes ────────────────────
+  const ALLOWED = [
+    '/maternity',
+    '/pregnancy-dashboard',
+    '/maternal-guide',
+    '/medicine-reminder',
+    '/health-log',
+    '/calendar',
+    '/nutrition',
+    '/nutrition-intelligence',
+    '/symptom-checker',
+    '/wellness',
+    '/baby-supportive-helper',
+    '/vaccine-tracker',
+  ];
+  for (const route of ALLOWED) {
+    if (path === route || path.startsWith(route + '/')) return true;
+  }
+
+  return false;
 }

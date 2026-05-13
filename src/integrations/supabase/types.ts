@@ -14,7 +14,165 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      menopause_dashboard_state: {
+        Row: {
+          user_id: string
+          date: string
+          mood: string | null
+          checked_actions: string[] | null
+        }
+        Insert: {
+          user_id: string
+          date?: string
+          mood?: string | null
+          checked_actions?: string[] | null
+        }
+        Update: {
+          user_id?: string
+          date?: string
+          mood?: string | null
+          checked_actions?: string[] | null
+        }
+        Relationships: []
+      }
+      menopause_cooling_plans: {
+        Row: {
+          user_id: string
+          date: string
+          symptom_focus: string | null
+          time_of_day: string | null
+          bothers: string[] | null
+          support_style: string | null
+          plan_items: string[] | null
+          completed_items: string[] | null
+        }
+        Insert: {
+          user_id: string
+          date: string
+          symptom_focus?: string | null
+          time_of_day?: string | null
+          bothers?: string[] | null
+          support_style?: string | null
+          plan_items?: string[] | null
+          completed_items?: string[] | null
+        }
+        Update: {
+          user_id?: string
+          date?: string
+          symptom_focus?: string | null
+          time_of_day?: string | null
+          bothers?: string[] | null
+          support_style?: string | null
+          plan_items?: string[] | null
+          completed_items?: string[] | null
+        }
+        Relationships: []
+      }
+      menopause_calm_routines: {
+        Row: {
+          id: string
+          user_id: string | null
+          mood_state: string | null
+          duration_minutes: number | null
+          routine_type: string | null
+          generated_steps: string[] | null
+          completed: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          id: string
+          user_id?: string | null
+          mood_state?: string | null
+          duration_minutes?: number | null
+          routine_type?: string | null
+          generated_steps?: string[] | null
+          completed?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          mood_state?: string | null
+          duration_minutes?: number | null
+          routine_type?: string | null
+          generated_steps?: string[] | null
+          completed?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      menopause_brain_fog_notes: {
+        Row: {
+          id: string
+          user_id: string | null
+          note_text: string
+          reminder_date: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id: string
+          user_id?: string | null
+          note_text: string
+          reminder_date?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          note_text?: string
+          reminder_date?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      menopause_brain_fog_tasks: {
+        Row: {
+          id: string
+          user_id: string | null
+          task_text: string
+          date: string
+          completed: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          id: string
+          user_id?: string | null
+          task_text: string
+          date: string
+          completed?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          task_text?: string
+          date?: string
+          completed?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      menopause_trigger_logs: {
+        Row: {
+          user_id: string
+          date: string
+          triggers: string[] | null
+          notes: string | null
+        }
+        Insert: {
+          user_id: string
+          date: string
+          triggers?: string[] | null
+          notes?: string | null
+        }
+        Update: {
+          user_id?: string
+          date?: string
+          triggers?: string[] | null
+          notes?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

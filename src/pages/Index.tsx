@@ -1,10 +1,23 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePhase } from "@/hooks/usePhase";
 import ScrollReveal from "@/components/ScrollReveal";
 import { Bot, Sparkles, ArrowRight, ShieldCheck, Activity } from "lucide-react";
 
 export default function Index() {
   const { t, simpleMode } = useLanguage();
+  const location = useLocation();
+  const { phase, setPhase } = usePhase();
+  const isMenopauseHome = location.pathname === "/menopause";
+
+  useEffect(() => {
+    if (isMenopauseHome && phase !== "menopause") {
+      void setPhase("menopause");
+    }
+  }, [isMenopauseHome, phase, setPhase]);
+
+  const getStartedTo = isMenopauseHome ? "/menopause/dashboard" : "/dashboard";
 
   return (
     <div className={`min-h-screen flex flex-col bg-slate-50 ${simpleMode ? "simple-mode" : ""}`}>

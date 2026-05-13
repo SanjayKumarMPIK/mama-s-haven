@@ -10,6 +10,7 @@ import {
   createId,
   readMenopauseToolData,
   writeMenopauseToolData,
+  fetchSyncedToolData,
   type CalmRoutineRecord,
 } from "@/lib/menopauseTools";
 import { cn } from "@/lib/utils";
@@ -27,6 +28,30 @@ export default function MenoCalmRoutineGenerator() {
 
   const recentSummary = useMemo(() => countRecentCalendarPatterns(calendarLogs), [calendarLogs]);
   const [records, setRecords] = useState<CalmRoutineRecord[]>(() => readMenopauseToolData(user?.id, "calmRoutines", []));
+
+  useEffect(() => {
+    if (!user) return;
+    const sync = async () => {
+      const data = await fetchSyncedToolData(user.id, "calmRoutines");
+      if (data && data.length > 0) {
+        const mapped: CalmRoutineRecord[] = data.map((d: any) => ({
+          id: d.id,
+          moodState: d.mood_state,
+          durationMinutes: d.duration_minutes,
+          routineType: d.routine_type,
+          generatedSteps: d.generated_steps || [],
+          completed: d.completed,
+          createdAt: d.created_at
+        }));
+        setRecords(prev => {
+          const merged = [...mapped, ...prev.filter(p => !mapped.some(m => m.id === p.id))];
+          return merged.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        });
+      }
+    };
+    sync();
+  }, [user]);
+
   const [moodState, setMoodState] = useState<CalmRoutineRecord["moodState"]>(recentSummary.sleepDifficultyDays >= 3 ? "cannot_sleep" : "anxious");
   const [durationMinutes, setDurationMinutes] = useState<CalmRoutineRecord["durationMinutes"]>(5);
   const [routineType, setRoutineType] = useState<CalmRoutineRecord["routineType"]>(recentSummary.lowMoodDays >= 3 ? "mixed" : "breathing");
@@ -35,6 +60,12 @@ export default function MenoCalmRoutineGenerator() {
   const [isRunning, setIsRunning] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [checkIn, setCheckIn] = useState<"yes" | "same" | "not_yet" | "">("");
+
+  useEffect(() => {
+    if (records.length > 0 && !currentRoutine) {
+      setCurrentRoutine(records[0]);
+    }
+  }, [records, currentRoutine]);
 
   const stepSeconds = currentRoutine ? Math.max(30, Math.floor((currentRoutine.durationMinutes * 60) / currentRoutine.generatedSteps.length)) : 0;
 

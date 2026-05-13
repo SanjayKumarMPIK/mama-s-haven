@@ -111,6 +111,10 @@ export default function NutritionGuide() {
     return <Navigate to="/puberty/nutrition-guide" replace />;
   }
 
+  if (phase === "family-planning") {
+    return <Navigate to="/family-planning/nutrition-guide" replace />;
+  }
+
   return (
     <main className={`min-h-screen bg-background ${simpleMode ? "simple-mode" : ""}`}>
       {phase === "maternity" ? (
@@ -206,7 +210,7 @@ export default function NutritionGuide() {
           <AffirmationBanner />
         </ScrollReveal>
 
-        {/* ─── Symptom Search (hidden for menopause) ─────────── */}
+        {/* ─── Symptom Search (input hidden for family planning, full selector hidden for menopause) ─────────── */}
         {phase !== "menopause" && (
           <ScrollReveal>
             <SymptomSearchBar
@@ -214,6 +218,7 @@ export default function NutritionGuide() {
               onSelectSymptom={handleSelectSymptom}
               suggestedSymptoms={suggestedSymptoms}
               accentColor={phase}
+              showSearchInput={!isFP}
             />
           </ScrollReveal>
         )}

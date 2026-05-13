@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { supabaseUserClient } from "@/lib/supabase-user";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -115,6 +116,12 @@ export interface CommunityWin {
   id: string;
   text: string;                   // max 100 chars
   date: string;                   // ISO date
+}
+
+export interface DashboardState {
+  date: string;
+  mood: string;
+  checkedActions: string[];
 }
 
 // ─── Hot Flash Event (granular per-event tracking) ───────────────────────────
@@ -259,6 +266,7 @@ export function getStageDescription(stage: MenopauseStage): string {
 export function useMenopause() {
   const { user } = useAuth();
   const userId = user?.id ?? "anonymous";
+  const today = new Date().toISOString().slice(0, 10);
 
   // Suffix keys with userId for multi-user support
   const pk = `${PROFILE_KEY}-${userId}`;
@@ -283,6 +291,62 @@ export function useMenopause() {
   const [wins, setWins] = useState<CommunityWin[]>(() => readJSON(wk, []));
   const [goalCompletions, setGoalCompletions] = useState<GoalCompletion[]>(() => readJSON(gk, []));
   const [hotFlashEvents, setHotFlashEvents] = useState<HotFlashEvent[]>(() => readJSON(hfk, []));
+
+  // ── Dashboard State (Synced) ────────────────────────────────────────────────
+  const [dashboardState, setDashboardState] = useState<DashboardState>({
+    date: today,
+    mood: "",
+    checkedActions: []
+  });
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchDashboardState = async () => {
+      const { data } = await supabaseUserClient
+        .from("menopause_dashboard_state")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("date", today)
+        .maybeSingle();
+      
+      if (data) {
+        setDashboardState({
+          date: today,
+          mood: data.mood || "",
+          checkedActions: data.checked_actions || []
+        });
+      }
+    };
+    fetchDashboardState();
+  }, [user, today]);
+
+  const setTodayMood = useCallback(async (mood: string) => {
+    setDashboardState(prev => ({ ...prev, mood }));
+    if (!user) return;
+    const { error } = await supabaseUserClient.from("menopause_dashboard_state").upsert({
+      user_id: user.id,
+      date: today,
+      mood
+    });
+    if (error) console.warn('[Dashboard] mood upsert failed:', error.message);
+  }, [user, today]);
+
+  const toggleFocusAction = useCallback(async (actionId: string) => {
+    setDashboardState(prev => {
+      const next = prev.checkedActions.includes(actionId)
+        ? prev.checkedActions.filter(id => id !== actionId)
+        : [...prev.checkedActions, actionId];
+      
+      if (user) {
+        supabaseUserClient.from("menopause_dashboard_state").upsert({
+          user_id: user.id,
+          date: today,
+          checked_actions: next
+        }).then(({ error }) => { if (error) console.warn('[Dashboard] action upsert failed:', error.message); });
+      }
+      return { ...prev, checkedActions: next };
+    });
+  }, [user, today]);
 
   // ── Profile ────────────────────────────────────────────────────────────────
 
@@ -503,6 +567,10 @@ export function useMenopause() {
     getWeekStreak,
     getMonthCompletionMap,
     goalCompletions,
+    // Dashboard Sync
+    dashboardState,
+    setTodayMood,
+    toggleFocusAction,
     // Hot flash tracker
     hotFlashEvents,
     addHotFlashEvent,

@@ -245,16 +245,22 @@ export default function HamburgerMenu({
                   // Show family-planning-only routes only in family-planning phase
                   if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
                   return true;
-                }).map((item) => (
-                  <NavItem
-                    key={item.to}
-                    to={item.to}
-                    label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
-                    icon={item.icon}
-                    active={location.pathname === item.to}
-                    onClick={onClose}
-                  />
-                ))
+                }).map((item) => {
+                  const to = item.to === "/nutrition" && phase === "family-planning"
+                    ? "/family-planning/nutrition-guide"
+                    : item.to;
+
+                  return (
+                    <NavItem
+                      key={`${item.to}-${phase}`}
+                      to={to}
+                      label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
+                      icon={item.icon}
+                      active={location.pathname === to}
+                      onClick={onClose}
+                    />
+                  );
+                })
               )}
             </nav>
           </div>

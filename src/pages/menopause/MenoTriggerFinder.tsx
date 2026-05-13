@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, BarChart3, Link2, Save, Search, Shield } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import {
   analyzeTriggerPatterns,
   readMenopauseToolData,
   writeMenopauseToolData,
+  fetchSyncedToolData,
   type MenopauseTriggerLog,
   type TriggerOptionId,
 } from "@/lib/menopauseTools";
@@ -27,9 +28,36 @@ export default function MenoTriggerFinder() {
   }, [getPhaseLogs]);
 
   const [triggerLogs, setTriggerLogs] = useState<MenopauseTriggerLog[]>(() => readMenopauseToolData(user?.id, "triggerLogs", []));
+
+  useEffect(() => {
+    if (!user) return;
+    const sync = async () => {
+      const data = await fetchSyncedToolData(user.id, "triggerLogs");
+      if (data && data.length > 0) {
+        const mapped: MenopauseTriggerLog[] = data.map((d: any) => ({
+          date: d.date,
+          triggers: d.triggers,
+          notes: d.notes
+        }));
+        setTriggerLogs(prev => {
+          const merged = [...mapped, ...prev.filter(p => !mapped.some(m => m.date === p.date))];
+          return merged.sort((a, b) => b.date.localeCompare(a.date));
+        });
+      }
+    };
+    sync();
+  }, [user]);
+
   const todayEntry = triggerLogs.find((log) => log.date === today);
   const [selectedTriggers, setSelectedTriggers] = useState<TriggerOptionId[]>(todayEntry?.triggers ?? []);
   const [notes, setNotes] = useState(todayEntry?.notes ?? "");
+
+  useEffect(() => {
+    if (todayEntry) {
+      setSelectedTriggers(todayEntry.triggers);
+      setNotes(todayEntry.notes ?? "");
+    }
+  }, [todayEntry]);
 
   const insights = useMemo(() => analyzeTriggerPatterns(triggerLogs, calendarLogs), [calendarLogs, triggerLogs]);
   const groupedBySymptom = useMemo(() => {

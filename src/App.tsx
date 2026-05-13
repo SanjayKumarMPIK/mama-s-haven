@@ -179,6 +179,16 @@ import FPLifestyleMetabolismPage from "./pages/familyplanning/FPLifestyleMetabol
 
 import FPFoodsToAvoidPage from "./pages/familyplanning/FPFoodsToAvoidPage";
 
+import FPNutritionGuidePage from "./pages/familyplanning/FPNutritionGuidePage";
+
+import FPNutritionLifestylePage from "./pages/familyplanning/FPNutritionLifestylePage";
+
+import FPNutritionFitnessCalculatorPage from "./pages/familyplanning/FPNutritionFitnessCalculatorPage";
+
+import FPNutritionPersonalizedDietPage from "./pages/familyplanning/FPNutritionPersonalizedDietPage";
+
+import FPNutritionIntelligencePage from "./pages/familyplanning/FPNutritionIntelligencePage";
+
 import CareLog from "./pages/familyplanning/CareLog";
 
 import MaternityDeficiencyInsightsPage from "./pages/maternity/MaternityDeficiencyInsightsPage";
@@ -359,6 +369,16 @@ const App = () => (
                           <Route path="/puberty/nutrition-guide/intelligence" element={<PubertyNutritionIntelligencePage />} />
 
                           {/* Family Planning nutrition sub-pages */}
+
+                          <Route path="/family-planning/nutrition-guide" element={<FPNutritionGuidePage />} />
+
+                          <Route path="/family-planning/nutrition-guide/lifestyle" element={<FPNutritionLifestylePage />} />
+
+                          <Route path="/family-planning/nutrition-guide/fitness-health-calculator" element={<FPNutritionFitnessCalculatorPage />} />
+
+                          <Route path="/family-planning/nutrition-guide/personalized-diet" element={<FPNutritionPersonalizedDietPage />} />
+
+                          <Route path="/family-planning/nutrition-guide/nutrition-intelligence" element={<FPNutritionIntelligencePage />} />
 
                           <Route path="/family-planning/nutrition/deficiency-insights" element={<FPDeficiencyInsightsPage />} />
 

@@ -11,6 +11,7 @@ import {
   createId,
   readMenopauseToolData,
   writeMenopauseToolData,
+  fetchSyncedToolData,
   type BrainFogNote,
   type BrainFogTask,
 } from "@/lib/menopauseTools";
@@ -35,6 +36,42 @@ export default function MenoBrainFogHelper() {
   const recentSummary = useMemo(() => countRecentCalendarPatterns(calendarLogs), [calendarLogs]);
   const [notes, setNotes] = useState<BrainFogNote[]>(() => readMenopauseToolData(user?.id, "brainFogNotes", []));
   const [tasks, setTasks] = useState<BrainFogTask[]>(() => readMenopauseToolData(user?.id, "brainFogTasks", []));
+
+  useEffect(() => {
+    if (!user) return;
+    const sync = async () => {
+      const notesData = await fetchSyncedToolData(user.id, "brainFogNotes");
+      if (notesData) {
+        const mappedNotes: BrainFogNote[] = notesData.map((d: any) => ({
+          id: d.id,
+          noteText: d.note_text,
+          reminderDate: d.reminder_date,
+          createdAt: d.created_at
+        }));
+        setNotes(prev => {
+          const merged = [...mappedNotes, ...prev.filter(p => !mappedNotes.some(m => m.id === p.id))];
+          return merged.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        });
+      }
+
+      const tasksData = await fetchSyncedToolData(user.id, "brainFogTasks");
+      if (tasksData) {
+        const mappedTasks: BrainFogTask[] = tasksData.map((d: any) => ({
+          id: d.id,
+          taskText: d.task_text,
+          date: d.date,
+          completed: d.completed,
+          createdAt: d.created_at
+        }));
+        setTasks(prev => {
+          const merged = [...mappedTasks, ...prev.filter(p => !mappedTasks.some(m => m.id === p.id))];
+          return merged.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+        });
+      }
+    };
+    sync();
+  }, [user]);
+
   const [noteText, setNoteText] = useState("");
   const [reminderDate, setReminderDate] = useState(today);
   const [taskText, setTaskText] = useState("");

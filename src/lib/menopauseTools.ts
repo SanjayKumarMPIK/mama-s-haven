@@ -1,3 +1,4 @@
+import { supabaseUserClient } from "@/lib/supabase-user";
 import type { MenopauseEntry } from "@/hooks/useHealthLog";
 
 export type TriggerOptionId =
@@ -31,6 +32,7 @@ export interface CalmRoutineRecord {
   moodState: "anxious" | "irritable" | "restless" | "overwhelmed" | "cannot_sleep";
   durationMinutes: 3 | 5 | 10;
   routineType: "breathing" | "gentle_stretch" | "quiet_reflection" | "mixed";
+  generated_steps?: string[]; // Legacy sync support
   generatedSteps: string[];
   completed: boolean;
   createdAt: string;
@@ -85,6 +87,14 @@ const STORAGE_KEYS = {
   brainFogTasks: "brain-fog-tasks",
 } as const;
 
+const TABLE_MAP: Record<keyof typeof STORAGE_KEYS, string> = {
+  triggerLogs: "menopause_trigger_logs",
+  coolingPlans: "menopause_cooling_plans",
+  calmRoutines: "menopause_calm_routines",
+  brainFogNotes: "menopause_brain_fog_notes",
+  brainFogTasks: "menopause_brain_fog_tasks",
+};
+
 function storageKey(userId: string | undefined, key: keyof typeof STORAGE_KEYS) {
   return `ss-menopause-tools-${STORAGE_KEYS[key]}-${userId || "anonymous"}`;
 }
@@ -100,6 +110,90 @@ export function readMenopauseToolData<T>(userId: string | undefined, key: keyof 
 
 export function writeMenopauseToolData<T>(userId: string | undefined, key: keyof typeof STORAGE_KEYS, value: T) {
   localStorage.setItem(storageKey(userId, key), JSON.stringify(value));
+  
+  if (userId && userId !== "anonymous") {
+    const table = TABLE_MAP[key];
+    const today = new Date().toISOString().slice(0, 10);
+
+    if (key === "coolingPlans" && Array.isArray(value)) {
+      const latest = value[0] as CoolingPlanRecord;
+      if (latest && latest.date === today) {
+        supabaseUserClient.from(table).upsert({
+          user_id: userId,
+          date: today,
+          symptom_focus: latest.symptomFocus,
+          time_of_day: latest.timeOfDay,
+          bothers: latest.bothers,
+          support_style: latest.supportStyle,
+          plan_items: latest.planItems,
+          completed_items: latest.completedItems
+        }).then(({ error }) => { if (error) console.warn(`[menoTools] ${table} upsert failed:`, error.message); });
+      }
+    } else if (key === "triggerLogs" && Array.isArray(value)) {
+      const latest = value[value.length - 1] as MenopauseTriggerLog;
+      if (latest) {
+        supabaseUserClient.from(table).upsert({
+          user_id: userId,
+          date: latest.date,
+          triggers: latest.triggers,
+          notes: latest.notes
+        }).then(({ error }) => { if (error) console.warn(`[menoTools] ${table} upsert failed:`, error.message); });
+      }
+    } else if (key === "calmRoutines" && Array.isArray(value)) {
+      const latest = value[0] as CalmRoutineRecord;
+      if (latest) {
+        supabaseUserClient.from(table).upsert({
+          id: latest.id,
+          user_id: userId,
+          mood_state: latest.moodState,
+          duration_minutes: latest.durationMinutes,
+          routine_type: latest.routineType,
+          generated_steps: latest.generatedSteps,
+          completed: latest.completed,
+          created_at: latest.createdAt
+        }).then(({ error }) => { if (error) console.warn(`[menoTools] ${table} upsert failed:`, error.message); });
+      }
+    } else if (key === "brainFogNotes" && Array.isArray(value)) {
+      const latest = value[0] as BrainFogNote;
+      if (latest) {
+        supabaseUserClient.from(table).upsert({
+          id: latest.id,
+          user_id: userId,
+          note_text: latest.noteText,
+          reminder_date: latest.reminderDate,
+          created_at: latest.createdAt
+        }).then(({ error }) => { if (error) console.warn(`[menoTools] ${table} upsert failed:`, error.message); });
+      }
+    } else if (key === "brainFogTasks" && Array.isArray(value)) {
+      const latest = value[0] as BrainFogTask;
+      if (latest) {
+        supabaseUserClient.from(table).upsert({
+          id: latest.id,
+          user_id: userId,
+          task_text: latest.taskText,
+          date: latest.date,
+          completed: latest.completed,
+          created_at: latest.createdAt
+        }).then(({ error }) => { if (error) console.warn(`[menoTools] ${table} upsert failed:`, error.message); });
+      }
+    }
+  }
+}
+
+export async function fetchSyncedToolData(userId: string | undefined, key: keyof typeof STORAGE_KEYS) {
+  if (!userId || userId === "anonymous") return null;
+  const table = TABLE_MAP[key];
+  const orderCol = (key === "triggerLogs" || key === "coolingPlans") ? "date" : "created_at";
+  const { data, error } = await supabaseUserClient
+    .from(table)
+    .select("*")
+    .eq("user_id", userId)
+    .order(orderCol, { ascending: false });
+  if (error) {
+    console.warn(`[menopauseTools] fetch ${table} failed:`, error.message);
+    return null;
+  }
+  return data;
 }
 
 export function analyzeTriggerPatterns(

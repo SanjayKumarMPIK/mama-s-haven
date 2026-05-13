@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, RefreshCw, Save, Snowflake, Thermometer, Shield } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import {
   countRecentCalendarPatterns,
   readMenopauseToolData,
   writeMenopauseToolData,
+  fetchSyncedToolData,
   type CoolingPlanRecord,
 } from "@/lib/menopauseTools";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,30 @@ export default function MenoCoolingPlanBuilder() {
 
   const recentSummary = useMemo(() => countRecentCalendarPatterns(calendarLogs), [calendarLogs]);
   const [plans, setPlans] = useState<CoolingPlanRecord[]>(() => readMenopauseToolData(user?.id, "coolingPlans", []));
+
+  useEffect(() => {
+    if (!user) return;
+    const sync = async () => {
+      const data = await fetchSyncedToolData(user.id, "coolingPlans");
+      if (data && data.length > 0) {
+        const mapped: CoolingPlanRecord[] = data.map((d: any) => ({
+          date: d.date,
+          symptomFocus: d.symptom_focus,
+          timeOfDay: d.time_of_day,
+          bothers: d.bothers,
+          supportStyle: d.support_style,
+          planItems: d.plan_items,
+          completedItems: d.completed_items
+        }));
+        setPlans(prev => {
+          const merged = [...mapped, ...prev.filter(p => !mapped.some(m => m.date === p.date))];
+          return merged.sort((a, b) => b.date.localeCompare(a.date));
+        });
+      }
+    };
+    sync();
+  }, [user]);
+
   const existingTodayPlan = plans.find((plan) => plan.date === today);
 
   const [timeOfDay, setTimeOfDay] = useState<CoolingPlanRecord["timeOfDay"]>(existingTodayPlan?.timeOfDay ?? (recentSummary.nightSweatDays >= 3 ? "night" : "evening"));
@@ -36,6 +61,16 @@ export default function MenoCoolingPlanBuilder() {
   const [supportStyle, setSupportStyle] = useState<CoolingPlanRecord["supportStyle"]>(existingTodayPlan?.supportStyle ?? "simple_reminders");
   const [bothers, setBothers] = useState<string[]>(existingTodayPlan?.bothers ?? []);
   const [currentPlan, setCurrentPlan] = useState<CoolingPlanRecord | null>(existingTodayPlan ?? null);
+
+  useEffect(() => {
+    if (existingTodayPlan) {
+      setTimeOfDay(existingTodayPlan.timeOfDay);
+      setSymptomFocus(existingTodayPlan.symptomFocus);
+      setSupportStyle(existingTodayPlan.supportStyle);
+      setBothers(existingTodayPlan.bothers);
+      setCurrentPlan(existingTodayPlan);
+    }
+  }, [existingTodayPlan]);
 
   const toggleBother = (value: string) => {
     setBothers((prev) => prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]);

@@ -1,43 +1,37 @@
-import { useCallback, useMemo, useState } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
-import {
-  Activity,
-  AlertTriangle,
-  Bed,
-  Bone,
-  CalendarDays,
+import { 
+  Heart, 
+  Calendar, 
+  Activity, 
+  Sparkles, 
+  ChevronRight, 
+  Thermometer, 
+  Moon, 
+  Utensils, 
+  MessageSquare,
+  TrendingUp,
+  TrendingDown,
+  Minus,
   CheckCircle2,
   Circle,
+  AlertTriangle,
+  Compass,
+  Smile,
+  Flame,
+  Bed,
   CircleDot,
   ClipboardCheck,
-  Compass,
-  Droplets,
-  Flame,
-  HeartPulse,
-  Minus,
-  Moon,
-  Shield,
-  Smile,
-  Sun,
-  TrendingDown,
-  TrendingUp,
   Weight,
+  Droplets,
+  CalendarDays
 } from "lucide-react";
-import ScrollReveal from "@/components/ScrollReveal";
-import { useMenopause, getStageDescription, getStageLabel, type MenopauseLogEntry } from "@/hooks/useMenopause";
-import { useHealthLog, type MenopauseEntry } from "@/hooks/useHealthLog";
-import {
-  computeMenoWellnessScore,
-  getBoneHealthStatus,
-  getDailyGuidance,
-  getHeartHealthStatus,
-  getSleepMoodSummary,
-  getTopSymptomsThisWeek,
-  getWellnessFocusToday,
-  getWeightStatus,
-  type WellnessFocusAction,
-} from "@/lib/menopauseDashboardEngine";
 import { cn } from "@/lib/utils";
+import { useMenopause, MenopauseLogEntry, MenopauseProfile, getStageLabel, getStageDescription } from "@/hooks/useMenopause";
+import { useHealthLog } from "@/hooks/useHealthLog";
+import ScrollReveal from "@/components/ScrollReveal";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type TrendDir = "up" | "down" | "stable";
 
@@ -149,22 +143,16 @@ function actionReason(actionText: string, focusTitle: string) {
   return "One small daily step now can reduce symptom build-up later.";
 }
 
-function WellnessFocusPanel({ focusEmoji, focusTitle, explanation, actions, redFlagAlert, tone }: {
+function WellnessFocusPanel({ focusEmoji, focusTitle, explanation, actions, redFlagAlert, tone, checked, onToggle }: {
   focusEmoji: string;
   focusTitle: string;
   explanation: string;
   actions: WellnessFocusAction[];
   redFlagAlert: string | null;
   tone: "positive" | "caution" | "info" | "alert";
+  checked: string[];
+  onToggle: (id: string) => void;
 }) {
-  const [checked, setChecked] = useState<string[]>(() => readTodayChecked());
-  const toggle = useCallback((id: string) => {
-    setChecked((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      writeTodayChecked(next);
-      return next;
-    });
-  }, []);
 
   const allDone = actions.length > 0 && actions.every((a) => checked.includes(a.id));
   const toneColors = {
@@ -209,7 +197,7 @@ function WellnessFocusPanel({ focusEmoji, focusTitle, explanation, actions, redF
           return (
             <button
               key={action.id}
-              onClick={() => toggle(action.id)}
+              onClick={() => onToggle(action.id)}
               aria-pressed={isDone}
               className={cn(
                 "w-full p-3 rounded-2xl border text-left transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
@@ -239,11 +227,11 @@ function WellnessFocusPanel({ focusEmoji, focusTitle, explanation, actions, redF
 }
 
 export default function MenopauseDashboard() {
-  const { profile, logs } = useMenopause();
-  const { getPhaseLogs } = useHealthLog();
+  const { profile, logs, dashboardState, setTodayMood, toggleFocusAction } = useMenopause();
+  const { mood: todayMood, checkedActions: checked } = dashboardState;
+
   const [selectedSymptom, setSelectedSymptom] = useState<string | null>(null);
   const [range, setRange] = useState<7 | 30>(7);
-  const [todayMood, setTodayMood] = useState<string>(() => readTodayMood());
 
   const wellnessScore = useMemo(() => computeMenoWellnessScore(logs, profile), [logs, profile]);
   const topSymptoms = useMemo(() => getTopSymptomsThisWeek(logs), [logs]);
@@ -258,240 +246,436 @@ export default function MenopauseDashboard() {
   const stageDesc = getStageDescription(stage);
   const stageTheme = stage === "perimenopause" ? "bg-teal-50 text-teal-700 border-teal-200" : stage === "menopause" ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-blue-50 text-blue-700 border-blue-200";
 
-  const greeting = (() => {
-    const hr = new Date().getHours();
-    if (hr < 12) return "Good morning";
-    if (hr < 17) return "Good afternoon";
-    return "Good evening";
-  })();
-
-  const menopauseCalendarLogs = useMemo(() => {
-    const phaseLogs = getPhaseLogs("menopause");
-    return Object.entries(phaseLogs)
-      .map(([date, entry]) => ({ date, entry: entry as MenopauseEntry }))
-      .sort((a, b) => a.date.localeCompare(b.date));
-  }, [getPhaseLogs]);
-
-  const recentRangeLogs = useMemo(() => recentLogsByDays(logs, range), [logs, range]);
-  const recentCalendarRange = useMemo(() => {
-    const now = new Date();
-    return menopauseCalendarLogs.filter(({ date }) => {
-      const diff = (now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24);
-      return diff <= range && diff >= 0;
-    });
-  }, [menopauseCalendarLogs, range]);
-  const selectedSymptomData = topSymptoms.find((s) => s.id === selectedSymptom) || null;
   const trendSeries = useMemo(() => {
-    const moodToScore = (m: MenopauseEntry["mood"]) => {
-      if (m === "Good") return 5;
-      if (m === "Okay") return 3;
-      if (m === "Low") return 1;
-      return 0;
-    };
-    const sleepQualityToScore = (q: MenopauseEntry["sleepQuality"]) => {
-      if (q === "Good") return 4;
-      if (q === "Okay") return 3;
-      if (q === "Poor") return 2;
-      return 0;
-    };
-    const safeAvg = (vals: number[]) => vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    const recent = recentLogsByDays(logs, range);
+    const sleep = recent.map((l) => l.sleepHrs);
+    const mood = recent.map((l) => l.mood);
+    const hotFlashes = recent.map((l) => l.hotFlashCount);
+    const energy = recent.map((l) => l.energyLevel);
 
-    const sleepValues = recentCalendarRange.map(({ entry }) => entry.sleepHours ?? 0).filter((v) => v > 0).slice(-10);
-    const moodValues = recentCalendarRange.map(({ entry }) => moodToScore(entry.mood)).filter((v) => v > 0).slice(-10);
-    const hotFlashValues = recentCalendarRange.map(({ entry }) => (entry.symptoms?.hotFlashes ? 1 : 0)).slice(-10);
-    const energyValues = recentCalendarRange.map(({ entry }) => {
-      const sleepQualityScore = sleepQualityToScore(entry.sleepQuality);
-      const moodScore = moodToScore(entry.mood);
-      return Math.max(sleepQualityScore, moodScore || 0);
-    }).filter((v) => v > 0).slice(-10);
+    const getTakeaway = (data: number[], label: string) => {
+      if (data.length < 3) return "Log more days for trend analysis.";
+      const last = data[data.length - 1];
+      const prev = data[data.length - 2];
+      if (last > prev) return `Your ${label} is improving! Keep it up.`;
+      if (last < prev) return `Small dip in ${label} today. Prioritize rest.`;
+      return `${label} is steady. Stable routines help balance.`;
+    };
 
     return {
-      sleep: sleepValues,
-      mood: moodValues,
-      hotFlashes: hotFlashValues,
-      energy: energyValues,
-      sleepTakeaway: safeAvg(sleepValues) >= 7 ? "Sleep baseline is healthy." : sleepValues.length ? "Sleep needs support this week." : "Add sleep entries in calendar logs for this trend.",
-      moodTakeaway: safeAvg(moodValues) >= 3.5 ? "Mood remains mostly steady." : moodValues.length ? "Mood has been lower than usual." : "Add mood entries in calendar logs for this trend.",
-      hotTakeaway: safeAvg(hotFlashValues) <= 0.5 ? "Hot flashes are manageable." : hotFlashValues.length ? "Cooling and hydration should be prioritized." : "Track hot flashes in calendar logs to unlock this trend.",
-      energyTakeaway: safeAvg(energyValues) >= 3 ? "Energy pattern is stable." : energyValues.length ? "Low energy appears frequently." : "Add sleep quality or mood entries in calendar logs.",
+      sleep,
+      mood,
+      hotFlashes,
+      energy,
+      sleepTakeaway: getTakeaway(sleep, "sleep"),
+      moodTakeaway: getTakeaway(mood, "mood"),
+      hotTakeaway: getTakeaway(hotFlashes, "hot flashes"),
+      energyTakeaway: getTakeaway(energy, "energy"),
     };
-  }, [recentCalendarRange]);
-
-  const noLogs = logs.length === 0;
+  }, [logs, range]);
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,#f5f7ff_0%,#eef8f6_40%,#fdf8f2_100%)]">
-      <div className="container py-6 space-y-6">
+    <div className="min-h-screen bg-[#fdfcfb]">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-10">
+        
+        {/* Header with Stage Info */}
         <ScrollReveal>
-          <section className="relative overflow-hidden rounded-3xl border border-teal-200/60 bg-gradient-to-br from-teal-100/80 via-cyan-50 to-rose-50 shadow-lg shadow-teal-100/50 p-6 md:p-8">
-            <div className="absolute -right-16 -top-16 w-48 h-48 rounded-full bg-white/40 blur-3xl" />
-            <div className="grid md:grid-cols-[1.1fr_0.9fr] gap-6 items-center">
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-10 h-10 rounded-xl bg-teal-700 flex items-center justify-center shadow"><Sun className="w-5 h-5 text-white" /></div>
-                  <p className="text-sm font-semibold text-slate-700">{greeting}</p>
-                </div>
-                <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">Menopause Wellness Command Center</h1>
-                <p className="text-sm text-slate-600 mt-2 max-w-xl">Wellness Score {wellnessScore.score} - {wellnessScore.label}. {wellnessScore.insight}</p>
-                <div className="flex flex-wrap items-center gap-2 mt-4">
-                  <span className={cn("px-3 py-1.5 rounded-full border text-xs font-semibold", stageTheme)}>{stageLabel}</span>
-                  <span className="px-3 py-1.5 rounded-full border border-slate-200 bg-white/80 text-xs font-semibold text-slate-700">{wellnessScore.loggedDays}/{wellnessScore.totalDays} days logged</span>
-                  <span className="px-3 py-1.5 rounded-full border border-slate-200 bg-white/80 text-xs font-semibold text-slate-700">Current streak: {Math.min(wellnessScore.loggedDays, 7)} days</span>
-                </div>
-                <p className="text-xs text-slate-600 mt-3">{stageDesc}</p>
-                <div className="flex flex-wrap gap-2 mt-5">
-                  <Link
-                    to="/menopause/symptoms"
-                    className="px-4 py-2 rounded-xl border border-teal-800 bg-teal-700 hover:bg-teal-800 !text-white text-sm font-semibold shadow-sm transition-colors"
-                    style={{ color: "#ffffff", backgroundColor: "#0f766e" }}
-                  >
-                    Log Symptoms
-                  </Link>
-                  <Link to="/menopause/analytics" className="px-4 py-2 rounded-xl bg-white/85 hover:bg-white border border-slate-200 text-slate-800 text-sm font-semibold transition-colors">View Trends</Link>
-                </div>
+          <div className="flex flex-col items-center text-center space-y-4 mb-2">
+            <div className="flex items-center justify-center gap-3">
+              <Sparkles className="w-10 h-10 text-violet-500 fill-violet-100 animate-pulse" />
+              <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">
+                Your Journey
+              </h1>
+            </div>
+            <div className="flex flex-col items-center gap-3">
+              <div className={cn("px-6 py-1.5 rounded-full text-sm font-bold border shadow-sm", stageTheme)}>
+                {stageLabel}
               </div>
-              <div className="flex md:justify-end">
-                <div className="rounded-2xl border border-white/70 bg-white/75 backdrop-blur-sm p-4"><ScoreRing score={wellnessScore.score} color={wellnessScore.color} /></div>
-              </div>
+              <p className="text-base text-slate-500 font-medium max-w-2xl">{stageDesc}</p>
             </div>
-          </section>
-        </ScrollReveal>
-
-        {noLogs && (
-          <ScrollReveal delay={40}>
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-lg font-bold text-slate-900">Start your personalized dashboard</h2>
-              <p className="text-sm text-slate-600 mt-1">Start logging symptoms to unlock personalized menopause guidance.</p>
-              <Link to="/menopause/symptoms" className="inline-flex mt-3 px-4 py-2 rounded-xl bg-teal-700 text-white text-sm font-semibold">Log first entry</Link>
-            </section>
-          </ScrollReveal>
-        )}
-
-        <ScrollReveal delay={60}>
-          <WellnessFocusPanel
-            focusEmoji={wellnessFocus.focusEmoji}
-            focusTitle={wellnessFocus.focusTitle}
-            explanation={wellnessFocus.explanation}
-            actions={wellnessFocus.actions}
-            redFlagAlert={wellnessFocus.redFlagAlert}
-            tone={wellnessFocus.tone}
-          />
-        </ScrollReveal>
-
-        <ScrollReveal delay={80}>
-          <section className="rounded-2xl border border-violet-200/60 bg-gradient-to-br from-violet-50/70 to-blue-50/60 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-xl bg-violet-600 text-white flex items-center justify-center"><Activity className="w-4 h-4" /></div>
-              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">Top Symptoms This Week</h2>
+            <div className="pt-4">
+              <Link 
+                to="/menopause/onboarding" 
+                className="inline-flex items-center justify-center px-6 py-2.5 rounded-2xl bg-white border border-slate-200 text-sm font-bold text-slate-700 hover:bg-slate-50 hover:shadow-md transition-all group"
+              >
+                Update Profile <ChevronRight className="ml-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
             </div>
-            {topSymptoms.length === 0 ? <p className="text-sm text-slate-600">No dominant symptoms this week. Keep logging daily for clearer trends.</p> : (
-              <>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {topSymptoms.map((sym) => (
-                    <button
-                      key={sym.id}
-                      onClick={() => setSelectedSymptom(selectedSymptom === sym.id ? null : sym.id)}
-                      className={cn("text-left rounded-2xl p-4 border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500", selectedSymptom === sym.id ? "border-violet-400 bg-white shadow-md" : "border-white/70 bg-white/80 hover:shadow hover:-translate-y-0.5")}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-800">{sym.label}</p>
-                          <p className="text-xs text-slate-500 mt-1">{sym.frequency} times this week</p>
-                        </div>
-                        <span className="text-lg" aria-hidden>{sym.emoji}</span>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between text-xs">
-                        <span className="font-semibold text-violet-700">Severity {sym.avgSeverity}/5</span>
-                        <span className="inline-flex items-center gap-1 text-slate-600"><TrendArrow dir={sym.trend} good={sym.trend === "down"} />{sym.trend === "up" ? "Increasing" : sym.trend === "down" ? "Improving" : "Stable"}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                {selectedSymptomData && (
-                  <div className="mt-4 rounded-xl border border-violet-200 bg-white/85 p-4 animate-in fade-in duration-200">
-                    <h3 className="text-sm font-bold text-slate-800">{selectedSymptomData.label} details</h3>
-                    <p className="text-xs text-slate-600 mt-1">What this means: this symptom appears consistently in your recent logs and should be watched through the week.</p>
-                    <p className="text-xs text-slate-600 mt-1">When it occurred most: recent evenings and late-day windows are common for this pattern.</p>
-                    <p className="text-xs text-slate-700 mt-2 font-medium">What you can do: complete one action from your wellness focus and log this symptom again today.</p>
-                  </div>
-                )}
-              </>
-            )}
-          </section>
-        </ScrollReveal>
-
-        <ScrollReveal delay={100}>
-          <section className="rounded-2xl border border-rose-200/70 bg-gradient-to-br from-rose-50 to-amber-50 p-5">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-3">Daily Check-in</h2>
-            <p className="text-sm text-slate-600 mb-3">How are you feeling today?</p>
-            <div className="flex flex-wrap gap-2">
-              {moodOptions.map((m) => (
-                <button
-                  key={m}
-                  onClick={() => {
-                    setTodayMood(m);
-                    writeTodayMood(m);
-                  }}
-                  className={cn(
-                    "px-3 py-2 rounded-full border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500",
-                    todayMood === m ? "border-rose-400 bg-rose-100 text-rose-800" : "border-white/80 bg-white/85 hover:bg-white text-slate-700",
-                  )}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
-            {todayMood && <p className="text-xs text-slate-600 mt-3">Saved for today: <span className="font-semibold">{todayMood}</span></p>}
-          </section>
-        </ScrollReveal>
-
-        <ScrollReveal delay={140}>
-          <section className="rounded-2xl border border-slate-200 bg-white/85 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">Mini Trends</h2>
-              <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
-                <button onClick={() => setRange(7)} className={cn("px-3 py-1 text-xs rounded-lg", range === 7 ? "bg-white shadow-sm font-semibold text-slate-800" : "text-slate-500")}>7 days</button>
-                <button onClick={() => setRange(30)} className={cn("px-3 py-1 text-xs rounded-lg", range === 30 ? "bg-white shadow-sm font-semibold text-slate-800" : "text-slate-500")}>30 days</button>
-              </div>
-            </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-3">
-              <div className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 text-indigo-700"><div className="flex items-center justify-between text-xs font-semibold mb-2"><span>Sleep</span><Bed className="w-4 h-4" /></div><TinySparkline points={trendSeries.sleep} /><p className="text-[11px] mt-2">{trendSeries.sleepTakeaway}</p></div>
-              <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-3 text-violet-700"><div className="flex items-center justify-between text-xs font-semibold mb-2"><span>Mood</span><Smile className="w-4 h-4" /></div><TinySparkline points={trendSeries.mood} /><p className="text-[11px] mt-2">{trendSeries.moodTakeaway}</p></div>
-              <div className="rounded-xl border border-rose-100 bg-rose-50/50 p-3 text-rose-700"><div className="flex items-center justify-between text-xs font-semibold mb-2"><span>Hot flashes</span><Flame className="w-4 h-4" /></div><TinySparkline points={trendSeries.hotFlashes} /><p className="text-[11px] mt-2">{trendSeries.hotTakeaway}</p></div>
-              <div className="rounded-xl border border-amber-100 bg-amber-50/50 p-3 text-amber-700"><div className="flex items-center justify-between text-xs font-semibold mb-2"><span>Energy</span><CircleDot className="w-4 h-4" /></div><TinySparkline points={trendSeries.energy} /><p className="text-[11px] mt-2">{trendSeries.energyTakeaway}</p></div>
-            </div>
-          </section>
-        </ScrollReveal>
-
-        <ScrollReveal delay={160}>
-          <section className="rounded-2xl border border-slate-200 bg-white p-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-3">Quick Actions</h2>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-              <Link to="/menopause/symptoms" className="rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 p-3 text-xs font-semibold text-slate-700 flex items-center gap-2"><ClipboardCheck className="w-4 h-4" />Log Symptoms</Link>
-              <Link to="/menopause/sleep-mood" className="rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 p-3 text-xs font-semibold text-slate-700 flex items-center gap-2"><Moon className="w-4 h-4" />Track Sleep</Link>
-              <Link to="/menopause/weight-metabolism" className="rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 p-3 text-xs font-semibold text-slate-700 flex items-center gap-2"><Weight className="w-4 h-4" />Update Weight</Link>
-              <Link to="/menopause/nutrition" className="rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 p-3 text-xs font-semibold text-slate-700 flex items-center gap-2"><Droplets className="w-4 h-4" />Nutrition Guide</Link>
-              <Link to="/menopause/ai-assistant" className="rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 p-3 text-xs font-semibold text-slate-700 flex items-center gap-2"><CalendarDays className="w-4 h-4" />Ask AI Assistant</Link>
-            </div>
-          </section>
-        </ScrollReveal>
-
-        <ScrollReveal delay={200}>
-          <section className={cn("rounded-2xl border p-5", guidance.tone === "caution" ? "border-amber-200 bg-amber-50" : guidance.tone === "positive" ? "border-teal-200 bg-teal-50" : "border-violet-200 bg-violet-50")}>
-            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">Guidance</h2>
-            <p className="text-sm font-semibold text-slate-800 mt-2">{guidance.headline}</p>
-            <p className="text-sm text-slate-600 mt-1">What this means: {guidance.message}</p>
-            <p className="text-sm text-slate-700 mt-2">What you can do: complete one focus action and recheck your trend tomorrow.</p>
-          </section>
-        </ScrollReveal>
-
-        <ScrollReveal delay={220}>
-          <div className="rounded-2xl border border-slate-200/60 bg-white/70 p-4 flex items-center gap-3">
-            <Shield className="w-5 h-5 text-slate-400 shrink-0" />
-            <p className="text-[11px] text-slate-500 leading-relaxed">All health data stays on your device. Insights are informational and do not replace medical advice.</p>
           </div>
         </ScrollReveal>
+
+        {/* Main Content Area */}
+        <div className="space-y-8">
+          
+          {/* Wellness Score & Key Metrics */}
+          <ScrollReveal delay={40}>
+            <div className="rounded-[2.5rem] border border-slate-200 bg-white p-8 md:p-10 shadow-xl shadow-slate-200/40 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-50/50 rounded-bl-[5rem] -z-0" />
+              <div className="flex flex-col md:flex-row items-center gap-8 md:gap-16 relative z-10">
+                <ScoreRing score={wellnessScore.score} color={wellnessScore.color} />
+                
+                <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-8 w-full">
+                  <div className="space-y-1 text-center md:text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Sleep</p>
+                    <div className="flex items-center justify-center md:justify-start gap-2">
+                      <span className="text-2xl font-black text-slate-800">{sleepMood.avgSleep.toFixed(1)}h</span>
+                      <TrendArrow dir={sleepMood.sleepTrend} good={sleepMood.sleepTrend === "up"} />
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-center md:text-left">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Mood</p>
+                    <div className="flex items-center justify-center md:justify-start gap-2">
+                      <span className="text-2xl font-black text-slate-800">{sleepMood.avgMood.toFixed(1)}/5</span>
+                      <TrendArrow dir={sleepMood.moodTrend} good={sleepMood.moodTrend === "up"} />
+                    </div>
+                  </div>
+                  <div className="space-y-1 text-center md:text-left col-span-2 md:col-span-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Symptom Load</p>
+                    <div className="flex items-center justify-center md:justify-start gap-2">
+                      <span className="text-2xl font-black text-slate-800">{topSymptoms.length} active</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Daily Focus - Smart Component */}
+          <ScrollReveal delay={60}>
+            <WellnessFocusPanel
+              focusEmoji={wellnessFocus.focusEmoji}
+              focusTitle={wellnessFocus.focusTitle}
+              explanation={wellnessFocus.explanation}
+              actions={wellnessFocus.actions}
+              redFlagAlert={wellnessFocus.redFlagAlert}
+              tone={wellnessFocus.tone}
+              checked={checked}
+              onToggle={toggleFocusAction}
+            />
+          </ScrollReveal>
+
+          {/* Quick Summary / Key Focus (Moved from Sidebar) */}
+          <ScrollReveal delay={80}>
+            <div className="rounded-3xl bg-white border border-slate-200 p-6 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 mb-6 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-violet-500" />
+                Symptom Focus This Week
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {topSymptoms.length > 0 ? (
+                  topSymptoms.map((s, i) => (
+                    <div key={s.id} className="p-4 rounded-2xl bg-slate-50/50 border border-slate-100 flex flex-col gap-3">
+                      <div className="flex items-center justify-between">
+                        <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center text-xl border border-slate-100">{s.emoji}</div>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{s.count} logs</span>
+                      </div>
+                      <p className="text-sm font-bold text-slate-800 truncate">{s.label}</p>
+                      <div className="h-1.5 w-full bg-slate-200/50 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-violet-400 rounded-full" 
+                          style={{ width: `${Math.min(100, (s.count / 7) * 100)}%` }} 
+                        />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-3 text-center py-4">
+                    <p className="text-sm text-slate-500 italic">No major symptoms logged this week. Doing well!</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </ScrollReveal>
+
+          {/* Daily Check-in */}
+          <ScrollReveal delay={100}>
+            <section className="rounded-[2rem] border border-slate-200 bg-white/85 p-8 relative overflow-hidden shadow-sm text-center">
+              <div className="absolute top-0 right-0 p-4 opacity-5">
+                <Heart className="w-24 h-24 text-rose-500 fill-rose-500" />
+              </div>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-4 flex items-center justify-center gap-2">
+                <Thermometer className="w-4 h-4 text-rose-500" />
+                Daily Check-in
+              </h2>
+              <p className="text-base text-slate-600 mb-6 font-medium">How are you feeling right now?</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                {moodOptions.map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => {
+                      setTodayMood(m);
+                      writeTodayMood(m);
+                    }}
+                    className={cn(
+                      "px-5 py-2.5 rounded-2xl border text-sm font-bold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 hover:-translate-y-0.5",
+                      todayMood === m ? "border-rose-400 bg-rose-50 text-rose-800 shadow-sm" : "border-slate-100 bg-white hover:bg-slate-50 text-slate-700 shadow-sm",
+                    )}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              {todayMood && <p className="text-xs text-slate-500 mt-5 italic">Logged as <span className="font-bold text-rose-600">{todayMood}</span></p>}
+            </section>
+          </ScrollReveal>
+
+          {/* Mini Trends */}
+          <ScrollReveal delay={140}>
+            <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800">Your Progress Trends</h2>
+                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+                  <button onClick={() => setRange(7)} className={cn("px-4 py-1.5 text-xs rounded-lg transition-all", range === 7 ? "bg-white shadow-sm font-bold text-slate-800" : "text-slate-500 hover:text-slate-700")}>7 days</button>
+                  <button onClick={() => setRange(30)} className={cn("px-4 py-1.5 text-xs rounded-lg transition-all", range === 30 ? "bg-white shadow-sm font-bold text-slate-800" : "text-slate-500 hover:text-slate-700")}>30 days</button>
+                </div>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="rounded-2xl border border-indigo-100 bg-indigo-50/30 p-5 text-indigo-700">
+                  <div className="flex items-center justify-between text-sm font-bold mb-3"><span>Sleep Duration</span><Bed className="w-5 h-5" /></div>
+                  <TinySparkline points={trendSeries.sleep} />
+                  <p className="text-xs mt-3 opacity-80">{trendSeries.sleepTakeaway}</p>
+                </div>
+                <div className="rounded-2xl border border-violet-100 bg-violet-50/30 p-5 text-violet-700">
+                  <div className="flex items-center justify-between text-sm font-bold mb-3"><span>Overall Mood</span><Smile className="w-5 h-5" /></div>
+                  <TinySparkline points={trendSeries.mood} />
+                  <p className="text-xs mt-3 opacity-80">{trendSeries.moodTakeaway}</p>
+                </div>
+                <div className="rounded-2xl border border-rose-100 bg-rose-50/30 p-5 text-rose-700">
+                  <div className="flex items-center justify-between text-sm font-bold mb-3"><span>Hot Flash Episodes</span><Flame className="w-5 h-5" /></div>
+                  <TinySparkline points={trendSeries.hotFlashes} />
+                  <p className="text-xs mt-3 opacity-80">{trendSeries.hotTakeaway}</p>
+                </div>
+                <div className="rounded-2xl border border-amber-100 bg-amber-50/30 p-5 text-amber-700">
+                  <div className="flex items-center justify-between text-sm font-bold mb-3"><span>Energy Levels</span><CircleDot className="w-5 h-5" /></div>
+                  <TinySparkline points={trendSeries.energy} />
+                  <p className="text-xs mt-3 opacity-80">{trendSeries.energyTakeaway}</p>
+                </div>
+              </div>
+            </section>
+          </ScrollReveal>
+
+          {/* Quick Actions & Support Links (Integrated) */}
+          <ScrollReveal delay={160}>
+            <section className="space-y-4">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-slate-800 text-center">Toolkit & Support</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <Link to="/menopause/symptoms" className="group rounded-2xl border border-slate-200 bg-white hover:border-violet-300 hover:shadow-md p-4 text-center transition-all">
+                  <ClipboardCheck className="w-6 h-6 mx-auto mb-2 text-violet-500 group-hover:scale-110 transition-transform" />
+                  <p className="text-xs font-bold text-slate-700">Log Symptoms</p>
+                </Link>
+                <Link to="/menopause/sleep-mood" className="group rounded-2xl border border-slate-200 bg-white hover:border-violet-300 hover:shadow-md p-4 text-center transition-all">
+                  <Moon className="w-6 h-6 mx-auto mb-2 text-indigo-500 group-hover:scale-110 transition-transform" />
+                  <p className="text-xs font-bold text-slate-700">Track Sleep</p>
+                </Link>
+                <Link to="/menopause/nutrition" className="group rounded-2xl border border-slate-200 bg-white hover:border-violet-300 hover:shadow-md p-4 text-center transition-all">
+                  <Utensils className="w-6 h-6 mx-auto mb-2 text-orange-500 group-hover:scale-110 transition-transform" />
+                  <p className="text-xs font-bold text-slate-700">Nutrition Guide</p>
+                </Link>
+                <Link to="/menopause/ai-assistant" className="group rounded-2xl border border-slate-200 bg-white hover:border-teal-300 hover:shadow-md p-4 text-center transition-all">
+                  <MessageSquare className="w-6 h-6 mx-auto mb-2 text-teal-500 group-hover:scale-110 transition-transform" />
+                  <p className="text-xs font-bold text-slate-700">Ask AI Sakhi</p>
+                </Link>
+              </div>
+            </section>
+          </ScrollReveal>
+
+
+          {/* Guidance */}
+          <ScrollReveal delay={200}>
+            <section className={cn("rounded-3xl border p-6 text-center", guidance.tone === "caution" ? "border-amber-200 bg-amber-50" : guidance.tone === "positive" ? "border-teal-200 bg-teal-50" : "border-violet-200 bg-violet-50")}>
+              <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Daily Guidance</h2>
+              <p className="text-lg font-bold text-slate-800">{guidance.headline}</p>
+              <p className="text-sm text-slate-600 mt-2 max-w-lg mx-auto">{guidance.message}</p>
+              <div className="mt-4 pt-4 border-t border-slate-200/50">
+                <p className="text-xs font-semibold text-slate-700 flex items-center justify-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  Your next check-in is due tomorrow morning.
+                </p>
+              </div>
+            </section>
+          </ScrollReveal>
+
+          {/* Bone Health Check */}
+          <ScrollReveal delay={220}>
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col md:flex-row items-center gap-4 text-center md:text-left">
+              <div className="w-12 h-12 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                <Activity className="w-6 h-6 text-violet-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-slate-800">Bone Health Check</p>
+                <p className="text-xs text-slate-500 leading-snug">{boneHealth.recommendation}</p>
+              </div>
+              <div className={cn("px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest shrink-0", boneHealth.status === "good" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
+                {boneHealth.status === "good" ? "Status: Optimal" : "Status: Needs Focus"}
+              </div>
+            </div>
+          </ScrollReveal>
+
+        </div>
       </div>
-    </main>
+    </div>
   );
+}
+
+// ─── Helpers (Moved from bottom) ─────────────────────────────────────────────
+
+interface WellnessScore {
+  score: number;
+  color: "emerald" | "amber" | "rose" | "slate";
+}
+
+function computeMenoWellnessScore(logs: MenopauseLogEntry[], profile: MenopauseProfile | null): WellnessScore {
+  if (logs.length === 0) return { score: 0, color: "slate" };
+  const recent = recentLogsByDays(logs, 7);
+  if (recent.length === 0) return { score: 0, color: "slate" };
+
+  let total = 0;
+  recent.forEach(l => {
+    let day = 0;
+    day += (l.sleepHrs >= 7 ? 30 : 15);
+    day += (l.mood >= 4 ? 30 : 15);
+    day += (l.severity === "mild" ? 40 : l.severity === "moderate" ? 20 : 0);
+    total += day;
+  });
+  
+  const score = Math.round(total / recent.length);
+  const color = score >= 80 ? "emerald" : score >= 50 ? "amber" : "rose";
+  return { score, color };
+}
+
+function getTopSymptomsThisWeek(logs: MenopauseLogEntry[]) {
+  const recent = recentLogsByDays(logs, 7);
+  const counts: Record<string, number> = {};
+  recent.forEach(l => {
+    l.symptoms.forEach(s => {
+      counts[s] = (counts[s] || 0) + 1;
+    });
+  });
+  
+  return Object.entries(counts)
+    .map(([id, count]) => {
+      const opt = SYMPTOM_OPTIONS.find(o => o.id === id);
+      return { id, count, label: opt?.label || id, emoji: opt?.emoji || "✨" };
+    })
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
+}
+
+const SYMPTOM_OPTIONS = [
+  { id: 'hot_flashes', label: 'Hot flashes', emoji: '🔥' },
+  { id: 'night_sweats', label: 'Night sweats', emoji: '🌙' },
+  { id: 'mood_swings', label: 'Mood swings', emoji: '🎭' },
+  { id: 'anxiety', label: 'Anxiety', emoji: '😰' },
+  { id: 'sleep_issues', label: 'Sleep issues', emoji: '😴' },
+  { id: 'fatigue', label: 'Fatigue', emoji: '🪫' },
+  { id: 'brain_fog', label: 'Brain fog', emoji: '🌫️' },
+  { id: 'headache', label: 'Headache', emoji: '🤕' },
+  { id: 'joint_pain', label: 'Joint pain', emoji: '🦴' },
+  { id: 'vaginal_dryness', label: 'Vaginal dryness', emoji: '💧' },
+  { id: 'muscle_stiffness', label: 'Muscle stiffness', emoji: '💪' },
+  { id: 'weight_gain', label: 'Weight gain', emoji: '⚖️' },
+  { id: 'low_libido', label: 'Low libido', emoji: '💜' },
+  { id: 'dry_skin', label: 'Dry skin', emoji: '🧴' },
+  { id: 'hair_thinning', label: 'Hair thinning', emoji: '💇' },
+  { id: 'palpitations', label: 'Palpitations', emoji: '💓' },
+];
+
+function getSleepMoodSummary(logs: MenopauseLogEntry[]) {
+  const recent = recentLogsByDays(logs, 7);
+  if (recent.length < 2) return { avgSleep: 0, sleepTrend: "stable" as const, avgMood: 0, moodTrend: "stable" as const };
+  
+  const sleeps = recent.map(l => l.sleepHrs);
+  const moods = recent.map(l => l.mood);
+  const avgSleep = sleeps.reduce((a, b) => a + b, 0) / sleeps.length;
+  const avgMood = moods.reduce((a, b) => a + b, 0) / moods.length;
+  
+  const getTrend = (data: number[]) => {
+    const last = data[data.length - 1];
+    const prev = data[data.length - 2];
+    if (last > prev) return "up" as const;
+    if (last < prev) return "down" as const;
+    return "stable" as const;
+  };
+
+  return { avgSleep, sleepTrend: getTrend(sleeps), avgMood, moodTrend: getTrend(moods) };
+}
+
+function getDailyGuidance(profile: MenopauseProfile | null, logs: MenopauseLogEntry[]) {
+  if (!profile) return { tone: "info", headline: "Welcome to your journey", message: "Complete your onboarding for personalized guidance." };
+  const recent = recentLogsByDays(logs, 7);
+  
+  if (recent.length === 0) return { tone: "positive", headline: "A fresh start today", message: "Log your first entry to see how your body is adjusting." };
+  
+  const last = recent[recent.length - 1];
+  if (last.hotFlashCount >= 5) return { tone: "caution", headline: "Temperature spikes detected", message: "Your hot flash frequency is up. Prioritize hydration and cotton clothing." };
+  if (last.sleepHrs < 6) return { tone: "caution", headline: "Rest is vital", message: "Your sleep was low yesterday. Try a cool room and limited caffeine today." };
+  
+  return { tone: "positive", headline: "You're doing great", message: "Your consistency is key to managing this transition smoothly." };
+}
+
+function getBoneHealthStatus(logs: MenopauseLogEntry[], profile: MenopauseProfile | null) {
+  const recent = recentLogsByDays(logs, 14);
+  const supplements = recent.filter(l => l.vitaminDTaken).length;
+  if (supplements > 10) return { status: "good", recommendation: "Excellent consistency with supplements and activity." };
+  return { status: "needs_focus", recommendation: "Focus on calcium-rich foods and 15 mins of morning sun." };
+}
+
+interface WellnessFocusAction {
+  id: string;
+  icon: string;
+  text: string;
+}
+
+function getWellnessFocusToday(logs: MenopauseLogEntry[], profile: MenopauseProfile | null) {
+  if (!profile) return { focusEmoji: "✨", focusTitle: "Setup Journey", explanation: "Onboarding helps customize your focus.", actions: [], redFlagAlert: null, tone: "info" as const };
+  
+  const recent = recentLogsByDays(logs, 7);
+  const sleepIssues = recent.filter(l => l.sleepHrs < 6).length > 3;
+  const hotFlashes = recent.some(l => l.hotFlashCount > 4);
+
+  if (hotFlashes) return {
+    focusEmoji: "❄️",
+    focusTitle: "Stay Cool & Balanced",
+    explanation: "Frequent temperature spikes detected this week.",
+    tone: "caution" as const,
+    redFlagAlert: null,
+    actions: [
+      { id: "hydrate", icon: "💧", text: "2L Water with electrolytes" },
+      { id: "clothing", icon: "🧥", text: "Layered cotton clothing" },
+      { id: "cool_down", icon: "🧊", text: "Cool shower before bed" }
+    ]
+  };
+
+  if (sleepIssues) return {
+    focusEmoji: "🌙",
+    focusTitle: "Restoration Focus",
+    explanation: "Your sleep pattern has been fragmented lately.",
+    tone: "info" as const,
+    redFlagAlert: null,
+    actions: [
+      { id: "magnesium", icon: "💊", text: "Magnesium-rich dinner" },
+      { id: "no_screen", icon: "📵", text: "No screens 1hr before bed" },
+      { id: "reading", icon: "📖", text: "15 mins light reading" }
+    ]
+  };
+
+  return {
+    focusEmoji: "🌿",
+    focusTitle: "Nourish & Move",
+    explanation: "Maintain your energy and bone strength today.",
+    tone: "positive" as const,
+    redFlagAlert: null,
+    actions: [
+      { id: "walk", icon: "🚶", text: "20 min morning walk" },
+      { id: "calcium", icon: "🥛", text: "Calcium-rich meal" },
+      { id: "stretch", icon: "🧘", text: "Gentle pelvic floor work" }
+    ]
+  };
+}
+
+function getHeartHealthStatus(logs: MenopauseLogEntry[]) {
+  const recent = recentLogsByDays(logs, 30);
+  const bpLogs = recent.filter(l => l.bpSystolic);
+  if (bpLogs.length === 0) return { message: "Log your BP occasionally to track cardiovascular wellness." };
+  return { message: "Your vascular health looks stable based on recent logs." };
 }

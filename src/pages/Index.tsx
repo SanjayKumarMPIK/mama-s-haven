@@ -1,10 +1,23 @@
-import { Link } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePhase } from "@/hooks/usePhase";
 import ScrollReveal from "@/components/ScrollReveal";
 import { Bot, Sparkles, ArrowRight, ShieldCheck, Activity } from "lucide-react";
 
 export default function Index() {
   const { t, simpleMode } = useLanguage();
+  const location = useLocation();
+  const { phase, setPhase } = usePhase();
+  const isMenopauseHome = location.pathname === "/menopause";
+
+  useEffect(() => {
+    if (isMenopauseHome && phase !== "menopause") {
+      void setPhase("menopause");
+    }
+  }, [isMenopauseHome, phase, setPhase]);
+
+  const getStartedTo = isMenopauseHome ? "/menopause/dashboard" : "/dashboard";
 
   return (
     <div className={`min-h-screen flex flex-col bg-slate-50 ${simpleMode ? "simple-mode" : ""}`}>
@@ -54,7 +67,7 @@ export default function Index() {
             <ScrollReveal>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 w-full sm:w-auto">
                 <Link
-                  to="/dashboard"
+                  to={getStartedTo}
                   className="group flex flex-1 sm:flex-none items-center justify-center gap-2 px-8 py-4 rounded-2xl bg-slate-900 text-white font-semibold text-lg shadow-lg hover:shadow-xl hover:bg-slate-800 hover:-translate-y-0.5 transition-all duration-300"
                 >
                   {t("getStarted")}

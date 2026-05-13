@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Users, Calendar, FileText, AlertCircle, Search, Clock, ChevronRight, Bell, Stethoscope, ShieldAlert } from "lucide-react";
+import { Users, Calendar, FileText, AlertCircle, Search, ChevronRight, Bell, Stethoscope, ShieldAlert, Timer } from "lucide-react";
 import { useDoctorAuth } from "@/modules/doctor/hooks/useDoctorAuth";
 import { Link } from "react-router-dom";
 import { getRequestsByDoctor } from "@/lib/connectionStore";
@@ -8,17 +8,14 @@ import { useDoctorRouteAlertCounts } from "@/modules/doctor/components/DoctorRou
 
 const DOCTOR_ID = "doctor-demo-123";
 const DOCTOR_ALERTS_KEY = "ss-maternity-doctor-alerts";
-const SCHEDULES_KEY = "doctor-schedules";
 
-interface ScheduleItem {
-  id: string;
+interface LmpEddInfo {
+  patientId: string;
   patientName: string;
-  scheduleDate: string;
-  scheduleTime: string;
-  scheduleType: string;
-  phase: string;
-  consultationMode: string;
-  status: string;
+  lmp: string;
+  edd: string;
+  daysRemaining: number;
+  status: "upcoming" | "due-soon" | "overdue" | "unknown";
 }
 
 interface PatientRecord {
@@ -31,8 +28,17 @@ interface PatientRecord {
   avatar: string;
 }
 
-function getTodayStr(): string {
-  return new Date().toISOString().split("T")[0];
+function addDays(ymd: string, days: number): string {
+  const d = new Date(ymd + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function daysUntil(ymd: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(ymd + "T00:00:00");
+  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function loadPatients(): PatientRecord[] {
@@ -51,18 +57,28 @@ function loadPatients(): PatientRecord[] {
   });
 }
 
-function loadTodayAppointments(): ScheduleItem[] {
-  try {
-    const raw = localStorage.getItem(SCHEDULES_KEY);
-    if (raw) {
-      const all: ScheduleItem[] = JSON.parse(raw);
-      const today = getTodayStr();
-      return all
-        .filter((s) => s.scheduleDate === today && s.status !== "Cancelled")
-        .sort((a, b) => a.scheduleTime.localeCompare(b.scheduleTime));
-    }
-  } catch {}
-  return [];
+function loadLmpEddAlerts(): LmpEddInfo[] {
+  const requests = getRequestsByDoctor(DOCTOR_ID).filter((r) => r.status === "accepted");
+  const result: LmpEddInfo[] = [];
+  for (const r of requests) {
+    const edd = r.patientProfile?.expectedDueDate;
+    if (!edd) continue;
+    const lmp = addDays(edd, -280);
+    const days = daysUntil(edd);
+    let status: LmpEddInfo["status"] = "upcoming";
+    if (days < 0) status = "overdue";
+    else if (days <= 7) status = "due-soon";
+    result.push({
+      patientId: r.id,
+      patientName: r.patientProfile?.fullName ?? r.patientName,
+      lmp,
+      edd,
+      daysRemaining: days,
+      status,
+    });
+  }
+  result.sort((a, b) => a.daysRemaining - b.daysRemaining);
+  return result;
 }
 
 function loadActiveAlertsCount(): number {
@@ -107,7 +123,7 @@ export default function DoctorDashboard() {
     void refreshDoctorProfile();
   }, [refreshDoctorProfile]);
   const [patients, setPatients] = useState<PatientRecord[]>(loadPatients);
-  const [appointments, setAppointments] = useState<ScheduleItem[]>(loadTodayAppointments);
+  const [lmpEddAlerts, setLmpEddAlerts] = useState<LmpEddInfo[]>(loadLmpEddAlerts);
   const [pendingReports, setPendingReports] = useState(loadPendingReportsCount);
   const [activeAlerts, setActiveAlerts] = useState(loadActiveAlertsCount);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -122,7 +138,7 @@ export default function DoctorDashboard() {
   const refresh = useCallback(() => {
     if (!mountedRef.current) return;
     setPatients(loadPatients());
-    setAppointments(loadTodayAppointments());
+    setLmpEddAlerts(loadLmpEddAlerts());
     const pr = loadPendingReportsCount();
     setPendingReports(pr);
     const aa = loadActiveAlertsCount();
@@ -231,11 +247,11 @@ export default function DoctorDashboard() {
             trend={totalPatients > 0 ? `${totalPatients} connected` : "No patients yet"}
           />
           <StatCard
-            icon={Calendar}
-            label="Today's Appointments"
-            value={String(appointments.length)}
+            icon={Timer}
+            label="LMP / EDD Alerts"
+            value={String(lmpEddAlerts.length)}
             color="blue"
-            trend={appointments.length > 0 ? `${appointments.length} scheduled` : "No appointments today"}
+            trend={lmpEddAlerts.length > 0 ? `${lmpEddAlerts.filter(a => a.status === "due-soon").length} due soon` : "No LMP records"}
           />
           <StatCard
             icon={FileText}
@@ -260,45 +276,66 @@ export default function DoctorDashboard() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Upcoming Appointments */}
+          {/* LMP / EDD Alerts */}
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex items-center justify-between p-6 border-b border-slate-100">
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Clock className="h-5 w-5 text-teal-600" />
-                Today's Appointments
+                <Timer className="h-5 w-5 text-teal-600" />
+                LMP &amp; EDD Alerts
               </h2>
               <Link
-                to="/doctor/schedules"
+                to="/doctor/patients"
                 className="text-sm font-medium text-teal-600 hover:text-teal-700 flex items-center gap-1"
               >
                 View all
                 <ChevronRight className="h-4 w-4" />
               </Link>
             </div>
-            {appointments.length > 0 ? (
+            {lmpEddAlerts.length > 0 ? (
               <div className="divide-y divide-slate-100">
-                {appointments.map((apt) => (
-                  <div key={apt.id} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-teal-700 font-semibold text-sm">
-                        {apt.patientName.split(" ").map((n) => n[0]).join("")}
+                {lmpEddAlerts.map((alert) => {
+                  const statusBadge = {
+                    "due-soon": "bg-red-100 text-red-700",
+                    overdue: "bg-amber-100 text-amber-700",
+                    upcoming: "bg-blue-100 text-blue-700",
+                    unknown: "bg-slate-100 text-slate-600",
+                  }[alert.status];
+                  const statusLabel = {
+                    "due-soon": "Due Soon",
+                    overdue: "Overdue",
+                    upcoming: "Upcoming",
+                    unknown: "Unknown",
+                  }[alert.status];
+                  return (
+                    <div key={alert.patientId} className="flex items-center justify-between p-4 hover:bg-slate-50 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-teal-50 text-teal-700 font-semibold text-sm">
+                          {alert.patientName.split(" ").map((n) => n[0]).join("")}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-slate-900">{alert.patientName}</p>
+                          <p className="text-sm text-slate-500">
+                            LMP: {alert.lmp} &middot; EDD: {alert.edd}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-slate-900">{apt.patientName}</p>
-                        <p className="text-sm text-slate-500">{apt.scheduleType}{apt.consultationMode ? ` · ${apt.consultationMode}` : ""}</p>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full whitespace-nowrap">
+                          {alert.daysRemaining > 0 ? `${alert.daysRemaining}d left` : alert.daysRemaining === 0 ? "Due today" : `${Math.abs(alert.daysRemaining)}d overdue`}
+                        </span>
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${statusBadge}`}>
+                          {statusLabel}
+                        </span>
                       </div>
                     </div>
-                    <span className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full">
-                      {apt.scheduleTime}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Calendar className="h-10 w-10 text-slate-300 mb-2" />
-                <p className="text-sm font-medium text-slate-500">No appointments today</p>
-                <p className="text-xs text-slate-400 mt-1">Schedule a new appointment to get started</p>
+                <p className="text-sm font-medium text-slate-500">No LMP / EDD records</p>
+                <p className="text-xs text-slate-400 mt-1">Patient LMP data will appear when patients connect and set their due dates</p>
               </div>
             )}
           </div>

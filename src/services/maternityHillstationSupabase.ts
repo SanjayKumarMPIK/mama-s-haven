@@ -269,6 +269,56 @@ export async function fetchAcknowledgedAlertIdsForDoctor(doctorId: string): Prom
   return new Set((data as { alert_id: string }[]).map((r) => r.alert_id));
 }
 
+export interface HillstationAcknowledgmentActivity {
+  alertId: string;
+  doctorId: string;
+  acknowledgedAt: string;
+}
+
+export async function fetchHillstationAcknowledgmentsForPatient(
+  patientId: string,
+  doctorId?: string,
+): Promise<HillstationAcknowledgmentActivity[]> {
+  const { data: alerts, error: alertsError } = await userDb
+    .from('maternity_hillstation_alerts')
+    .select('id')
+    .eq('patient_id', patientId)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (alertsError || !alerts?.length) {
+    if (alertsError) {
+      console.error('[HillstationAlert] patient ack alerts fetch:', alertsError.message);
+    }
+    return [];
+  }
+
+  const alertIds = (alerts as { id: string }[]).map((row) => row.id);
+  let query = userDb
+    .from('maternity_hillstation_acknowledgments')
+    .select('alert_id, doctor_id, acknowledged_at')
+    .in('alert_id', alertIds)
+    .order('acknowledged_at', { ascending: false });
+
+  if (doctorId) {
+    query = query.eq('doctor_id', doctorId);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) {
+    if (error) {
+      console.error('[HillstationAlert] patient ack fetch:', error.message);
+    }
+    return [];
+  }
+
+  return (data as { alert_id: string; doctor_id: string; acknowledged_at: string }[]).map((row) => ({
+    alertId: row.alert_id,
+    doctorId: row.doctor_id,
+    acknowledgedAt: row.acknowledged_at,
+  }));
+}
+
 export async function acknowledgeHillstationAlertOnServer(alertId: string, doctorId: string): Promise<boolean> {
   const { error } = await doctorDb.from('maternity_hillstation_acknowledgments').insert({
     alert_id: alertId,

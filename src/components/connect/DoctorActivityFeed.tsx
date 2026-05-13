@@ -1,18 +1,24 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { UserCheck, ShieldCheck, Bell, Clock, Activity, CalendarDays, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { UserCheck, ShieldCheck, Bell, Clock, Activity, CalendarDays, CheckCircle2, XCircle, RefreshCw, Siren, ShieldAlert } from "lucide-react";
 import { getAllScheduleActivity, type ScheduleRequest } from "@/lib/scheduleStore";
+import { useAuth } from "@/hooks/useAuth";
+import { getSOSAlertsByPatient } from "@/lib/sosStore";
+import { fetchHillstationAcknowledgmentsForPatient } from "@/services/maternityHillstationSupabase";
 
 interface ActivityItem {
   icon: React.ComponentType<{ className?: string }>;
   color: string;
   bgColor: string;
   text: string;
-  time: string;
+  timestamp: string;
+  time?: string;
 }
 
 interface Props {
+  connectedAt: string;
   connectedDate: string;
   doctorCode?: string;
+  doctorId?: string;
 }
 
 function formatTime(iso: string): string {
@@ -37,26 +43,87 @@ const STATUS_ACTIVITY: Record<string, { icon: React.ComponentType<{ className?: 
   completed: { icon: Clock, color: "text-slate-600", bgColor: "bg-slate-100", textPrefix: "Appointment completed" },
 };
 
-export default function DoctorActivityFeed({ connectedDate, doctorCode }: Props) {
+export default function DoctorActivityFeed({ connectedAt, connectedDate, doctorCode, doctorId }: Props) {
+  const { user } = useAuth();
   const [allRequests, setAllRequests] = useState<ScheduleRequest[]>([]);
+  const [remoteActivities, setRemoteActivities] = useState<ActivityItem[]>([]);
   const mountedRef = useRef(true);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     if (mountedRef.current && doctorCode) {
-      setAllRequests(getAllScheduleActivity(doctorCode, 10));
+      try {
+        const data = await getAllScheduleActivity(doctorCode, 10);
+        if (mountedRef.current) setAllRequests(data);
+      } catch (err) {
+        console.warn('[DoctorActivityFeed] refresh error:', err);
+      }
     }
   }, [doctorCode]);
+
+  const refreshRemoteActivities = useCallback(async () => {
+    if (!mountedRef.current || !user?.id || !doctorCode) {
+      if (mountedRef.current) {
+        setRemoteActivities([]);
+      }
+      return;
+    }
+
+    const [sosAlerts, hillstationAcknowledgments] = await Promise.all([
+      getSOSAlertsByPatient(user.id),
+      fetchHillstationAcknowledgmentsForPatient(user.id, doctorId),
+    ]);
+
+    if (!mountedRef.current) return;
+
+    const sosItems: ActivityItem[] = sosAlerts
+      .filter(
+        (alert) =>
+          alert.doctorCode === doctorCode &&
+          (alert.status === "acknowledged" || alert.status === "resolved"),
+      )
+      .map((alert) => ({
+        icon: alert.status === "resolved" ? CheckCircle2 : Siren,
+        color: alert.status === "resolved" ? "text-emerald-600" : "text-red-600",
+        bgColor: alert.status === "resolved" ? "bg-emerald-100" : "bg-red-100",
+        text:
+          alert.status === "resolved"
+            ? "Doctor resolved your emergency SOS"
+            : "Doctor acknowledged your emergency SOS",
+        timestamp: alert.handledAt || alert.updatedAt || alert.createdAt,
+      }));
+
+    const hillstationItems: ActivityItem[] = hillstationAcknowledgments.map((activity) => ({
+      icon: ShieldAlert,
+      color: "text-orange-600",
+      bgColor: "bg-orange-100",
+      text: "Doctor acknowledged your high-risk maternity alert",
+      timestamp: activity.acknowledgedAt,
+    }));
+
+    setRemoteActivities([...sosItems, ...hillstationItems]);
+  }, [doctorCode, doctorId, user?.id]);
 
   useEffect(() => {
     if (!doctorCode) return;
     mountedRef.current = true;
-    setAllRequests(getAllScheduleActivity(doctorCode, 10));
-    const interval = setInterval(refresh, 5000);
+    void refresh();
+    void refreshRemoteActivities();
+    const interval = setInterval(() => void refresh(), 5000);
+    const remoteInterval = setInterval(() => {
+      void refreshRemoteActivities();
+    }, 5000);
+    const handleStorage = () => {
+      void refresh();
+      void refreshRemoteActivities();
+    };
+    window.addEventListener("storage", handleStorage);
     return () => {
       mountedRef.current = false;
       clearInterval(interval);
+      clearInterval(remoteInterval);
+      window.removeEventListener("storage", handleStorage);
     };
-  }, [doctorCode, refresh]);
+  }, [doctorCode, refresh, refreshRemoteActivities]);
 
   const activities: ActivityItem[] = useMemo(() => {
     const items: ActivityItem[] = [
@@ -65,6 +132,7 @@ export default function DoctorActivityFeed({ connectedDate, doctorCode }: Props)
         color: "text-emerald-600",
         bgColor: "bg-emerald-100",
         text: "Connection accepted by doctor",
+        timestamp: connectedAt,
         time: connectedDate,
       },
       {
@@ -72,6 +140,7 @@ export default function DoctorActivityFeed({ connectedDate, doctorCode }: Props)
         color: "text-purple-600",
         bgColor: "bg-purple-100",
         text: "Profile shared with doctor",
+        timestamp: connectedAt,
         time: connectedDate,
       },
       {
@@ -79,6 +148,7 @@ export default function DoctorActivityFeed({ connectedDate, doctorCode }: Props)
         color: "text-blue-600",
         bgColor: "bg-blue-100",
         text: "Health alerts enabled for sharing",
+        timestamp: connectedAt,
         time: "Today",
       },
     ];
@@ -92,13 +162,15 @@ export default function DoctorActivityFeed({ connectedDate, doctorCode }: Props)
           color: config.color,
           bgColor: config.bgColor,
           text: `${config.textPrefix} · ${req.appointmentReason}`,
-          time: formatTime(req.updatedAt || req.createdAt),
+          timestamp: req.updatedAt || req.createdAt,
         });
       }
     }
 
-    return items;
-  }, [allRequests, connectedDate]);
+    return [...remoteActivities, ...items].sort(
+      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+  }, [allRequests, connectedAt, connectedDate, remoteActivities]);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
@@ -126,7 +198,7 @@ export default function DoctorActivityFeed({ connectedDate, doctorCode }: Props)
                     <p className="text-sm font-medium text-gray-700">{item.text}</p>
                     <div className="flex items-center gap-1 mt-0.5 text-xs text-gray-400">
                       <Clock className="w-3 h-3" />
-                      {item.time}
+                      {item.time ?? formatTime(item.timestamp)}
                     </div>
                   </div>
                 </div>

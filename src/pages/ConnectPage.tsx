@@ -8,10 +8,18 @@ import type { StoredUserData } from "@/hooks/useAuth";
 import {
   createSupabaseRequest,
   getSupabaseRequestByCode,
+  getExistingConnectionForPatient,
 } from "@/lib/supabaseConnectionStore";
 import type { PatientProfileData } from "@/lib/connectionStore";
 import type { ConnectionStatus } from "@/lib/connectionStore";
 import MyDoctorDashboard from "@/components/connect/MyDoctorDashboard";
+
+interface ActiveConnection {
+  status: ConnectionStatus;
+  code: string;
+  doctorId: string;
+  createdAt: string;
+}
 
 function mapStoredUserToPatientProfile(fp: StoredUserData): PatientProfileData {
   const age = parseInt(fp.basic.age, 10) || 0;
@@ -69,29 +77,54 @@ export default function ConnectPage() {
   const { user, fullProfile } = useAuth();
   const [doctorCode, setDoctorCode] = useState("");
   const [requestStatus, setRequestStatus] = useState<"idle" | "invalid" | "submitting">("idle");
-  const [connection, setConnection] = useState<{ status: ConnectionStatus; code: string } | null>(null);
+  const [connection, setConnection] = useState<ActiveConnection | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
-  // On mount, check for existing pending request stored in sessionStorage
+  // On mount, query Supabase for this user's existing connection (user-scoped)
   useEffect(() => {
-    const savedCode = sessionStorage.getItem("ss-active-doctor-code");
-    if (!savedCode || !user?.id) return;
-    getSupabaseRequestByCode(savedCode, user.id).then((req) => {
-      if (req) setConnection({ status: req.status, code: savedCode });
-    });
+    if (!user?.id) {
+      setInitialLoading(false);
+      return;
+    }
+
+    const checkExisting = async () => {
+      setInitialLoading(true);
+      try {
+        const existing = await getExistingConnectionForPatient(user.id);
+        if (existing) {
+          setConnection({
+            status: existing.status,
+            code: existing.doctorCode,
+            doctorId: existing.doctorId,
+            createdAt: existing.createdAt,
+          });
+        }
+      } catch (err) {
+        console.warn('[ConnectPage] Failed to check existing connection:', err);
+      }
+      setInitialLoading(false);
+    };
+
+    checkExisting();
   }, [user?.id]);
 
-  // Poll for status changes when a connection exists
+  // Poll for status changes when a pending connection exists
   const pollStatus = useCallback(() => {
-    if (!connection || !user?.id) return;
+    if (!connection || connection.status === "accepted" || !user?.id) return;
     getSupabaseRequestByCode(connection.code, user.id).then((req) => {
       if (req && req.status !== connection.status) {
-        setConnection({ status: req.status, code: connection.code });
+        setConnection({
+          status: req.status,
+          code: req.doctorCode,
+          doctorId: req.doctorId,
+          createdAt: req.createdAt,
+        });
       }
     });
   }, [connection, user?.id]);
 
   useEffect(() => {
-    if (!connection) return;
+    if (!connection || connection.status === "accepted") return;
     const interval = setInterval(pollStatus, 5000);
     return () => clearInterval(interval);
   }, [connection, pollStatus]);
@@ -104,8 +137,12 @@ export default function ConnectPage() {
     const req = await createSupabaseRequest(doctorCode.trim(), user.id, profile);
 
     if (req) {
-      sessionStorage.setItem("ss-active-doctor-code", req.doctorCode);
-      setConnection({ status: req.status, code: req.doctorCode });
+      setConnection({
+        status: req.status,
+        code: req.doctorCode,
+        doctorId: req.doctorId,
+        createdAt: req.createdAt,
+      });
       setRequestStatus("idle");
     } else {
       setRequestStatus("invalid");
@@ -116,8 +153,19 @@ export default function ConnectPage() {
     setRequestStatus("idle");
     setConnection(null);
     setDoctorCode("");
-    sessionStorage.removeItem("ss-active-doctor-code");
   };
+
+  // Show loading spinner while checking for existing connection
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-sky-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-500 mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Checking your connections...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-cyan-50 to-sky-50">
@@ -134,7 +182,12 @@ export default function ConnectPage() {
 
       <div className="container py-8">
         {connection?.status === "accepted" ? (
-          <MyDoctorDashboard doctorCode={connection.code} onDisconnect={reset} />
+          <MyDoctorDashboard
+            doctorCode={connection.code}
+            doctorId={connection.doctorId}
+            connectedAt={connection.createdAt}
+            onDisconnect={reset}
+          />
         ) : (
           <div className="max-w-md mx-auto">
             <div className="text-center mb-8">

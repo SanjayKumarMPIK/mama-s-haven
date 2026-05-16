@@ -25,7 +25,7 @@ interface HamburgerMenuProps {
 type SecondaryKey = "home" | "aiAssistant" | "weeklyGuide" | "nutritionGuide" | "symptomChecker" | "wellness" | "tools";
 
 const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; icon: LucideIcon }[] = [
-  { to: "/", labelKey: "home" as const, icon: Home },
+  { to: "/home", labelKey: "home" as const, icon: Home },
 
   { to: "/assistant", labelKey: "aiAssistant" as const, icon: Bot },
   { to: "/calendar", label: "Calendar", icon: Calendar },
@@ -39,6 +39,7 @@ const SECONDARY_ITEMS: { to: string; labelKey?: SecondaryKey; label?: string; ic
   { to: "/medicine-reminder", label: "Medicine Reminder", icon: Pill },
   { to: "/maternity/schemes", label: "Schemes", icon: ShieldCheck },
   { to: "/family-planning/care-log", label: "Care Log", icon: ClipboardList },
+  { to: "/cancer-awareness", label: "Cancer Awareness", icon: Heart },
   { to: "/connect", label: "Connect", icon: Stethoscope },
 ];
 
@@ -57,6 +58,23 @@ const FAMILY_PLANNING_ONLY_ROUTES = new Set([
 
 
 
+// Maternity-specific menu items in exact order
+const MATERNITY_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
+  { to: "/home", label: "Home", icon: Home },
+  { to: "/pregnancy-dashboard", label: "Dashboard", icon: Baby },
+  { to: "/calendar", label: "Calendar", icon: Calendar },
+  { to: "/nutrition", label: "Nutrition Guide", icon: Apple },
+  { to: "/symptom-checker", label: "Symptoms", icon: Search },
+  { to: "/tools", label: "Tools", icon: Wrench },
+  { to: "/medicine-reminder", label: "Care Log", icon: Pill },
+  { to: "/dashboard", label: "Maternal Guide", icon: Calendar },
+  { to: "/maternity/schemes", label: "Schemes", icon: ShieldCheck },
+  { to: "/cancer-awareness", label: "Cancer Awareness", icon: Heart },
+  { to: "/connect", label: "Connect", icon: Stethoscope },
+  { to: "/shopping", label: "Care Essentials", icon: ShoppingBag },
+  { to: "/assistant", label: "AI Assistant", icon: Bot },
+];
+
 // Menopause-specific menu items
 const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause", label: "Home", icon: Home },
@@ -67,6 +85,7 @@ const MENOPAUSE_ITEMS: { to: string; label: string; icon: LucideIcon }[] = [
   { to: "/menopause/wellness", label: "Wellness Tracker", icon: Trophy },
   { to: "/menopause/tools", label: "Tools", icon: Wrench },
   { to: "/menopause/dashboard", label: "Dashboard", icon: Calendar },
+  { to: "/cancer-awareness", label: "Cancer Awareness", icon: Heart },
   { to: "/menopause/connect", label: "Connect", icon: Stethoscope },
 ];
 
@@ -227,22 +246,32 @@ export default function HamburgerMenu({
                 ))
               ) : phase === "menopause" ? (
                 MENOPAUSE_ITEMS.map((item) => (
-                  <NavItem
-                    key={item.to}
-                    to={item.to}
-                    label={item.label}
-                    icon={item.icon}
-                    active={location.pathname === item.to}
-                    onClick={onClose}
-                  />
+                  <div key={item.to}>
+                    <NavItem
+                      to={item.to}
+                      label={item.label}
+                      icon={item.icon}
+                      active={location.pathname === item.to}
+                      onClick={onClose}
+                    />
+                  </div>
+                ))
+              ) : phase === "maternity" ? (
+                MATERNITY_ITEMS.map((item) => (
+                  <div key={item.to}>
+                    <NavItem
+                      to={item.to}
+                      label={item.label}
+                      icon={item.icon}
+                      active={location.pathname === item.to}
+                      onClick={onClose}
+                    />
+                  </div>
                 ))
               ) : (
                 SECONDARY_ITEMS.filter(item => {
-                  if (item.to === "/pregnancy-dashboard" && phase !== "maternity") return false;
                   if (item.to === "/wellness" && phase === "maternity") return false;
-                  // Show maternity-only routes only in maternity phase
                   if (MATERNITY_ONLY_ROUTES.has(item.to) && phase !== "maternity") return false;
-                  // Show family-planning-only routes only in family-planning phase
                   if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
                   return true;
                 }).map((item) => {
@@ -251,14 +280,15 @@ export default function HamburgerMenu({
                     : item.to;
 
                   return (
-                    <NavItem
-                      key={`${item.to}-${phase}`}
-                      to={to}
-                      label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
-                      icon={item.icon}
-                      active={location.pathname === to}
-                      onClick={onClose}
-                    />
+                    <div key={`${item.to}-${phase}`}>
+                      <NavItem
+                        to={to}
+                        label={item.label ?? (item.labelKey ? t(item.labelKey) : "")}
+                        icon={item.icon}
+                        active={location.pathname === to}
+                        onClick={onClose}
+                      />
+                    </div>
                   );
                 })
               )}

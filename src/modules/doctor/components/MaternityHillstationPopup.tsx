@@ -90,215 +90,124 @@ export function MaternityHillstationPopup({
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/60 p-3 backdrop-blur-sm animate-fadeIn sm:p-6">
-      <div className="flex min-h-full items-start justify-center sm:items-center">
-        <div className="animate-scaleIn flex w-full max-w-5xl max-h-[calc(100vh-1.5rem)] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_32px_80px_-32px_rgba(15,23,42,0.45)] sm:max-h-[calc(100vh-3rem)]">
-          <div className="border-b border-slate-200 bg-slate-950 px-5 py-5 text-white sm:px-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/15">
-                  <AlertTriangle className="h-6 w-6 text-orange-300" />
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-orange-200">
-                    Doctor dashboard notice
-                  </p>
-                  <h2 className="mt-1 text-xl font-semibold text-white sm:text-2xl">
-                    Maternity high-risk alert
-                  </h2>
-                  <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-300">
-                    A patient from a hillstation area is nearing delivery and requires timely doctor follow-up.
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                <span className="rounded-full border border-white/15 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-                  Action required
-                </span>
-                {riskLevel ? (
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-wide ${riskColors[riskLevel] ?? riskColors.high}`}
-                  >
-                    {riskLevel} risk
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm animate-fadeIn flex items-center justify-center">
+      <div className="animate-scaleIn flex w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl shadow-red-900/20 max-h-[calc(100vh-2rem)]">
+        {/* Header - Red Theme */}
+        <div className="bg-gradient-to-br from-red-600 to-red-700 px-6 py-5 text-white relative overflow-hidden">
+          {/* Subtle background decoration */}
+          <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+          <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-24 h-24 bg-black/10 rounded-full blur-xl" />
+          
+          <div className="relative z-10 flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-white/20 shadow-inner border border-white/20">
+              <AlertTriangle className="h-6 w-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                <h2 className="text-xl font-bold text-white tracking-tight">Hillstation Delivery Alert</h2>
+                <div className="flex gap-2">
+                  <span className="rounded-full border border-white/20 bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                    Action Required
                   </span>
-                ) : null}
+                  {riskLevel && (
+                    <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-red-700 shadow-sm">
+                      {riskLevel} RISK
+                    </span>
+                  )}
+                </div>
               </div>
+              <p className="text-red-100 text-sm leading-relaxed max-w-xl">
+                Patient from a remote hillstation area is approaching delivery. Immediate coordination for travel readiness is highly recommended.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div className="overflow-y-auto px-6 py-6">
+          {/* Patient Overview */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-600 ring-4 ring-red-50">
+              <User className="h-7 w-7" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-2xl font-bold text-slate-900 truncate">{alert.patient_name}</h3>
+              <p className="text-sm font-medium text-slate-500 flex items-center gap-1.5 mt-0.5 truncate">
+                <Mountain className="w-4 h-4 text-slate-400 shrink-0" /> 
+                {villageLabel} <span className="text-slate-300 mx-1">•</span> {phcLabel}
+              </p>
             </div>
           </div>
 
-          <div className="overflow-y-auto px-5 py-5 sm:px-6 sm:py-6">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)]">
-              <section className="rounded-[24px] border border-red-100 bg-gradient-to-br from-red-50 via-white to-orange-50 p-5 sm:p-6">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-red-700">
-                    Hillstation near delivery
-                  </span>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-                    Confirmed case
-                  </span>
+          {/* Time Critical Info */}
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="rounded-2xl border border-red-100 bg-red-50/50 p-4 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-red-100/50 rounded-full blur-xl -mr-8 -mt-8 transition-transform group-hover:scale-150" />
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 text-red-600 mb-1.5">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Due In</span>
                 </div>
-
-                <div className="mt-4 flex items-start gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-red-600 shadow-sm ring-1 ring-red-100">
-                    <User className="h-6 w-6" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-slate-500">Patient</p>
-                    <h3 className="text-2xl font-semibold tracking-tight text-slate-950">
-                      {alert.patient_name}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                      Expected delivery in <span className="font-semibold text-red-700">{daysText}</span>
-                      {" "}with an EDD of <span className="font-semibold text-slate-900">{dueDateLabel}</span>.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm">
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Baby className="h-4 w-4" />
-                      <p className="text-xs font-semibold uppercase tracking-wide">Phase</p>
-                    </div>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">
-                      Maternity / Pregnancy
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-white/80 bg-white/90 p-4 shadow-sm">
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Mountain className="h-4 w-4" />
-                      <p className="text-xs font-semibold uppercase tracking-wide">Regional status</p>
-                    </div>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">
-                      Hillstation condition confirmed
-                    </p>
-                  </div>
-                </div>
-
-                {alert.alert_message ? (
-                  <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
-                      Alert summary
-                    </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-700">
-                      {alert.alert_message}
-                    </p>
-                  </div>
-                ) : null}
-              </section>
-
-              <section className="rounded-[24px] border border-slate-200 bg-slate-50 p-5 sm:p-6">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Care snapshot
-                    </p>
-                    <h3 className="mt-1 text-lg font-semibold text-slate-950">
-                      Key patient details
-                    </h3>
-                  </div>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                  <div className="rounded-2xl border border-red-100 bg-white p-4">
-                    <div className="flex items-center gap-2 text-red-600">
-                      <Clock className="h-4 w-4" />
-                      <p className="text-xs font-semibold uppercase tracking-wide">Delivery due in</p>
-                    </div>
-                    <p className="mt-2 text-lg font-semibold text-slate-950">{daysText}</p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="flex items-center gap-2 text-slate-500">
-                      <Calendar className="h-4 w-4" />
-                      <p className="text-xs font-semibold uppercase tracking-wide">EDD</p>
-                    </div>
-                    <p className="mt-2 text-lg font-semibold text-slate-950">{dueDateLabel}</p>
-                  </div>
-                  {extras.map((row) => (
-                    <div key={row.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        {row.label}
-                      </p>
-                      <p className="mt-2 text-base font-semibold text-slate-950">{row.value}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-4 space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="flex items-start gap-3">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        PHC name
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-950">{phcLabel}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Village / Town
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-950">{villageLabel}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Phone className="mt-0.5 h-4 w-4 shrink-0 text-slate-500" />
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                        Emergency contact
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-slate-950">{emergencyContactLabel}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                    Clinical note
-                  </p>
-                  <p className="mt-2 text-sm leading-6 text-slate-700">
-                    Please review the case, coordinate travel-readiness, and confirm follow-up with the patient immediately.
-                  </p>
-                </div>
-              </section>
-            </div>
-          </div>
-
-          <div className="border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-6">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex flex-col gap-1 text-xs text-slate-500 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" />
-                  <span>
-                    Alert created {new Date(alert.created_at).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-                <span>
-                  Expires {new Date(alert.expires_at).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
+                <p className="text-2xl font-black text-red-950">{daysText}</p>
               </div>
-
-              <button
-                onClick={() => onAcknowledge(alert.id)}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition-all duration-200 hover:bg-slate-800 active:scale-[0.99] lg:w-auto lg:min-w-[260px]"
-              >
-                <CheckCircle2 className="h-5 w-5" />
-                Acknowledge and attend case
-              </button>
+            </div>
+            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+              <div className="flex items-center gap-2 text-slate-500 mb-1.5">
+                <Calendar className="w-4 h-4" />
+                <span className="text-xs font-bold uppercase tracking-wider">EDD</span>
+              </div>
+              <p className="text-lg font-bold text-slate-900 mt-1">{dueDateLabel}</p>
             </div>
           </div>
+
+          {/* Patient Details Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {extras.map((row) => (
+              <div key={row.label} className="rounded-xl border border-slate-100 p-3 bg-white shadow-sm">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{row.label}</p>
+                <p className="text-sm font-bold text-slate-800">{row.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Emergency Contact */}
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                <Phone className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 mb-0.5">Emergency Contact</p>
+                <p className="text-sm font-bold text-amber-950">{emergencyContactLabel}</p>
+              </div>
+            </div>
+            <a href={`tel:${emergencyContactLabel}`} className="px-4 py-2 rounded-lg bg-amber-600 text-white text-xs font-bold hover:bg-amber-700 transition-colors hidden sm:block">
+              Call Now
+            </a>
+          </div>
+
+          {/* Alert Message Note */}
+          {alert.alert_message && (
+            <div className="mt-5 rounded-xl bg-slate-50 border border-slate-100 p-4 text-sm text-slate-700 leading-relaxed border-l-4 border-l-red-500 shadow-sm">
+              <span className="font-bold text-slate-900">Clinical Note:</span> {alert.alert_message}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-slate-100 bg-slate-50 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-xs text-slate-500 font-medium text-center sm:text-left flex flex-col sm:block">
+            <span>Generated: {new Date(alert.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+            <span className="hidden sm:inline mx-2">•</span>
+            <span>Expires: {new Date(alert.expires_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+          </div>
+          <button
+            onClick={() => onAcknowledge(alert.id)}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-md shadow-red-200 hover:bg-red-700 active:scale-95 transition-all"
+          >
+            <CheckCircle2 className="w-5 h-5" />
+            Acknowledge Alert
+          </button>
         </div>
       </div>
     </div>

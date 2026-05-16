@@ -191,6 +191,15 @@ import FPNutritionIntelligencePage from "./pages/familyplanning/FPNutritionIntel
 
 import CareLog from "./pages/familyplanning/CareLog";
 
+import CancerAwarenessHome from "./modules/cancer-awareness/CancerAwarenessHome";
+import EarlySymptomsPage from "./modules/cancer-awareness/EarlySymptomsPage";
+import SelfExamGuidePage from "./modules/cancer-awareness/SelfExamGuidePage";
+import MythsFactsPage from "./modules/cancer-awareness/MythsFactsPage";
+import PreventionPage from "./modules/cancer-awareness/PreventionPage";
+import FamilyHistoryPage from "./modules/cancer-awareness/FamilyHistoryPage";
+import ScreeningAwarenessPage from "./modules/cancer-awareness/ScreeningAwarenessPage";
+import EmotionalSupportPage from "./modules/cancer-awareness/EmotionalSupportPage";
+
 import MaternityDeficiencyInsightsPage from "./pages/maternity/MaternityDeficiencyInsightsPage";
 import { SchemesPage } from "./modules/maternity/schemes/SchemesPage";
 
@@ -252,6 +261,8 @@ const App = () => (
                         <Routes>
 
                           <Route path="/" element={<RoleEntry />} />
+
+                          <Route path="/home" element={<Index />} />
 
                           <Route path="/doctor/schedules" element={<DoctorGuard><DoctorSchedules /></DoctorGuard>} />
 
@@ -436,6 +447,26 @@ const App = () => (
                         <Route path="/menopause/goals" element={<DailyGoals />} />
 
                         <Route path="/menopause/fun" element={<FunActivity />} />
+
+
+
+                          {/* Cancer Awareness module - centralized, shared across all phases */}
+
+                          <Route path="/cancer-awareness" element={<CancerAwarenessHome />} />
+
+                          <Route path="/cancer-awareness/early-symptoms" element={<EarlySymptomsPage />} />
+
+                          <Route path="/cancer-awareness/self-exam-guide" element={<SelfExamGuidePage />} />
+
+                          <Route path="/cancer-awareness/myths-facts" element={<MythsFactsPage />} />
+
+                          <Route path="/cancer-awareness/prevention" element={<PreventionPage />} />
+
+                          <Route path="/cancer-awareness/family-history" element={<FamilyHistoryPage />} />
+
+                          <Route path="/cancer-awareness/screening-awareness" element={<ScreeningAwarenessPage />} />
+
+                          <Route path="/cancer-awareness/emotional-support" element={<EmotionalSupportPage />} />
 
 
 

@@ -25,6 +25,42 @@ function isRemoteAlertId(id: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
 }
 
+// ── Module-level singleton: one realtime channel shared across all hook instances ──
+type RealtimeListener = { onRefresh: () => void; onStatusChange: (connected: boolean) => void };
+let singletonChannel: ReturnType<typeof supabaseDoctorClient.channel> | null = null;
+let singletonListeners: RealtimeListener[] = [];
+
+function registerRealtimeListener(listener: RealtimeListener): () => void {
+  singletonListeners.push(listener);
+
+  if (!singletonChannel) {
+    singletonChannel = supabaseDoctorClient
+      .channel('maternity-hillstation-realtime')
+      .on(
+        'postgres_changes' as any,
+        { event: 'INSERT', schema: 'public', table: 'maternity_hillstation_alerts', filter: 'status=eq.active' },
+        () => { singletonListeners.forEach((l) => l.onRefresh()); },
+      )
+      .on(
+        'postgres_changes' as any,
+        { event: 'UPDATE', schema: 'public', table: 'maternity_hillstation_alerts' },
+        () => { singletonListeners.forEach((l) => l.onRefresh()); },
+      )
+      .subscribe((status: string) => {
+        const connected = status === 'SUBSCRIBED';
+        singletonListeners.forEach((l) => l.onStatusChange(connected));
+      });
+  }
+
+  return () => {
+    singletonListeners = singletonListeners.filter((l) => l !== listener);
+    if (singletonListeners.length === 0 && singletonChannel) {
+      void supabaseDoctorClient.removeChannel(singletonChannel);
+      singletonChannel = null;
+    }
+  };
+}
+
 export function useMaternityHillstationAlerts(
   doctorId: string | undefined,
   doctorPhcCenter: string | undefined,
@@ -90,50 +126,17 @@ export function useMaternityHillstationAlerts(
     }
   }, [doctorPhcCenter, doctorPhcLocation, doctorId]);
 
-  // ── Supabase Realtime subscription for INSTANT alert delivery ──
+  // ── Supabase Realtime subscription (module-level singleton, shared across instances) ──
   useEffect(() => {
-    mountedRef.current = true;
-
-    const channel = supabaseDoctorClient
-      .channel('maternity-hillstation-realtime')
-      .on(
-        'postgres_changes' as any,
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'maternity_hillstation_alerts',
-          filter: 'status=eq.active',
-        },
-        (_payload: any) => {
-          // New alert inserted — immediately refresh to pick it up
-          if (mountedRef.current) {
-            void refreshAlerts();
-          }
-        },
-      )
-      .on(
-        'postgres_changes' as any,
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'maternity_hillstation_alerts',
-        },
-        (_payload: any) => {
-          // Alert updated (status change, days_left update) — refresh
-          if (mountedRef.current) {
-            void refreshAlerts();
-          }
-        },
-      )
-      .subscribe((status: string) => {
-        if (mountedRef.current) {
-          setRealtimeConnected(status === 'SUBSCRIBED');
-        }
-      });
-
-    return () => {
-      void supabaseDoctorClient.removeChannel(channel);
-    };
+    const unregister = registerRealtimeListener({
+      onRefresh: () => {
+        if (mountedRef.current) void refreshAlerts();
+      },
+      onStatusChange: (connected) => {
+        if (mountedRef.current) setRealtimeConnected(connected);
+      },
+    });
+    return unregister;
   }, [refreshAlerts]);
 
   // ── Demo evaluator + polling fallback ──

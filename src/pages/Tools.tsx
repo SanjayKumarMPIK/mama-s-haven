@@ -1,58 +1,14 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Calculator, Activity, Timer, Heart, ArrowLeft, Wrench, BarChart3, Sparkles, Settings2, ChevronRight } from "lucide-react";
+import { Activity, Timer, ArrowLeft, Wrench, BarChart3, Sparkles, Settings2, ChevronRight } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
 import { usePhase } from "@/hooks/usePhase";
 import { usePregnancyProfile } from "@/hooks/usePregnancyProfile";
 
-import { TrimesterSelector, type Trimester } from "@/pages/Maternity";
 import { useFamilyPlanningTools } from "@/hooks/useFamilyPlanningTools";
 import { useFamilyPlanningProfile } from "@/hooks/useFamilyPlanningProfile";
 import type { FPIntent } from "@/hooks/useFamilyPlanningProfile";
 import type { ResolvedTool } from "@/lib/familyPlanningToolsEngine";
-
-// Due Date Calculator
-function DueDateCalculator() {
-  const [lmp, setLmp] = useState("");
-  const [dueDate, setDueDate] = useState<string | null>(null);
-
-  const calculate = () => {
-    if (!lmp) return;
-    const date = new Date(lmp);
-    date.setDate(date.getDate() + 280);
-    setDueDate(date.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" }));
-  };
-
-  return (
-    <div className="rounded-xl border border-border/60 bg-card p-6 md:p-8">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-lg bg-peach flex items-center justify-center">
-          <Calculator className="w-5 h-5 text-foreground/70" />
-        </div>
-        <h2 className="text-xl font-bold">Due Date Calculator</h2>
-      </div>
-      <label className="block text-sm font-medium mb-2">First day of your last period</label>
-      <input
-        type="date"
-        value={lmp}
-        onChange={(e) => setLmp(e.target.value)}
-        className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring/30"
-      />
-      <button
-        onClick={calculate}
-        className="mt-4 w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.97]"
-      >
-        Calculate
-      </button>
-      {dueDate && (
-        <div className="mt-6 p-4 rounded-lg bg-mint/50 text-center">
-          <p className="text-sm text-muted-foreground">Your estimated due date</p>
-          <p className="mt-1 text-lg font-bold">{dueDate}</p>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function KickCounter() {
   const [kicks, setKicks] = useState(0);
@@ -163,69 +119,6 @@ function ContractionTimer() {
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function MoodLog() {
-  const moods = [
-    { emoji: "😊", label: "Happy" },
-    { emoji: "😌", label: "Calm" },
-    { emoji: "😴", label: "Tired" },
-    { emoji: "🤢", label: "Nauseous" },
-    { emoji: "😟", label: "Anxious" },
-    { emoji: "😢", label: "Emotional" },
-  ];
-  const [selected, setSelected] = useState<string | null>(null);
-  const [logged, setLogged] = useState(false);
-
-  const handleLog = () => {
-    if (selected) setLogged(true);
-  };
-
-  return (
-    <div className="rounded-xl border border-border/60 bg-card p-6 md:p-8">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-lg bg-lavender flex items-center justify-center">
-          <Heart className="w-5 h-5 text-foreground/70" />
-        </div>
-        <h2 className="text-xl font-bold">Mood Check-in</h2>
-      </div>
-      {logged ? (
-        <div className="text-center py-8">
-          <p className="text-4xl mb-3">{moods.find((m) => m.label === selected)?.emoji}</p>
-          <p className="font-semibold">Logged: {selected}</p>
-          <p className="text-sm text-muted-foreground mt-1">Take care of yourself today 💕</p>
-          <button onClick={() => { setLogged(false); setSelected(null); }} className="mt-4 text-sm text-primary hover:underline">
-            Log another
-          </button>
-        </div>
-      ) : (
-        <>
-          <p className="text-sm text-muted-foreground mb-4">How are you feeling today?</p>
-          <div className="grid grid-cols-3 gap-3">
-            {moods.map((m) => (
-              <button
-                key={m.label}
-                onClick={() => setSelected(m.label)}
-                className={`p-4 rounded-lg text-center transition-all duration-200 active:scale-95 ${
-                  selected === m.label ? "bg-primary/10 border-2 border-primary shadow-sm" : "bg-muted/50 border-2 border-transparent hover:bg-muted"
-                }`}
-              >
-                <span className="text-2xl block">{m.emoji}</span>
-                <span className="text-xs mt-1 block">{m.label}</span>
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={handleLog}
-            disabled={!selected}
-            className="mt-6 w-full py-3 rounded-lg bg-primary text-primary-foreground font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.97]"
-          >
-            Log Mood
-          </button>
-        </>
-      )}
     </div>
   );
 }
@@ -380,7 +273,6 @@ function FamilyPlanningToolsGrid() {
 export default function Tools() {
   const { phase, phaseName, phaseEmoji, phaseColor } = usePhase();
   const { mode } = usePregnancyProfile();
-  const [trimester, setTrimester] = useState<Trimester>("first");
 
   return (
     <div className="min-h-screen py-12">
@@ -437,19 +329,10 @@ export default function Tools() {
               )}
 
               <ScrollReveal>
-                <TrimesterSelector value={trimester} onChange={setTrimester} />
-              </ScrollReveal>
-              <ScrollReveal delay={80}>
-                <DueDateCalculator />
-              </ScrollReveal>
-              <ScrollReveal delay={120}>
                 <KickCounter />
               </ScrollReveal>
-              <ScrollReveal delay={160}>
+              <ScrollReveal delay={80}>
                 <ContractionTimer />
-              </ScrollReveal>
-              <ScrollReveal delay={200}>
-                <MoodLog />
               </ScrollReveal>
             </>
           )}

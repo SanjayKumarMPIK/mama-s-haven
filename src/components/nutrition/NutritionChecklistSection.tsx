@@ -18,9 +18,10 @@ const STORAGE_KEY = "mama_haven_nutrition_checklist";
 interface NutritionChecklistSectionProps {
   className?: string;
   hideTodaysFocus?: boolean;
+  hideSummary?: boolean;
 }
 
-export default function NutritionChecklistSection({ className = "", hideTodaysFocus = false }: NutritionChecklistSectionProps) {
+export default function NutritionChecklistSection({ className = "", hideTodaysFocus = false, hideSummary = false }: NutritionChecklistSectionProps) {
   const { trimester, currentWeek } = usePregnancyProfile();
   const { logs } = useHealthLog();
   const { user } = useAuth();
@@ -183,13 +184,17 @@ export default function NutritionChecklistSection({ className = "", hideTodaysFo
         </div>
       </div>
 
-      <ScrollReveal>
-        <ChecklistSummary items={displayItems} />
-      </ScrollReveal>
+      {!hideSummary && (
+        <>
+          <ScrollReveal>
+            <ChecklistSummary items={displayItems} />
+          </ScrollReveal>
 
-      <ScrollReveal delay={100}>
-        <DailyHealthChecklist currentWeek={currentWeek} />
-      </ScrollReveal>
+          <ScrollReveal delay={100}>
+            <DailyHealthChecklist currentWeek={currentWeek} />
+          </ScrollReveal>
+        </>
+      )}
 
       {!hideTodaysFocus && (
         <>

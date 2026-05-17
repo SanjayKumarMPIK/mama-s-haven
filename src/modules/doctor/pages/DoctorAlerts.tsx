@@ -20,24 +20,12 @@ import { cn } from "@/lib/utils";
 import { useDoctorRouteAlertCounts } from "@/modules/doctor/components/DoctorRouteAlertOverlays";
 import { useMaternityHillstationAlerts } from "@/hooks/useMaternityHillstationAlerts";
 import { useDoctorAuth } from "@/modules/doctor/hooks/useDoctorAuth";
-
-const DOCTOR_ALERTS_KEY = "ss-maternity-doctor-alerts";
-
-type AlertPriority = "green" | "yellow" | "orange" | "red";
-type AlertStatus = "active" | "reviewed" | "resolved";
-
-interface DoctorAlert {
-  id: string;
-  patientName: string;
-  symptomName: string | null;
-  triggerType: string;
-  priority: AlertPriority;
-  symptomCount: number;
-  consecutiveDays: number;
-  timestamp: number;
-  maternityPhase: string;
-  alertStatus: AlertStatus;
-}
+import type { AlertPriority, AlertStatus, DoctorAlert } from "@/hooks/useMaternitySymptomWarning";
+import {
+  fetchSymptomAlertsForDoctor,
+  updateSymptomAlertStatus,
+} from "@/services/maternitySymptomSupabase";
+import { supabaseDoctorClient } from "@/lib/supabase-doctor";
 
 const priorityConfig: Record<AlertPriority, {
   label: string;
@@ -112,29 +100,7 @@ function formatTimestamp(ts: number): string {
   return new Date(ts).toLocaleDateString();
 }
 
-function loadDoctorAlerts(): DoctorAlert[] {
-  try {
-    const raw = localStorage.getItem(DOCTOR_ALERTS_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return parsed.map((a: Partial<DoctorAlert>) => ({
-        id: a.id || `ALT-${a.timestamp}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
-        patientName: a.patientName || "Unknown",
-        symptomName: a.symptomName || null,
-        triggerType: a.triggerType || "unknown",
-        priority: (a.priority && ["green", "yellow", "orange", "red"].includes(a.priority) ? a.priority : "green") as AlertPriority,
-        symptomCount: a.symptomCount || 0,
-        consecutiveDays: a.consecutiveDays || 0,
-        timestamp: a.timestamp || Date.now(),
-        maternityPhase: a.maternityPhase || "maternity",
-        alertStatus: (a.alertStatus && ["active", "reviewed", "resolved"].includes(a.alertStatus) ? a.alertStatus : "active") as AlertStatus,
-      }));
-    }
-  } catch {
-    /* ignore */
-  }
-  return [];
-}
+
 
 type FilterType = "all" | "green" | "yellow" | "orange" | "red" | "active" | "resolved";
 
@@ -161,7 +127,7 @@ const priorityFilterColors: Record<string, string> = {
 const priorityFilterInactive = "bg-white text-slate-600 border-slate-200 hover:bg-slate-50";
 
 export default function DoctorAlerts() {
-  const [alerts, setAlerts] = useState<DoctorAlert[]>(() => loadDoctorAlerts());
+  const [alerts, setAlerts] = useState<DoctorAlert[]>([]);
   const [filter, setFilter] = useState<FilterType>("all");
   const { doctorProfile } = useDoctorAuth();
   const { realtimeConnected } = useDoctorRouteAlertCounts();
@@ -176,33 +142,33 @@ export default function DoctorAlerts() {
   );
 
   useEffect(() => {
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === DOCTOR_ALERTS_KEY) {
-        setAlerts(loadDoctorAlerts());
-      }
+    let mounted = true;
+    const fetchAlerts = async () => {
+      const fresh = await fetchSymptomAlertsForDoctor(doctorProfile?.phc_center, doctorProfile?.phc_location);
+      if (mounted) setAlerts(fresh);
     };
-    const interval = setInterval(() => {
-      const fresh = loadDoctorAlerts();
-      setAlerts((prev) => {
-        if (JSON.stringify(prev) !== JSON.stringify(fresh)) return fresh;
-        return prev;
-      });
-    }, 3000);
-    window.addEventListener("storage", handleStorage);
-    return () => {
-      window.removeEventListener("storage", handleStorage);
-      clearInterval(interval);
-    };
-  }, []);
-
-  const saveAlerts = (updated: DoctorAlert[]) => {
-    setAlerts(updated);
-    try {
-      localStorage.setItem(DOCTOR_ALERTS_KEY, JSON.stringify(updated));
-    } catch {
-      /* ignore */
+    
+    if (doctorProfile) {
+      void fetchAlerts();
     }
-  };
+
+    const channel = supabaseDoctorClient
+      .channel('doctor-symptom-alerts-realtime')
+      .on(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'postgres_changes' as any,
+        { event: '*', schema: 'public', table: 'doctor_symptom_alerts' },
+        () => {
+          if (mounted) void fetchAlerts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      mounted = false;
+      void supabaseDoctorClient.removeChannel(channel);
+    };
+  }, [doctorProfile?.phc_center, doctorProfile?.phc_location]);
 
   const filteredAlerts = useMemo(() => {
     let result = [...alerts];
@@ -235,8 +201,9 @@ export default function DoctorAlerts() {
     return result;
   }, [alerts, filter]);
 
-  const updateStatus = (alertId: string, newStatus: AlertStatus) => {
-    saveAlerts(alerts.map((a) => (a.id === alertId ? { ...a, alertStatus: newStatus } : a)));
+  const updateStatus = async (alertId: string, newStatus: AlertStatus) => {
+    setAlerts(alerts.map((a) => (a.id === alertId ? { ...a, alertStatus: newStatus } : a)));
+    await updateSymptomAlertStatus(alertId, newStatus);
   };
 
   const activeCount = alerts.filter((a) => a.alertStatus === "active").length;

@@ -17,6 +17,7 @@ import DeficiencyInsightsSection from "@/components/nutrition/DeficiencyInsights
 import SafetyWarningBanner from "@/components/nutrition/SafetyWarningBanner";
 import NutritionChecklistSection from "@/components/nutrition/NutritionChecklistSection";
 import { useDeficiencyInsights } from "@/hooks/useDeficiencyInsights";
+import { useConditionBasedNutrients } from "@/hooks/useConditionBasedNutrients";
 import { Apple, Calendar, ArrowRight, ArrowLeft, Utensils, Lightbulb, Activity, Clock } from "lucide-react";
 
 // ─── Phase accent map ─────────────────────────────────────────────────────
@@ -88,15 +89,19 @@ export default function NutritionIntelligencePage() {
     return result.nutrientNeeds.filter(n => !overviewNutrientIds.includes(n.nutrientId));
   }, [result.nutrientNeeds, overviewNutrientIds]);
 
+  // ─── Condition-based nutrients ────────────────────────────────────────────────
+  const { nutrientIds: conditionNutrientIds, conditions } = useConditionBasedNutrients();
+
   const dietInput: DietInput = useMemo(() => {
     return {
       trimester: (mode === "pregnancy" ? (trimester || 2) : 2) as 1 | 2 | 3,
       region: (profile?.region as "north" | "south" | "east" | "west") || "north",
       dietPreference: ((profile as any)?.dietPreference as "vegetarian" | "mixed") || "vegetarian",
-      deficiencies: [],
+      // Include condition-based nutrients to influence meal generation
+      deficiencies: conditionNutrientIds,
       weight: profile?.weight || 65,
     };
-  }, [profile, trimester]);
+  }, [profile, trimester, conditionNutrientIds]);
 
   const dietPlan = useMemo<DietPlan>(() => {
     return generateDiet(dietInput);
@@ -220,6 +225,16 @@ export default function NutritionIntelligencePage() {
                           symptomPriorityIds={symptomPriorityIds} 
                           accentGradient={accent.gradient} 
                         />
+                      )}
+
+                      {/* ─── Condition-Based Food Guidance ─────────────────────────────────── */}
+                      {conditions.length > 0 && (
+                        <div className={`rounded-2xl border-2 ${accent.border} ${accent.cardBg} p-4 bg-opacity-50`}>
+                          <p className="text-xs text-foreground/80 leading-relaxed">
+                            <strong>Condition-Aware Nutrition:</strong> Based on your selected conditions ({conditions.join(", ")}), 
+                            the food recommendations below emphasize supportive nutrients throughout your pregnancy.
+                          </p>
+                        </div>
                       )}
 
                       {dietPlan.nutritionalHighlights.length > 0 && (

@@ -270,8 +270,7 @@ export default function HamburgerMenu({
                 ))
               ) : (
                 SECONDARY_ITEMS.filter(item => {
-                  if (item.to === "/wellness" && phase === "maternity") return false;
-                  if (MATERNITY_ONLY_ROUTES.has(item.to) && phase !== "maternity") return false;
+                  if (MATERNITY_ONLY_ROUTES.has(item.to)) return false;
                   if (FAMILY_PLANNING_ONLY_ROUTES.has(item.to) && phase !== "family-planning") return false;
                   return true;
                 }).map((item) => {

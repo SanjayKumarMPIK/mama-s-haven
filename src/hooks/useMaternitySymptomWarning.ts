@@ -7,6 +7,7 @@ import {
   shouldShowWarning,
   type SymptomWarning,
 } from "@/lib/maternitySymptomFrequency";
+import { publishSymptomAlert } from "@/services/maternitySymptomSupabase";
 
 const DISMISSED_LS_KEY = "ss-maternity-symptom-warnings-dismissed";
 const SESSION_DISMISSED_KEY = "ss-maternity-warning-session-dismissed";
@@ -79,23 +80,6 @@ function savePersistentDismissed(ids: Set<string>) {
   }
 }
 
-function loadDoctorAlerts(): DoctorAlert[] {
-  try {
-    const raw = localStorage.getItem(DOCTOR_ALERTS_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* ignore */
-  }
-  return [];
-}
-
-function saveDoctorAlerts(alerts: DoctorAlert[]) {
-  try {
-    localStorage.setItem(DOCTOR_ALERTS_KEY, JSON.stringify(alerts));
-  } catch {
-    /* ignore */
-  }
-}
 
 function getPatientName(fullProfile: unknown): string {
   try {
@@ -121,7 +105,7 @@ export interface UseMaternitySymptomWarningReturn {
 export function useMaternitySymptomWarning(): UseMaternitySymptomWarningReturn {
   const { phase } = usePhase();
   const { maternityLogs } = useHealthLog();
-  const { fullProfile } = useAuth();
+  const { fullProfile, user } = useAuth();
 
   const [dismissed, setDismissed] = useState<Set<string>>(() => {
     const session = loadDismissedWarnings();
@@ -232,25 +216,19 @@ export function useMaternitySymptomWarning(): UseMaternitySymptomWarningReturn {
 
     const mappedTrigger = triggerTypeMap[activeWarning.triggerType] ?? activeWarning.triggerType;
     const priority = priorityMap[activeWarning.triggerType] ?? "green";
-    const now = Date.now();
-    const id = `ALT-${now}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+    const phcLocation = fullProfile?.location?.nearbyPhc ?? "Anna Nagar PHC";
 
-    const alert: DoctorAlert = {
-      id,
+    void publishSymptomAlert({
+      patientId: user?.id ?? "",
       patientName,
+      phcLocation,
       symptomName: activeWarning.symptomId !== "_overall" ? activeWarning.symptomName : null,
       triggerType: mappedTrigger,
       priority,
       symptomCount: activeWarning.count,
       consecutiveDays: activeWarning.windowDays,
-      timestamp: now,
       maternityPhase: phase,
-      alertStatus: "active",
-    };
-
-    const alerts = loadDoctorAlerts();
-    alerts.push(alert);
-    saveDoctorAlerts(alerts);
+    });
 
     setVisible(false);
     setDismissed((prev) => {
@@ -259,7 +237,7 @@ export function useMaternitySymptomWarning(): UseMaternitySymptomWarningReturn {
       saveDismissedWarnings(next);
       return next;
     });
-  }, [activeWarning, fullProfile, phase]);
+  }, [activeWarning, fullProfile, phase, user]);
 
   return {
     activeWarning,

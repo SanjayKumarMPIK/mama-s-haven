@@ -2,6 +2,7 @@ import { type ReactNode } from "react";
 import { Flame, Leaf, Moon, Shield, Sparkles, Sun, TrendingUp } from "lucide-react";
 import type { ComputedDeficiencyInsights } from "@/services/deficiency/types";
 import type { DeficiencyAnalysis, DeficiencyResult } from "@/services/deficiency/deficiencyRulesEngine";
+import { useConditionBasedNutrients } from "@/hooks/useConditionBasedNutrients";
 
 function Badge({ text }: { text: string }) {
   return (
@@ -382,16 +383,84 @@ export default function DeficiencyInsightsSection({ insights }: { insights: Comp
               <p className="col-span-full text-xs text-muted-foreground">No frequent symptoms detected</p>
             )}
           </div>
-          <div className="rounded-2xl border border-[#f0e8f5] bg-[#fffafe] p-3">
-            <p className="text-sm font-semibold">Possible Deficiencies</p>
-            <p className="text-xs text-muted-foreground">Based on your symptoms</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {insights.topDeficiencies.slice(0, 3).map((d) => (
-                <span key={d.nutrientId} className="rounded-lg bg-[#ffeef4] px-2.5 py-1 text-xs font-medium text-[#c85888]">
-                  {d.label}
-                </span>
-              ))}
+          <div className="space-y-4 mt-3">
+            <div className="rounded-2xl border border-[#f0e8f5] bg-[#fffafe] p-4 flex flex-col">
+              <p className="text-sm font-semibold">Possible Deficiencies</p>
+              <p className="text-xs text-muted-foreground">Based on your symptoms</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {insights.topDeficiencies.slice(0, 3).map((d) => (
+                  <span key={d.nutrientId} className="rounded-lg bg-[#ffeef4] px-2.5 py-1.5 text-xs font-semibold text-[#c85888]">
+                    {d.label}
+                  </span>
+                ))}
+              </div>
             </div>
+
+            {/* Condition-Linked Nutritional Support */}
+            {(() => {
+              const { configs, isActive } = useConditionBasedNutrients();
+              if (!isActive || configs.length === 0) return null;
+
+              return (
+                <div className="pt-1">
+                  <div className="w-full h-px bg-gradient-to-r from-transparent via-[#e4d8ec] to-transparent mb-5" />
+                  <div className="space-y-3 rounded-2xl border border-amber-200/50 bg-amber-50/30 p-4 flex flex-col">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">🏥</span>
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground leading-tight">Condition-Linked Support</h3>
+                      <p className="text-[10px] text-muted-foreground">Associated with selected conditions</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 flex-1">
+                    {configs.map((config) => (
+                      <div
+                        key={config.nutrientId}
+                        className="rounded-xl border border-amber-200/60 bg-white/80 p-3"
+                      >
+                        <div className="flex items-center gap-2.5 mb-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 border border-amber-100">
+                            <span className="text-sm">{config.emoji}</span>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-semibold text-foreground leading-tight">{config.nutrient} Support</h4>
+                            <p className="text-[10px] text-muted-foreground">May require attention</p>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-foreground/80 mb-2.5 leading-relaxed">
+                          {config.description}
+                        </p>
+
+                        <div className="rounded-lg bg-amber-50/60 p-2.5">
+                          <p className="text-[10px] font-semibold text-amber-700 mb-1.5">Recommended Foods:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {config.foods.vegetarian.slice(0, 4).map((food, i) => (
+                              <span
+                                key={i}
+                                className="rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-100/60"
+                              >
+                                {food}
+                              </span>
+                            ))}
+                            {config.foods.mixed.slice(0, 2).map((food, i) => (
+                              <span
+                                key={`mixed-${i}`}
+                                className="rounded-md bg-white px-2 py-0.5 text-[10px] font-medium text-amber-700 border border-amber-100/60 opacity-75"
+                              >
+                                {food}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
 
@@ -439,6 +508,8 @@ export default function DeficiencyInsightsSection({ insights }: { insights: Comp
           })()}
         </div>
       </section>
+
+
 
       <section className="rounded-2xl border border-[#efe6f3] bg-white px-4 py-3">
         <div className="flex items-center justify-between gap-3">
